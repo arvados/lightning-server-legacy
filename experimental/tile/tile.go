@@ -13,6 +13,7 @@ import "sort"
 import "encoding/json"
 
 import "../recache"
+import "../aux"
 
 type TileHeader struct {
   TileID string `json:"tileID"`
@@ -210,9 +211,26 @@ func (ts *TileSet) AddTile( tileId string, tileSeq string, meta string ) {
   header.StartTag  = sTag
   header.EndTag    = eTag
   header.N         = len(tileSeq)
-  header.CopyNum   = copyNum
+  header.CopyNum   = copyNum+1
+  header.Notes     = append(header.Notes, ts.TileCopyCollectionMap[ baseId ].MetaJson[ copyNum ].Notes... )
 
   ts.TileCopyCollectionMap[ baseId ].MetaJson[ copyNum ] = header
+
+}
+
+
+func (ts *TileSet) AddTileNotes( tileId string, notes []string ) {
+
+  baseId := ts.getBaseTileId( tileId )
+  copyNum := ts.getCopyNumber( tileId )
+
+  if _,found := ts.TileCopyCollectionMap[ baseId ] ; !found {
+    return
+  }
+
+  x := ts.TileCopyCollectionMap[ baseId ].MetaJson[ copyNum ]
+  x.Notes = append( x.Notes, notes... )
+  ts.TileCopyCollectionMap[ baseId ].MetaJson[ copyNum ] = x
 
 }
 
@@ -352,18 +370,16 @@ func (ts *TileSet) WriteFastjFile( filename string ) error {
 
 func (ts *TileSet) ReadFastjFile( fastjFn string ) {
 
-  fp, err := os.Open( fastjFn )
-  if err != nil { panic(err) }
-  defer fp.Close()
-
-
   var header string
   var seq bytes.Buffer
   var tileId string
 
   line_count := 0
 
-  scanner := bufio.NewScanner( fp )
+  fp,scanner,err := aux.OpenScanner( fastjFn )
+  if err != nil { panic(err) }
+  defer fp.Close()
+
   for scanner.Scan() {
     l := scanner.Text()
 
