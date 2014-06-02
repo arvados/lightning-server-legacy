@@ -19,6 +19,7 @@ import "compress/gzip"
 var CYTOMAP_FILENAME string
 var BAND_BOUNDS map[string]map[int][2]int
 
+var gDebugString string
 var gDebugFlag bool
 
 var gNoteLine string
@@ -139,6 +140,15 @@ func (gss *GffScanState) advanceAndUpdateState( finalTileSet *tile.TileSet, refe
             gss.refStart + gss.refLen,
             s + entryLen ) }
 
+
+      if ((gss.refStart + gss.refLen) < 0) || ((gss.refStart + gss.refLen) >= len(chrFa)) ||
+         ((gss.nextTagStart + tagLen) < 0) || ((gss.nextTagStart + tagLen) >= len(chrFa)) ||
+         ((gss.refStart + gss.refLen) > (gss.nextTagStart + tagLen))  {
+        fmt.Printf("ERROR: OUT OF BOUNDS! (%s) chrFa[%d,%d] gss.refStart: %d, gss.refLen: %d, gss.nextTagStart: %d, tagLen: %d\n",
+                    gDebugString,
+                    0, len(chrFa), gss.refStart, gss.refLen, gss.nextTagStart, tagLen)
+      }
+
       gss.gffCurSeq = append( gss.gffCurSeq, chrFa[ gss.refStart + gss.refLen : gss.nextTagStart + tagLen ]... )
 
       sprv := gss.startPos[ gss.startPosIndex-1 ]
@@ -244,6 +254,7 @@ func main() {
   outFastjFn := os.Args[4]
   if len(os.Args) > 5 { gNoteLine = os.Args[5] }
 
+  gDebugString = fmt.Sprintf( "%s %s %s %s %s", gffFn, fastjFn, chrFaFn, outFastjFn, gNoteLine )
 
   // Load band boundaries
   //
@@ -371,10 +382,16 @@ func main() {
       //
       if typ != "REF" { continue }
 
-      gss.refStart, gss.refLen = s, entryLen
+      //gss.refStart, gss.refLen = s, entryLen
+      //gss.refStart = gss.startPos[0]
+      //gss.gffCurSeq = append( gss.gffCurSeq, chrFa[ gss.refStart : gss.refStart + gss.refLen ]... )
+
+      gss.refStart, gss.refLen = s, 0
       gss.refStart = gss.startPos[0]
 
-      gss.gffCurSeq = append( gss.gffCurSeq, chrFa[ gss.refStart : gss.refStart + gss.refLen ]... )
+      gss.advanceAndUpdateState( finalTileSet, referenceTileSet, chrFa, s, entryLen, tagLen )
+      if gss.startPosIndex == len(gss.startPos) { break }
+
       continue
 
     }
