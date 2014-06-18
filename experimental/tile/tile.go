@@ -12,6 +12,8 @@ import "sort"
 
 import "encoding/json"
 
+import "errors"
+
 import "../recache"
 import "../aux"
 
@@ -368,7 +370,17 @@ func (ts *TileSet) WriteFastjFile( filename string ) error {
   return nil
 }
 
-func (ts *TileSet) ReadFastjFile( fastjFn string ) {
+func (ts *TileSet) ReadFastjFile( fastjFn string ) error {
+
+  fp,scanner,err := aux.OpenScanner( fastjFn )
+  if err != nil { return err }
+  defer fp.Close()
+
+  return ts.FastjScanner( scanner )
+
+}
+
+func (ts *TileSet) FastjScanner( scanner *bufio.Scanner ) error {
 
   var header string
   var seq bytes.Buffer
@@ -376,9 +388,11 @@ func (ts *TileSet) ReadFastjFile( fastjFn string ) {
 
   line_count := 0
 
+  /*
   fp,scanner,err := aux.OpenScanner( fastjFn )
   if err != nil { panic(err) }
   defer fp.Close()
+  */
 
   for scanner.Scan() {
     l := scanner.Text()
@@ -395,15 +409,15 @@ func (ts *TileSet) ReadFastjFile( fastjFn string ) {
       if (seq.Len() > 0) && (len(header) > 0) {
 
         if b,_ := recache.MatchString( `[^\.]+\.[^\.]+\.[^\.]+\.[^\.]+`, tileId ) ; !b {
-          panic( fmt.Sprintf("Invalid tileId ('%s') in file %s.  Current line %d", tileId, fastjFn, line_count) )
+          return errors.New( fmt.Sprintf("Invalid tileId ('%s').  Current line %d", tileId, line_count) )
+          //panic( fmt.Sprintf("Invalid tileId ('%s') in file %s.  Current line %d", tileId, fastjFn, line_count) )
         }
 
         ts.AddTile( tileId, seq.String(), header )
 
       }
 
-      tileIDs,err := recache.FindAllStringSubmatch( `"tileI[Dd]"\s*:\s*"([^\.]+)\.([^\.]+)\.([^\.]+)\.([^"]+)"`, l, -1 )
-      if err != nil { panic(err) }
+      tileIDs,_ := recache.FindAllStringSubmatch( `"tileI[Dd]"\s*:\s*"([^\.]+)\.([^\.]+)\.([^\.]+)\.([^"]+)"`, l, -1 )
 
       tileId =
         fmt.Sprintf( "%s.%s.%s.%s", tileIDs[0][1], tileIDs[0][2], tileIDs[0][3], tileIDs[0][4] )
@@ -435,6 +449,7 @@ func (ts *TileSet) ReadFastjFile( fastjFn string ) {
   }
 
 
+  return nil
 
 }
 
