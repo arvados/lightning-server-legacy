@@ -6,18 +6,19 @@ import "fmt"
 import "os"
 import "./aux"
 import "strconv"
-import "bufio"
 import "strings"
+
+import _ "bufio"
 
 import "./recache"
 import "./tile"
 
 import "sort"
 import "encoding/json"
-import "compress/gzip"
+import _ "compress/gzip"
 
-var CYTOMAP_FILENAME string
-var BAND_BOUNDS map[string]map[int][2]int
+//var CYTOMAP_FILENAME string
+//var BAND_BOUNDS map[string]map[int][2]int
 
 var gDebugString string
 var gDebugFlag bool
@@ -120,8 +121,12 @@ func (gss *GffScanState) advanceAndUpdateState( finalTileSet *tile.TileSet, refe
   //    s = 50 (s+1==51), don't want to push to the tile library
   //    s = 51 (s+1==52), _do_ want to push to the tile library
   //
+
+  // Keep peeling off the head of the current sequence until we hit a tag start position.
+  //
   for ; (s + entryLen) >= (gss.nextTagStart + tagLen) ;  {
 
+    /*
     if gDebugFlag {
       fmt.Printf( "# [s: %d, n: %d] (refStart: %d, refLen: %d) startPos< %d, %d, %d > {nextTagStart: %d}\n",
         s, entryLen,
@@ -129,6 +134,7 @@ func (gss *GffScanState) advanceAndUpdateState( finalTileSet *tile.TileSet, refe
         gss.startPos[ gss.startPosIndex-1 ], gss.startPos[ gss.startPosIndex ], gss.startPos[ gss.startPosIndex+1 ],
         gss.nextTagStart )
     }
+    */
 
     if gss.refStart == gss.startPos[gss.startPosIndex-1] {
 
@@ -179,7 +185,26 @@ func (gss *GffScanState) advanceAndUpdateState( finalTileSet *tile.TileSet, refe
 
   }
 
+  /*
+  //DEBUG
+  fmt.Printf(" s %d, entryLen %d, refStart %d, refLen %d\n",
+    s, entryLen, gss.refStart, gss.refLen )
+  fmt.Printf(" (%d) - (%d) -> %d\n", s + entryLen, gss.refStart + gss.refLen,
+    (s + entryLen) - (gss.refStart + gss.refLen) )
+    */
+
+
   dn := (s + entryLen) - (gss.refStart + gss.refLen)
+
+
+  /*
+  //DEBUG
+  fmt.Printf(" refStart %d, refLen %d --> %d  ::: (+dn %d) --> %d\n",
+    gss.refStart, gss.refLen, gss.refStart + gss.refLen,
+    dn, gss.refStart + gss.refLen + dn )
+    */
+
+
   gss.gffCurSeq = append( gss.gffCurSeq, chrFa[ gss.refStart + gss.refLen : gss.refStart + gss.refLen + dn ]... )
   gss.refLen += dn
 
@@ -235,7 +260,7 @@ func main() {
   //gDebugFlag = true
 
   tagLen := 24
-  CYTOMAP_FILENAME = "ucsc.cytomap.hg19.txt"
+  //CYTOMAP_FILENAME = "ucsc.cytomap.hg19.txt"
 
   // Count number of variations in a tile.
   // Key is start position of the tile (hg19 ref)
@@ -258,8 +283,8 @@ func main() {
 
   // Load band boundaries
   //
-  BAND_BOUNDS = make( map[string]map[int][2]int  )
-  aux.BuildBandBounds( BAND_BOUNDS, CYTOMAP_FILENAME)
+  //BAND_BOUNDS = make( map[string]map[int][2]int  )
+  //aux.BuildBandBounds( BAND_BOUNDS, CYTOMAP_FILENAME)
 
   // Load the tile set for this band.
   //
@@ -277,7 +302,8 @@ func main() {
   // Sort starting position of each of the tile.
   //
   for _,tcc := range referenceTileSet.TileCopyCollectionMap {
-    a,_ := recache.FindAllStringSubmatch( `hg19 chr[^ ]* (\d+)(-\d+)? (\d+)(\+\d+)?`, tcc.Meta[0], -1 )
+    //a,_ := recache.FindAllStringSubmatch( `hg19 chr[^ ]* (\d+)(-\d+)? (\d+)(\+\d+)?`, tcc.Meta[0], -1 )
+    a,_ := recache.FindAllStringSubmatch( `hg\d+ chr[^ ]* (\d+)(-\d+)? (\d+)(\+\d+)?`, tcc.Meta[0], -1 )
 
     s,_ := strconv.Atoi(a[0][1])
     e,_ := strconv.Atoi(a[0][3])
@@ -290,7 +316,7 @@ func main() {
       gss.startPos = append( gss.startPos, e )
     }
   }
-  sort.Ints(gss.startPos)
+  sort.Ints( gss.startPos )
   gss.nextTagStart = gss.startPos[1]
   gss.startPosIndex = 1
 
@@ -299,12 +325,6 @@ func main() {
   if gDebugFlag { fmt.Println("# loading", chrFaFn, "into memory...") }
   chrFa := aux.FaToByteArray( chrFaFn )
   _ = chrFa
-
-  // Finall, scan our gff file...
-  //
-  gffFp, err := os.Open( gffFn )
-  if err != nil { panic(err) }
-  defer gffFp.Close()
 
   count := 0
 
@@ -334,16 +354,9 @@ func main() {
   //         [s,s+d] -> deletion of (d+1) bp
   //
 
-  //scanner := bufio.NewScanner( gffFp )
-  var scanner *bufio.Scanner
-  if b,_ := recache.MatchString( `\.gz$`, gffFn ); b {
-    fp,err := gzip.NewReader( gffFp )
-    if err!=nil { panic(err) }
-    scanner = bufio.NewScanner( fp )
-  } else {
-    scanner = bufio.NewScanner( gffFp )
-  }
-
+  gffFp,scanner,err := aux.OpenScanner( gffFn )
+  if err != nil { panic(err) }
+  defer gffFp.Close()
 
 
   for scanner.Scan() {
@@ -351,7 +364,7 @@ func main() {
 
     if gDebugFlag { fmt.Printf("#>> %s\n", l ) }
 
-    // Skip blank line or ocmment
+    // Skip blank line or comment
     //
     if b,_ := recache.MatchString( `^\s*$`, l ) ; b { continue }
     if b,_ := recache.MatchString( `^#`, l )   ; b { continue }
@@ -373,6 +386,12 @@ func main() {
 
     entryLen := e - s + 1
 
+
+    // For simplicity, if the read end of the sequence is
+    // before the first start position we have, skip over it.
+    //
+    if ( e < gss.startPos[0] ) { continue }
+
     // Initialize refStart and refLen
     //
     if gss.refStart < 0 {
@@ -381,10 +400,6 @@ func main() {
       // if we're at the beginning.
       //
       if typ != "REF" { continue }
-
-      //gss.refStart, gss.refLen = s, entryLen
-      //gss.refStart = gss.startPos[0]
-      //gss.gffCurSeq = append( gss.gffCurSeq, chrFa[ gss.refStart : gss.refStart + gss.refLen ]... )
 
       gss.refStart, gss.refLen = s, 0
       gss.refStart = gss.startPos[0]
@@ -396,12 +411,14 @@ func main() {
 
     }
 
+    /*
     if gDebugFlag {
       fmt.Printf("# [s: %d, e: %d] (refStart: %d, refLen: %d) startPos< %d, %d, %d >\n",
         s, e,
         gss.refStart, gss.refLen,
         gss.startPos[ gss.startPosIndex-1 ], gss.startPos[ gss.startPosIndex ], gss.startPos[ gss.startPosIndex+1 ] )
     }
+    */
 
     // Continue our contiguous sequence from the previous gff line.
     //
