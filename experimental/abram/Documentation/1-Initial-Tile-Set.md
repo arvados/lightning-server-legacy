@@ -62,7 +62,7 @@ This should take a while, generating 863 files, each ranging from 0-160M.  The f
 
 Once we have the chopped BedGraph files, we can now walk through each one and find our tag sets, generating Fastj files from the reference genome along the way.
 
-2. 
+
 
 
 
