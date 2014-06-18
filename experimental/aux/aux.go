@@ -15,8 +15,12 @@ import "compress/bzip2"
 
 func OpenScanner( fn string ) ( fp *os.File, scanner *bufio.Scanner, err error ) {
 
-  fp,err = os.Open( fn )
-  if err != nil { return fp, scanner, err }
+  if fn == "-" {
+    fp = os.Stdin
+  } else {
+    fp,err = os.Open( fn )
+    if err != nil { return fp, scanner, err }
+  }
 
   n := len(fn)
 
