@@ -3,15 +3,13 @@ Overview
 
 Lightning is a database to store a population of genomes
 for ease of queriability, data exchange and standardization.
-In addition, Lightning will introduce
-a standardized description for genomic data.
+Lightning will introduce a standardized description for genomic data.
 
-Currently, we are in the preliminary research of testing feasability
-and getting initial results.  This includes processing data we have
-for the 150+ Personal Genomic Project participants and creating
+Currently, we are in the preliminary research phase.
+We are processing data we have for the 150+ Personal Genomic Project participants and creating
 initial libarary files.
 
-This documentation is an attempt to record the process by which
+This documentation is an attempt to record the method by which
 we created Lightning and it's supporting library files.  Concepts
 will be introduced and explained as needed.
 
