@@ -31,8 +31,8 @@ a Lightning tile:
     gccgccgccgccgccgccgccgcgactttttatccccagccgccgcggct
     ttttgcccccaccccgccgcggcttTCTGCCCAGCCCCCGTCGCCGCGG
 
-Where 'CTTTTTGCCCGCTCAGGCTTTTGC' is the 'start' or 'left' tag and
-'TCTGCCCAGCCCCCGTCGCCGCGG' is the 'end' or 'right' tag.
+Where `CTTTTTGCCCGCTCAGGCTTTTGC` is the 'start' or 'left' tag and
+`TCTGCCCAGCCCCCGTCGCCGCGG` is the 'end' or 'right' tag.
 
 A tile sequence must be at least 250 base pairs long.
 
@@ -50,8 +50,8 @@ format will look familiar.  Here is an example:
 
 
 A FastJ file can consist of multiple sequences, where each start is indicated
-by a '>' (greater than) character on the line before it.  The information
-on the same line after the '>' is valid JSON and gives information about the
+by a `>` (greater than) character on the line before it.  The information
+on the same line after the `>` is valid JSON and gives information about the
 Lightning tile ID and other information.
 
 The motivation behind this format is that a genome can be effectively covered by

@@ -1,7 +1,7 @@
 Creating The Initial Tile Set
 =============================
 
-0. Overview
+Overview
 --------
 
 In what follows, we will be using hg19 (GRCh37) to build the
@@ -24,28 +24,30 @@ this to pick an initial tag set, picking each tag to be as unique as possible in
 band boundaries that we will use to create our band boundaries.  The hg19 will be used to create the initial tile set which we will
 extend with other PGP participants later on.
 
-Though strictly speaking we could construct the Fasta files ourselves from the 2bit representation (and vice versa), it's good
-to have them lying around if we have the space in case we need to skip around between representations.
+Though strictly speaking we could construct the Fasta files ourselves from the 2bit representation (and vice versa) on the fly, it's good
+to have them lying around if we have the space in case we need to skip around between representations.  We'll download them from UCSC
+for convenience rather than create the Fasta files ourselves.
 
-The files are large.  The **wgEncodeMapabilityAlign24mer** is around 5G, the hg19 Fasta files are around 3.1G and the **hg19.2bit** file is around 800M.
+The files are large.  The `wgEncodeMapabilityAlign24mer.bw.gz` file is around 5G, the hg19 chromosome files `chr1.fa.gz`, `chr2.fa.gz`, ... , `chrM.fa.gz` 
+files are around 3.1G in total and the `hg19.2bit` file is around 800M.
 We will be generating large intermediate files, so make sure you have plenty of space.
 
 As a quick overview, we will follow roughly these steps:
 
-  - Convert the 24mer **wgEncodeMapabilityAlign24mer** BigWig file to a BedGraph file.
+  - Convert the 24mer `wgEncodeMapabilityAlign24mer.bw.gz` (compressed) BigWig file to a BedGraph file.
   - Use the CytoBand files to chop the BedGraph file into smaller BedGraph files, restricted to the appropriate band.
   - Create a tag set from the chopped BedGraph files.
   - Use the tag set to create the tile sequences from the hg19 reference genome.
 
 At the end, we should have a tile set that covers the hg19 reference genome.  Eventually, we will extend
-the tile set created here with the pool of genomes from the Personal Genomes Project (PGP), but that's getting
-ahead of ourselves.
+the tile set created here with the pool of genomes from the Personal Genomes Project (PGP), but we'll be
+restricting ourselves to hg19 for now.
 
 To download all the tools, run the 'setup.sh' script:
 
     $ setup.sh
 
-1. Converting and Chopping wgEncodeMapabilityAlign24mer
+Converting and Chopping wgEncodeMapabilityAlign24mer
 -------------------------------------------------------
 
 After all the tools are downloaded, you will need to run the program **createBandBedGraph**.  If it's not compiled, compile the Go program:
