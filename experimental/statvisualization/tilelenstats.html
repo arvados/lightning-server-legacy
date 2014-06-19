@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.bar {
+  fill: steelblue;
+}
+
+
+</style>
+
+
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+//df1 is the .csv file containing the statistics about the length of tiles at each position 
+//zoom sets the width of the window
+// zoom = 960 is good for chromosomes and arms
+// zoom = 1500 is good for regions
+// zoom = 5000 or 6000 is good for bands
+// zoom = 9000 or 10000 is good for subbands
+
+var df1 = "LenStatsChromosomes.csv";
+var zoom = 960;
+
+var margin2 = {top: 110, right: 20, bottom: 50, left: 40},
+    width2 = zoom - margin2.left - margin2.right,
+    height2 = 500 - margin2.top - margin2.bottom;
+
+var x2 = d3.scale.ordinal()
+    .rangeRoundBands([0, width2], .1);
+
+var y2 = d3.scale.linear()
+    .rangeRound([height2, 0]);
+
+var color = d3.scale.ordinal()
+    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+
+var xAxis2 = d3.svg.axis()
+    .scale(x2)
+    .orient("bottom");
+
+var yAxis2 = d3.svg.axis()
+    .scale(y2)
+    .orient("left")
+    .tickFormat(d3.format(".2s"));
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width2 + margin2.left + margin2.right)
+    .attr("height", height2 + margin2.top + margin2.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+
+d3.csv(df1, function(error, data) {
+  color.domain(d3.keys(data[0]).filter(function(key) { return key !== "State"; }));
+
+  data.forEach(function(d) {
+    var y0 = 0;
+    d.ages = color.domain().map(function(name) { return {name: name, y0: y0, y1: y0 += +d[name]}; });
+    d.total = d.ages[d.ages.length - 1].y1;
+  });
+
+  //data.sort(function(a, b) { return b.total - a.total; });
+
+  	x2.domain(data.map(function(d) { return d.State; }));
+  	y2.domain([0, d3.max(data, function(d) { return d.total; })]);
+
+  	svg.append("g")
+      	.attr("class", "x axis")
+      	.attr("transform", "translate(0," + height2 + ")")
+      	.call(xAxis2)
+		.selectAll("text")  
+            .style("text-anchor", "end")
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+            .attr("transform", function(d) {
+                return "rotate(-65)" 
+                })
+		.append("text")
+		.attr("y", 25)
+		.style("text-anchor", "end")
+		.text("Locus");
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis2);
+
+	svg.append("text")
+		.attr("x", (width2 / 2))
+		.attr("y", 0 - (margin2.top/2))
+		.attr("text-anchor", "middle")
+		.style("font-size", "16px")
+		.style("text-decoration", "underline")
+		.text("Length (in bases)");
+
+  var state = svg.selectAll(".state")
+      .data(data)
+    .enter().append("g")
+      .attr("class", "g")
+      .attr("transform", function(d) { return "translate(" + x2(d.State) + ",0)"; });
+
+  state.selectAll("rect")
+      .data(function(d) { return d.ages; })
+    .enter().append("rect")
+      .attr("width", x2.rangeBand())
+      .attr("y", function(d) { return y2(d.y1); })
+      .attr("height", function(d) { return y2(d.y0) - y2(d.y1); })
+      .style("fill", function(d) { return color(d.name); });
+
+  var legend = svg.selectAll(".legend")
+      .data(color.domain().slice().reverse())
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { 
+			var dy = -100 + i*20
+			return "translate(0," + dy + ")"; });
+
+  legend.append("rect")
+      .attr("x", width2 - 18)
+      .attr("width", 18)
+      .attr("height", 18)
+      .style("fill", color);
+
+  legend.append("text")
+      .attr("x", width2 - 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .style("text-anchor", "end")
+      .text(function(d) { return d; });
+
+
+});
+
+
+</script>
