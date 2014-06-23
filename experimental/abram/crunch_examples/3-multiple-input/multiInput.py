@@ -29,7 +29,7 @@ for line in input_fileA.readlines():
   out.write( "text from 'inputA': " + line.upper() )
 
 for line in input_fileB.readlines():
-  out.write( "text from 'inputB: " + line.upper() )
+  out.write( "text from 'inputB': " + line.upper() )
 
 this_task.set_output(out.finish())
 
