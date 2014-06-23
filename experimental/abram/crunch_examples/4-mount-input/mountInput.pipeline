@@ -1,0 +1,18 @@
+{
+  "name": "flowers initiating forgot",
+  "components": {
+    "becks": {
+      "script_parameters": {
+
+        "DataUUID" : { "required" : true, "dataclass" : "Collection" },
+        "inputA": { "required" : false,  "dataclass" : "Collection" },
+        "inputB": { "required" : false, "dataclass" : "Collection" }
+
+      },
+
+      "script_version": "master",
+      "repository": "$USER",
+      "script": "examples/4-mount-input/mountInput.py"
+    }
+  }
+}

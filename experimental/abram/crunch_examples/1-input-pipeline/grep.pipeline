@@ -1,0 +1,17 @@
+{
+  "name": "depressant pigeonholed fisticuffs",
+  "components": {
+    "mattered": {
+      "script_parameters": {
+        "pattern": "TATATATAGATAAGTATCT",
+        "input": {
+          "required" : true,
+          "dataclass" : "Collection"
+        }
+      },
+      "script_version": "master",
+      "repository": "$USER",
+      "script": "examples/1-input-pipeline/grep"
+    }
+  }
+}

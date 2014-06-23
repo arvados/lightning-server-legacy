@@ -18,7 +18,8 @@ func BioEnv() (m map[string]string, err error)  {
       continue
     }
 
-    file,_ := os.Open( fn[i] )
+    file,err := os.Open( fn[i] )
+    if err != nil { continue }
     decoder := json.NewDecoder(file)
 
     m = make( map[string]string )

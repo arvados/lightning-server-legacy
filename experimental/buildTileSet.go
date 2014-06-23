@@ -281,7 +281,7 @@ func printFastJSONElement( writerFastj *bufio.Writer,
 //
 // TODO: make sure we take care of the fencepost errors that might be lurking.  There is minTileDistance
 //   and making sure the bedGraph entries are indexed properly against the chrFa fasta byte array.
-// 
+//
 func WriteFastjFromBedGraph( chrFa []byte, inpBedGraphFilename string, outFastjFilename string,
                              seqStart int, seqEnd int,
                              fjInfo FastjInfo ) {

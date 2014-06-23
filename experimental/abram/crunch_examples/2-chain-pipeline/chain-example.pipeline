@@ -1,0 +1,32 @@
+{
+  "name": "plumb uneasiest compile",
+
+  "components": {
+
+    "unfetter2": {
+      "script_parameters": {
+        "input": {
+          "output_of": "transverses"
+        }
+      },
+      "script_version": "master",
+      "repository": "$USER",
+      "script": "examples/2-chain-pipeline/post-process.py"
+    },
+
+    "transverses": {
+      "script_parameters": {
+        "pattern": "TATATATAGATAAGTATCT",
+        "input": {
+          "required" : true,
+          "dataclass" : "Collection"
+        }
+      },
+      "repository": "$USER",
+      "script_version": "master",
+      "script": "examples/2-chain-pipeline/grep"
+    }
+
+  }
+
+}

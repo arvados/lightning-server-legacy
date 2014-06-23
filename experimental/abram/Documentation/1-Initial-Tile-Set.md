@@ -9,7 +9,7 @@ initial tile set.
 
 First we have to download the relevant files we will need:
 
-  - [wgEncodeMapabilityAlign24mer](http://hgdownload-test.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeMapability/release1/wgEncodeCrgMapabilityAlign24mer.bw.gz)
+  - [wgEncodeMapabilityAlign24mer.bw.gz](http://hgdownload-test.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeMapability/release1/wgEncodeCrgMapabilityAlign24mer.bw.gz)
   - [hg19 reference genome chromosomes in Fasta format](http://hgdownload.cse.ucsc.edu/goldenpath/hg19/chromosomes/)
   - [hg19 reference genome in 2bit format](http://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.2bit)
   - [hg19 CytoBand file](http://hgdownload.cse.ucsc.edu/goldenpath/hg19/database/cytoBand.txt.gz)
@@ -19,8 +19,8 @@ We will also need some tools to aid in processing these and other files:
   - [bigWigToBedGraph](http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph)
   - [twoBitToFa](http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/twoBitToFa)
 
-The **wgEncodeMapabilityAlign24mer** contains a value for each 24mer in the hg19 reference as to how often it appears.  We will use
-this to pick an initial tag set, picking each tag to be as unique as possible in the reference genome.  The **CytoBand** file has
+The `wgEncodeMapabilityAlign24mer.bw.gz` contains a value for each 24mer in the hg19 reference as to how often it appears.  We will use
+this to pick an initial tag set, picking each tag to be as unique as possible in the reference genome.  The CytoBand file (`cytoBand.txt.gz`) has
 band boundaries that we will use to create our band boundaries.  The hg19 will be used to create the initial tile set which we will
 extend with other PGP participants later on.
 
@@ -28,7 +28,7 @@ Though strictly speaking we could construct the Fasta files ourselves from the 2
 to have them lying around if we have the space in case we need to skip around between representations.  We'll download them from UCSC
 for convenience rather than create the Fasta files ourselves.
 
-The files are large.  The `wgEncodeMapabilityAlign24mer.bw.gz` file is around 5G, the hg19 chromosome files `chr1.fa.gz`, `chr2.fa.gz`, ... , `chrM.fa.gz` 
+The files are large.  The `wgEncodeMapabilityAlign24mer.bw.gz` file is around 5G, the hg19 chromosome files `chr1.fa.gz`, `chr2.fa.gz`, ... , `chrM.fa.gz`
 files are around 3.1G in total and the `hg19.2bit` file is around 800M.
 We will be generating large intermediate files, so make sure you have plenty of space.
 
@@ -50,7 +50,7 @@ To download all the tools, run the 'setup.sh' script:
 Converting and Chopping wgEncodeMapabilityAlign24mer
 -------------------------------------------------------
 
-After all the tools are downloaded, you will need to run the program **createBandBedGraph**.  If it's not compiled, compile the Go program:
+After all the tools are downloaded, you will need to run the program `createBandBedGraph`.  If it's not compiled, compile the Go program:
 
     $ go build createBandBedGraph.go
 

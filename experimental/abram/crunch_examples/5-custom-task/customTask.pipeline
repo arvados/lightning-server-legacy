@@ -1,0 +1,13 @@
+{
+  "name": "Desdemona foundering nobody",
+  "components": {
+    "denouement": {
+      "script_parameters": {
+        "MountUUID": { "required" : true , "dataclass" : "Collection" }
+      },
+      "script_version": "master",
+      "repository": "$USER",
+      "script": "examples/5-custom-task/customTask.py"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "Coalmine",
+
+  "components": {
+
+    "Canary": {
+
+      "script_parameters": {
+        "pattern": "input",
+        "input": {
+          "required" : true,
+          "dataclass" : "Collection"
+        }
+      },
+
+      "repository": "$USER",
+      "script_version": "master",
+      "script": "examples/.-canary/grep"
+
+    }
+
+  }
+
+}

@@ -1,0 +1,11 @@
+{
+  "name": "premeditated jointing Mass",
+  "components": {
+    "housekeeper": {
+      "script_parameters": {},
+      "script_version": "master",
+      "repository": "$USER",
+      "script": "examples/0-simple_pipeline/systemInfo.py"
+    }
+  }
+}
