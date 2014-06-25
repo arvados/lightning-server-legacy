@@ -27,14 +27,18 @@ import "bufio"
 import "strconv"
 import "strings"
 import "regexp"
+
+import "flag"
+
 import _ "io/ioutil"
 import _ "time"
 
 import _ "runtime"
 
-import _ "runtime/pprof"
+import "runtime/pprof"
 
 import "./aux"
+import "./bioenv"
 
 var CHR = []string{ "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",
                     "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20",
@@ -286,14 +290,13 @@ func WriteFastjFromBedGraph( chrFa []byte, inpBedGraphFilename string, outFastjF
                              seqStart int, seqEnd int,
                              fjInfo FastjInfo ) {
 
-  bgFp, err := os.Open( inpBedGraphFilename )
+  benvReader,err := bioenv.OpenScanner( inpBedGraphFilename )
   if err != nil { panic(err) }
-  defer bgFp.Close()
+  defer benvReader.Close()
 
-  fastjFp, err := os.Create(outFastjFilename)
+  benvWriter,err := bioenv.CreateWriter( outFastjFilename )
   if err != nil { panic(err) }
-  defer fastjFp.Close()
-  writerFastj := bufio.NewWriter(fastjFp)
+  defer func() { benvWriter.Flush() ; benvWriter.Close() }()
 
   minEndSeqPos := seqStart + fjInfo.minTileDistance
   tilePos := 0
@@ -306,9 +309,8 @@ func WriteFastjFromBedGraph( chrFa []byte, inpBedGraphFilename string, outFastjF
   re_comment  ,_ := regexp.Compile( `^#` )
   re_blankline,_ := regexp.Compile( `^\s*$` )
 
-  scanner := bufio.NewScanner( bgFp )
-  for scanner.Scan() {
-    l := scanner.Text()
+  for benvReader.Scanner.Scan() {
+    l := benvReader.Scanner.Text()
 
     if re_comment.MatchString( l )   { continue }
     if re_blankline.MatchString( l ) { continue }
@@ -324,7 +326,7 @@ func WriteFastjFromBedGraph( chrFa []byte, inpBedGraphFilename string, outFastjF
     if v != 1 { continue }
     if e < minEndSeqPos { continue }
 
-    if tilePos>0 { writerFastj.WriteString("\n\n") }
+    if tilePos>0 { benvWriter.Writer.WriteString("\n\n") }
 
     tileID := fmt.Sprintf("%03x.%02x.%03x.%03x", fjInfo.band, fjInfo.revision, tilePos, 0 )
 
@@ -337,7 +339,7 @@ func WriteFastjFromBedGraph( chrFa []byte, inpBedGraphFilename string, outFastjF
       break
     }
 
-    printFastjElement( writerFastj, chrFa, tileID,
+    printFastjElement( benvWriter.Writer, chrFa, tileID,
                        prevTagStart, nextTagStart + 24, 24,
                        ( tilePos == 0 ), false, fjInfo.bodyLineWidth,
                        fjInfo.build)
@@ -353,12 +355,10 @@ func WriteFastjFromBedGraph( chrFa []byte, inpBedGraphFilename string, outFastjF
 
   tileID := fmt.Sprintf("%03x.%02x.%03x.%03x", fjInfo.band, fjInfo.revision, tilePos, 0 )
 
-  printFastjElement( writerFastj, chrFa, tileID,
+  printFastjElement( benvWriter.Writer, chrFa, tileID,
                      prevTagStart, seqEnd, 24,
                      ( tilePos == 0 ), true, fjInfo.bodyLineWidth ,
                      fjInfo.build)
-
-  if err := writerFastj.Flush(); err != nil { panic(err) }
 
 }
 
@@ -371,61 +371,157 @@ func CalculateAbsoluteBand( bandBounds map[string]map[int][2]int, curChrom strin
   return -1
 }
 
+var benv bioenv.BioEnvContext
+
+var g_profileFlag *bool
+var g_refGenome *string
+var g_chromFaFn *string
+var g_chromName *string
+var g_bandNum *int
+var g_bedGraphFn *string
+var g_outFastjFn *string
+var g_cytomapFilename *string
+
+var g_verboseFlag *bool
+
+func init() {
+  var err error
+  benv,err = bioenv.BioEnv()
+  if err != nil { panic(err) }
+
+  g_verboseFlag = flag.Bool("verbose", false, "Verbose")
+  flag.BoolVar( g_verboseFlag, "v", false, "Verbose")
+
+  g_profileFlag = flag.Bool("profile", false, "Turn profiling on ('buildTileSet.profile')")
+  g_refGenome   = flag.String("reference", "", "Reference genome to use (default 'hg19')")
+  g_chromFaFn     = flag.String("fasta-chromosome", "", "Chromosome fasta file location (will try to guess if none specified)")
+
+  g_chromName     = flag.String("chromosome", "", "Chromsome name/number (e.g. '1', '2', ..., 'X', 'Y')")
+  flag.StringVar( g_chromName, "c", "", "Chromsome name/number (e.g. '1', '2', ..., 'X', 'Y')")
+
+  g_bandNum     = flag.Int("band", -1, "Band number")
+  flag.IntVar( g_bandNum, "b", -1, "Band number")
+
+  g_bedGraphFn  = flag.String("bedGraph", "", "Bedgraph file")
+  flag.StringVar( g_bedGraphFn, "i", "", "BedGraph file")
+
+  g_outFastjFn  = flag.String("fastj-output", "", "Output Fastj file")
+  flag.StringVar( g_outFastjFn, "o", "", "Output Fastj file")
+
+  g_cytomapFilename  = flag.String("cytoBand", "", "Cytoband file (will use default if none specified)")
+
+  flag.Parse()
+  benv.ProcessFlag()
+
+  if len(*g_refGenome)==0 {
+    *g_refGenome = benv.Env["reference"]
+  }
+
+  if len(*g_cytomapFilename)==0 {
+    *g_cytomapFilename = benv.Env["cytoBand"]
+  }
+
+  if (len(*g_bedGraphFn)==0) || (len(*g_outFastjFn)==0) {
+    fmt.Fprintf( os.Stderr, "Provide input bedGraph file and output Fastj file\n" )
+    flag.PrintDefaults()
+    os.Exit(2)
+  }
+
+  if (*g_bandNum < 0) {
+    fmt.Fprintf( os.Stderr, "Band must be non negative\n")
+    flag.PrintDefaults()
+    os.Exit(2)
+  }
+
+  if len(*g_chromName)==0 {
+    fmt.Fprintf( os.Stderr, "Provide chromsome name\n")
+    flag.PrintDefaults()
+    os.Exit(2)
+  }
+
+  i:=0
+  for i=0; i<len(CHR); i++ {
+    if *g_chromName == CHR[i] {
+      break
+    }
+    t_chrom := fmt.Sprintf("chr%s", *g_chromName)
+    if t_chrom == CHR[i] { *g_chromName = t_chrom ; break }
+  }
+
+  if i==len(CHR) {
+    fmt.Fprintf( os.Stderr, "Could not find chromosome\n")
+    flag.PrintDefaults()
+    os.Exit(2)
+  }
+
+  if len(*g_chromFaFn)==0 {
+    s := *g_refGenome + ":" + *g_chromName + ".fa"
+
+    fmt.Println(s)
+
+    *g_chromFaFn = benv.Env[ s ]
+
+
+  }
+
+}
+
 
 func main() {
 
-
-  /*
   //PROFILING
-  profFp, _ := os.Create("buildTileSet.profile")
-  pprof.StartCPUProfile(profFp)
-  defer pprof.StopCPUProfile()
+  if (*g_profileFlag) {
+    profFp, _ := os.Create("buildTileSet.profile")
+    pprof.StartCPUProfile(profFp)
+    defer pprof.StopCPUProfile()
+  }
   //PROFILING
-  */
 
-  cytomapFilename  := "ucsc.cytomap.hg19.txt"
 
-  if len(os.Args) != 6 {
-    fmt.Println("usage:")
-    fmt.Println("  ./buildTileSet.go <chromosomeNumber> <chromsomeFastaFile> <bandNumber> <bedGraphBandFile> <outputFastjFn>")
-    os.Exit(0)
+  if (*g_verboseFlag) {
+    fmt.Printf("#buildTileSet\n")
+    fmt.Printf("# cytoBand: %s\n", *g_cytomapFilename )
+    fmt.Printf("# referenceGenome: %s\n", *g_refGenome )
+    fmt.Printf("# chromsome: %s\n", *g_chromName )
+    fmt.Printf("# chromosome Fasta file: %s\n", *g_chromFaFn )
   }
 
-  chromStr := os.Args[1]
-  chrFastaFilename := os.Args[2]
-  band, err := strconv.Atoi(os.Args[3]); if err != nil { panic(err) }
-  bandBedGraphFilename := os.Args[4]
-  fastjFn := os.Args[5]
 
+  fastjInfo := FastjInfo{ band: *g_bandNum, revision: 0, class: 0, minTileDistance: 200, bodyLineWidth:50, build: "" }
 
-  curChrom := fmt.Sprintf( "chr%s", chromStr )
-  fastjInfo := FastjInfo{ band: band, revision: 0, class: 0, minTileDistance: 200, bodyLineWidth:50, build: "" }
+  fastjInfo.build = fmt.Sprintf("hg19 %s", *g_chromName)
 
-  fastjInfo.build = fmt.Sprintf("hg19 chr%s", chromStr)
-
-  fmt.Println("# finding tag set for", curChrom, ", band", band, ", using", bandBedGraphFilename, "and", cytomapFilename)
+  if *g_verboseFlag {
+    fmt.Println("# finding tag set for", *g_chromName, ", band", *g_bandNum, ", using", *g_bedGraphFn, "and", *g_cytomapFilename)
+  }
 
 
   BAND_BOUNDS = make( map[string]map[int][2]int  )
-  aux.BuildBandBounds( BAND_BOUNDS, cytomapFilename )
+  aux.BuildBandBounds( BAND_BOUNDS, *g_cytomapFilename )
 
-  fmt.Println("# loading", chrFastaFilename, "into memory...")
-  chrFa := aux.FaToByteArray( chrFastaFilename )
+  if *g_verboseFlag { 
+    fmt.Println("# loading", *g_chromFaFn, "into memory...")
+  }
+
+  chrFa := aux.FaToByteArray( *g_chromFaFn)
 
   aux.ToLowerInPlace(chrFa)
 
-  baseAbsoluteBand := CalculateAbsoluteBand( BAND_BOUNDS, curChrom, CHR )
-  fastjInfo.band = baseAbsoluteBand + band
+  baseAbsoluteBand := CalculateAbsoluteBand( BAND_BOUNDS, *g_chromName, CHR )
+  fastjInfo.band = baseAbsoluteBand + *g_bandNum
 
-  fmt.Println( "#", curChrom, "band:", band, fmt.Sprintf("(%d)", fastjInfo.band), "-->", fastjFn )
+  if *g_verboseFlag {
+    fmt.Println( "#", *g_chromName, "band:", *g_bandNum, fmt.Sprintf("(%d)", fastjInfo.band), "-->", *g_outFastjFn )
+  }
 
-  WriteFastjFromBedGraph( chrFa, bandBedGraphFilename,
-                          fastjFn,
-                          BAND_BOUNDS[curChrom][band][0], BAND_BOUNDS[curChrom][band][1],
+  WriteFastjFromBedGraph( chrFa, *g_bedGraphFn,
+                          *g_outFastjFn,
+                          BAND_BOUNDS[*g_chromName][*g_bandNum][0], BAND_BOUNDS[*g_chromName][*g_bandNum][1],
                           fastjInfo )
 
-
-  fmt.Printf("# done\n")
+  if *g_verboseFlag {
+    fmt.Printf("# done\n")
+  }
 
 
 }
