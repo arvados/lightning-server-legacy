@@ -15,12 +15,8 @@ import "compress/bzip2"
 
 func OpenScanner( fn string ) ( fp *os.File, scanner *bufio.Scanner, err error ) {
 
-  if fn == "-" {
-    fp = os.Stdin
-  } else {
-    fp,err = os.Open( fn )
-    if err != nil { return fp, scanner, err }
-  }
+  fp,err = os.Open( fn )
+  if err != nil { return fp, scanner, err }
 
   n := len(fn)
 
@@ -49,10 +45,10 @@ func OpenScanner( fn string ) ( fp *os.File, scanner *bufio.Scanner, err error )
 // cytomapFile is the open file descriptor to the cytomap file
 //
 //func buildBandBounds( bandBounds map[string]map[int][2]int, cytomapFile *os.File) {
-func BuildBandBounds( bandBounds map[string]map[int][2]int, cytomapFileName string) {
+func BuildBandBounds( bandBounds map[string]map[int][2]int, cytomapFileName string) (err error) {
 
   cytomapFile, err := os.Open( cytomapFileName )
-  if err != nil { panic(err) }
+  if err != nil { return(err) }
   defer cytomapFile.Close()
 
   prevChrom := "none"
@@ -88,15 +84,17 @@ func BuildBandBounds( bandBounds map[string]map[int][2]int, cytomapFileName stri
     bandPos++
   }
 
+  return nil
+
 }
 
 
 // Load whole fasta file into memory.  Strip out header information and remove returns.
-// 
-func FaToByteArray( fn string ) []byte {
+//
+func FaToByteArray( fn string ) ( []byte, error) {
 
   b, err := ioutil.ReadFile( fn )
-  if err != nil { panic(err) }
+  if err != nil { return nil, err }
 
   n := len(b)
 
@@ -122,7 +120,7 @@ func FaToByteArray( fn string ) []byte {
     spos++
   }
 
-  return s
+  return s, nil
 
 }
 
