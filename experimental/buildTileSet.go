@@ -291,11 +291,11 @@ func WriteFastjFromBedGraph( chrFa []byte, inpBedGraphFilename string, outFastjF
                              fjInfo FastjInfo ) {
 
   benvReader,err := bioenv.OpenScanner( inpBedGraphFilename )
-  if err != nil { panic(err) }
+  if err != nil { panic( fmt.Sprintf( "%s: %s", inpBedGraphFilename ,  err) ) }
   defer benvReader.Close()
 
   benvWriter,err := bioenv.CreateWriter( outFastjFilename )
-  if err != nil { panic(err) }
+  if err != nil { panic( fmt.Sprintf( "%s: %s", outFastjFilename, err) ) }
   defer func() { benvWriter.Flush() ; benvWriter.Close() }()
 
   minEndSeqPos := seqStart + fjInfo.minTileDistance
@@ -387,13 +387,13 @@ var g_verboseFlag *bool
 func init() {
   var err error
   benv,err = bioenv.BioEnv()
-  if err != nil { panic(err) }
+  if err != nil { panic( fmt.Sprintf("bioenv: %s", err) ) }
 
   g_verboseFlag = flag.Bool("verbose", false, "Verbose")
   flag.BoolVar( g_verboseFlag, "v", false, "Verbose")
 
   g_profileFlag = flag.Bool("profile", false, "Turn profiling on ('buildTileSet.profile')")
-  g_refGenome   = flag.String("reference", "", "Reference genome to use (default 'hg19')")
+  g_refGenome   = flag.String("reference", benv.Env["reference"], "Reference genome to use (default 'hg19')")
   g_chromFaFn     = flag.String("fasta-chromosome", "", "Chromosome fasta file location (will try to guess if none specified)")
 
   g_chromName     = flag.String("chromosome", "", "Chromsome name/number (e.g. '1', '2', ..., 'X', 'Y')")
@@ -408,18 +408,13 @@ func init() {
   g_outFastjFn  = flag.String("fastj-output", "", "Output Fastj file")
   flag.StringVar( g_outFastjFn, "o", "", "Output Fastj file")
 
-  g_cytomapFilename  = flag.String("cytoBand", "", "Cytoband file (will use default if none specified)")
+  g_cytomapFilename  = flag.String("cytoBand", benv.Env["cytoBand"], "Cytoband file (will use default if none specified)")
 
   flag.Parse()
   benv.ProcessFlag()
 
-  if len(*g_refGenome)==0 {
-    *g_refGenome = benv.Env["reference"]
-  }
-
-  if len(*g_cytomapFilename)==0 {
-    *g_cytomapFilename = benv.Env["cytoBand"]
-  }
+  //if len(*g_refGenome)==0 { *g_refGenome = benv.Env["reference"] }
+  //if len(*g_cytomapFilename)==0 { *g_cytomapFilename = benv.Env["cytoBand"] }
 
   if (len(*g_bedGraphFn)==0) || (len(*g_outFastjFn)==0) {
     fmt.Fprintf( os.Stderr, "Provide input bedGraph file and output Fastj file\n" )
@@ -456,12 +451,7 @@ func init() {
 
   if len(*g_chromFaFn)==0 {
     s := *g_refGenome + ":" + *g_chromName + ".fa"
-
-    fmt.Println(s)
-
     *g_chromFaFn = benv.Env[ s ]
-
-
   }
 
 }
@@ -503,7 +493,8 @@ func main() {
     fmt.Println("# loading", *g_chromFaFn, "into memory...")
   }
 
-  chrFa := aux.FaToByteArray( *g_chromFaFn)
+  chrFa,e := aux.FaToByteArray( *g_chromFaFn)
+  if e != nil { panic( fmt.Sprintf("%s: %s", chrFa, e ) ) }
 
   aux.ToLowerInPlace(chrFa)
 
