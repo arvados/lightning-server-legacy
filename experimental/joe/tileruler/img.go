@@ -186,7 +186,7 @@ func drawAllInOneSquare(opt *Option, m *image.RGBA, idx, x, y int) {
 // GenerateGiantGenomeImg generates a single PNG file that contains all abv files' info.
 func GenerateGiantGenomeImg(opt *Option, names []string) error {
 	// NOTE: in order to generate whole PNG for shorter porcessing time,
-	// use user input to specify the -max-band=508 and -max-pos=59999
+	// use user input to specify the -max-band=862 and -max-pos=59000
 	// would be very nice.
 
 	// NOTE: current implementatio does not support for sorting by colors,

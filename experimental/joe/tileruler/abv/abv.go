@@ -75,12 +75,14 @@ func Parse(name string, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Hu
 			}
 		}
 		if len(line) == 0 {
-			break
+			isInBody = !isInBody
+			continue
 		}
 
 		if !isInBody {
 			bandIdx, err = com.HexStr2int(string(line))
 			if err != nil {
+				fmt.Println(string(line))
 				return nil, err
 			}
 
