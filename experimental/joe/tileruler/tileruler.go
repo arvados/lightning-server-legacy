@@ -17,17 +17,21 @@ import (
 	"github.com/genomelightning/tileruler/abv"
 )
 
+const (
+	VERSION = "0.1.0.0630"
+)
+
 var (
 	abvPath      = flag.String("abv-path", "./", "directory or path of abv file(s)")
-	imgDir       = flag.String("img-dir", "pngs", "path to store PNGs")
+	imgDir       = flag.String("img-dir", "pngs", "path to store PNG file(s)")
 	mode         = flag.Int("mode", 0, "1-single; 2-all in one; 3-all in one abv")
-	slotPixel    = flag.Int("slot-pixel", 1, "slot pixel of width and height")
+	slotPixel    = flag.Int("slot-pixel", 2, "slot pixel of width and height")
 	hasGrids     = flag.Bool("has-grids", false, "indicates whether slot has border")
 	startBandIdx = flag.Int("start-band", 0, "start band index")
 	startPosIdx  = flag.Int("start-pos", 0, "start position index")
 	maxBandIdx   = flag.Int("max-band", 9, "max band index")
 	maxPosIdx    = flag.Int("max-pos", 49, "max position index")
-	boxNum       = flag.Int("box-num", 13, "box number of width and height")
+	boxNum       = flag.Int("box-num", 15, "box number of width and height")
 	workNum      = flag.Int("work-num", 10, "work chan buffer")
 )
 
@@ -122,6 +126,8 @@ func rangeString(idx int) string {
 }
 
 func main() {
+	fmt.Println("Tile Ruler Version:", VERSION)
+
 	opt, err := validateInput()
 	if err != nil {
 		log.Fatalln(err)
@@ -130,6 +136,7 @@ func main() {
 	fmt.Printf("Band Range: %d - %s\n", opt.StartBandIdx, rangeString(opt.EndBandIdx))
 	fmt.Printf("Pos Range: %d - %s\n", opt.StartPosIdx, rangeString(opt.EndPosIdx))
 	fmt.Println("Has Grids:", opt.HasGrids)
+	fmt.Println("Box Number:", opt.BoxNum)
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -152,6 +159,7 @@ func main() {
 		err = GenerateGiantGenomeImg(opt, names)
 	case ALL_IN_ONE_ABV:
 		fmt.Println("Mode: All-in-one abv\n")
+		err = GenerateTransparentLayers(opt, names)
 	default:
 		log.Fatalln("Unknown run mode:", opt.Mode)
 	}

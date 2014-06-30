@@ -62,3 +62,74 @@ package main
 // }
 
 // fmt.Println("Time spent(total):", time.Since(start))
+
+// func initImage2(opt *Option) *image.RGBA {
+// 	m := image.NewRGBA(image.Rect(0, 0, *boxNum**slotPixel+1, *boxNum**slotPixel+1))
+// 	draw.Draw(m, m.Bounds(), image.White, image.ZP, draw.Src)
+
+// 	// Draw borders.
+// 	for i := m.Bounds().Min.X; i < m.Bounds().Max.X; i++ {
+// 		m.Set(i, m.Bounds().Min.Y, image.Black)
+// 		m.Set(i, m.Bounds().Max.Y-1, image.Black)
+// 	}
+// 	for i := m.Bounds().Min.Y; i < m.Bounds().Max.Y; i++ {
+// 		m.Set(m.Bounds().Min.X, i, image.Black)
+// 		m.Set(m.Bounds().Max.X-1, i, image.Black)
+// 	}
+
+// 	if opt.HasGrids {
+// 		// Draw grids.
+// 		for i := 1; i < *boxNum; i++ {
+// 			for j := m.Bounds().Min.Y; j < m.Bounds().Max.Y; j++ {
+// 				m.Set(i**slotPixel, j, image.Black)
+// 			}
+// 		}
+// 		for i := 1; i < *boxNum; i++ {
+// 			for j := m.Bounds().Min.X; j < m.Bounds().Max.X; j++ {
+// 				m.Set(j, i**slotPixel, image.Black)
+// 			}
+// 		}
+// 	}
+// 	return m
+// }
+
+// GenerateImgPerTile generates one PNG for each tile.
+// func GenerateImgPerTile(opt *Option, humans []*abv.Human) {
+// 	wg := &sync.WaitGroup{}
+// 	workChan := make(chan bool, opt.MaxWorkNum)
+
+// 	os.MkdirAll(opt.ImgDir, os.ModePerm)
+// 	for i := opt.StartBandIdx; i <= opt.EndBandIdx; i++ {
+// 		// fmt.Println(i)
+// 		wg.Add(opt.EndPosIdx - opt.StartPosIdx + 1)
+// 		os.MkdirAll(fmt.Sprintf("%s/%d", opt.ImgDir, i), os.ModePerm)
+// 		for j := opt.StartPosIdx; j <= opt.EndPosIdx; j++ {
+// 			m := initImage2(opt)
+// 			for k := range humans {
+// 				if b, ok := humans[k].Blocks[i][j]; ok {
+// 					drawSingleSquare(opt, m, int(b.Variant), k%*boxNum, k / *boxNum)
+// 				}
+// 			}
+// 			workChan <- true
+// 			go func(band, pos int) {
+// 				if pos%1000 == 0 {
+// 					fmt.Println(band, pos)
+// 				}
+// 				fw, err := os.Create(fmt.Sprintf("%s/%d/%d.png", opt.ImgDir, band, pos))
+// 				// fw, err := os.Create(fmt.Sprintf("%s/%d/%d.png", *imgDir, i, j))
+// 				if err != nil {
+// 					log.Fatalf("Fail to create png file: %v", err)
+// 				} else if err = png.Encode(fw, m); err != nil {
+// 					log.Fatalf("Fail to encode png file: %v", err)
+// 				}
+// 				fw.Close()
+// 				wg.Done()
+// 				<-workChan
+// 			}(i, j)
+// 		}
+// 		runtime.GC()
+// 	}
+
+// 	fmt.Println("Goroutine #:", runtime.NumGoroutine())
+// 	wg.Wait()
+// }
