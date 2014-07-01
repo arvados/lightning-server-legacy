@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	VERSION = "0.1.0.0630"
+	VERSION = "0.1.0.0701"
 )
 
 var (
@@ -27,6 +27,7 @@ var (
 	mode         = flag.Int("mode", 0, "1-single; 2-all in one; 3-all in one abv")
 	slotPixel    = flag.Int("slot-pixel", 2, "slot pixel of width and height")
 	hasGrids     = flag.Bool("has-grids", false, "indicates whether slot has border")
+	border       = flag.Int("border", 2, "pxiel of border")
 	startBandIdx = flag.Int("start-band", 0, "start band index")
 	startPosIdx  = flag.Int("start-pos", 0, "start position index")
 	maxBandIdx   = flag.Int("max-band", 9, "max band index")
@@ -49,6 +50,7 @@ type Option struct {
 	ImgDir    string
 	SlotPixel int
 	HasGrids  bool
+	Border    int
 	Mode      Mode
 	*abv.Range
 	BoxNum     int
@@ -61,6 +63,7 @@ func validateInput() (*Option, error) {
 		ImgDir:    *imgDir,
 		SlotPixel: *slotPixel,
 		HasGrids:  *hasGrids,
+		Border:    *border,
 		Mode:      Mode(*mode),
 		Range: &abv.Range{
 			StartBandIdx: *startBandIdx,
@@ -85,6 +88,8 @@ func validateInput() (*Option, error) {
 		log.Fatalln("-box-num cannot be smaller than 13 in all-in-one mode")
 	case opt.MaxWorkNum < 1:
 		log.Fatalln("-work-num cannot be smaller than 1")
+	case opt.Border < 1:
+		log.Fatalln("-border cannot be smaller than 1")
 	}
 	return opt, nil
 }

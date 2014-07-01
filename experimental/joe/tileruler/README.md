@@ -17,6 +17,36 @@ Tile Ruler is a command line tool for generating PNGs based on given abv files.
 
 ### Examples
 
-- Mode 1: `tileruler -mode=1 -abv-path=abram -max-band=-1 -max-pos=-1`
+	tileruler -mode=1 -abv-path=abram -max-band=-1 -max-pos=-1
+
+### Known Issues
+
+- For `-mode=1`, there might be Go `image/png.Encoder` bug for `-slot-pixel>1` and `-max-pos>20000`. To get correct PNG, make sure `-slot-pixel` is `1` or `-max-pos` is less than `20000`. 
+	- Execute `-slot-pixel=2 -max-pos=19999` will be fine.
+	
+### Time Consuming
+
+- Command `tileruler -mode=X -max-band=-1 -max-pos=-1`
+- 863 bands and 4000 positions
+
+#### Dev machine
+
+- OS: Max OS X 10.9.3
+- Processor: 2 GHz Intel Core i7
+- Memory: 8GB 1600 MHz DDR3
+
+#### Cost samples
+
+- Mode 1:
+	- Pixels: **1726 * 8000**
+	- Size: **1.1MB**
+	- Time: 4s * 154 = **10m16s**
 - Mode 2:
+	- Pixels: **127998 * 27614**
+	- Size: **161.6MB**
+	- Time: **7m41s** (total)
 - Mode 3:
+	- Pixels: **127998 * 27614**
+	- Size: **16.4MB**
+	- Time: 7m5s * 154 = **19hours**
+	

@@ -6,12 +6,12 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
-	// "log"
 	"os"
 	"path/filepath"
 	"runtime"
-	// "sync"
 	"time"
+
+	"github.com/Unknwon/com"
 
 	"github.com/genomelightning/tileruler/abv"
 )
@@ -29,6 +29,32 @@ var varColors = []color.Color{
 	color.RGBA{0, 0, 102, 255},
 }
 
+func calInitImgX(opt *Option, boxNum, border int) int {
+	return (opt.EndPosIdx+1)*boxNum*opt.SlotPixel + border*opt.EndPosIdx
+}
+
+func calInitImgY(opt *Option, boxNum, border int) int {
+	return (opt.EndBandIdx+1)*boxNum*opt.SlotPixel + border*opt.EndBandIdx
+}
+
+func initImage(opt *Option) *image.RGBA {
+	boxNum := 1
+	border := 0
+	switch opt.Mode {
+	case ALL_IN_ONE, ALL_IN_ONE_ABV:
+		boxNum = opt.BoxNum
+		border = opt.Border
+	}
+	m := image.NewRGBA(image.Rect(0, 0,
+		calInitImgX(opt, boxNum, border), calInitImgY(opt, boxNum, border)))
+
+	// Transparent layer doesn't need base color.
+	if opt.Mode != ALL_IN_ONE_ABV {
+		draw.Draw(m, m.Bounds(), image.White, image.ZP, draw.Src)
+	}
+	return m
+}
+
 func drawSingleSquare(opt *Option, m *image.RGBA, idx, x, y int) {
 	// In case variant number is too large.
 	if idx >= len(varColors) {
@@ -40,25 +66,6 @@ func drawSingleSquare(opt *Option, m *image.RGBA, idx, x, y int) {
 			m.Set(x*opt.SlotPixel+i, y*opt.SlotPixel+j, varColors[idx])
 		}
 	}
-}
-
-func initImage(opt *Option) *image.RGBA {
-	boxNum := 1
-	border := 0
-	switch opt.Mode {
-	case ALL_IN_ONE, ALL_IN_ONE_ABV:
-		boxNum = opt.BoxNum
-		border = 2
-	}
-	m := image.NewRGBA(image.Rect(0, 0,
-		(opt.EndPosIdx+1)*boxNum*opt.SlotPixel+border*opt.EndPosIdx,
-		(opt.EndBandIdx+1)*boxNum*opt.SlotPixel+border*opt.EndBandIdx))
-
-	// Transparent layer doesn't need base color.
-	if opt.Mode != ALL_IN_ONE_ABV {
-		draw.Draw(m, m.Bounds(), image.White, image.ZP, draw.Src)
-	}
-	return m
 }
 
 // saveImgFile saves image to given path in PNG format.
@@ -97,14 +104,25 @@ func GenerateAbvImg(opt *Option, h *abv.Human) error {
 // GenerateAbvImgs is a high level function to generate PNG for each abv file.
 func GenerateAbvImgs(opt *Option, names []string) error {
 	for i, name := range names {
+		if com.IsExist(fmt.Sprintf("%s/%s.png", opt.ImgDir, filepath.Base(name))) {
+			// continue
+		}
+
 		h, err := abv.Parse(name, opt.Range, nil)
 		if err != nil {
 			return fmt.Errorf("Fail to parse abv file(%s): %v", name, err)
 		}
 		h.Name = filepath.Base(name)
 
-		opt.EndBandIdx = h.MaxBand
-		opt.EndPosIdx = h.MaxPos
+		// Adjust range.
+		if opt.EndBandIdx == -1 || opt.EndBandIdx > h.MaxBand {
+			opt.EndBandIdx = h.MaxBand
+		}
+		if opt.EndPosIdx == -1 {
+			opt.EndPosIdx = 3999
+		} else if opt.EndPosIdx > h.MaxPos {
+			opt.EndPosIdx = h.MaxPos
+		}
 		if err = GenerateAbvImg(opt, h); err != nil {
 			return err
 		}
