@@ -10,7 +10,7 @@ import (
 
 	"github.com/Unknwon/com"
 
-	"github.com/genomelightning/tileruler/rule"
+	"github.com/curoverse/lightning/experimental/tileruler/rule"
 )
 
 type Range struct {

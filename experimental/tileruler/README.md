@@ -3,6 +3,10 @@ Tile Ruler
 
 Tile Ruler is a command line tool for generating PNGs based on given abv files.
 
+### Installation
+
+	go get -u github.com/curoverse/lightning/experimental/tileruler
+
 ### Usage
 
 - `-abv-path`: directory or path of abv file(s), can be a file path for one abv or a directory path for all abv files in that directory, both absolute or relative path are acceptable. Default is the work directory.

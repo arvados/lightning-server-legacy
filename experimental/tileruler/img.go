@@ -11,9 +11,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/Unknwon/com"
-
-	"github.com/genomelightning/tileruler/abv"
+	"github.com/curoverse/lightning/experimental/tileruler/abv"
+	"github.com/curoverse/lightning/experimental/tileruler/utils"
 )
 
 var varColors = []color.Color{
@@ -104,7 +103,7 @@ func GenerateAbvImg(opt *Option, h *abv.Human) error {
 // GenerateAbvImgs is a high level function to generate PNG for each abv file.
 func GenerateAbvImgs(opt *Option, names []string) error {
 	for i, name := range names {
-		if com.IsExist(fmt.Sprintf("%s/%s.png", opt.ImgDir, filepath.Base(name))) {
+		if utils.IsExist(fmt.Sprintf("%s/%s.png", opt.ImgDir, filepath.Base(name))) {
 			// continue
 		}
 

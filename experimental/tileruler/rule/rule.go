@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Unknwon/com"
+	"github.com/curoverse/lightning/experimental/tileruler/utils"
 )
 
 // Rule represents a tile rule.
@@ -28,12 +28,12 @@ func parseTileId(info string) (band int, pos int, err error) {
 		return -1, -1, fmt.Errorf("invalid format")
 	}
 
-	band, err = com.HexStr2int(infos[0])
+	band, err = utils.HexStr2int(infos[0])
 	if err != nil {
 		return -1, -1, fmt.Errorf("cannot parse band index: %v", err)
 	}
 
-	pos, err = com.HexStr2int(infos[2])
+	pos, err = utils.HexStr2int(infos[2])
 	if err != nil {
 		return -1, -1, fmt.Errorf("cannot parse position index: %v", err)
 	}
@@ -61,7 +61,7 @@ func Parse(name string) (map[int]map[int]map[int]*Rule, error) {
 type IterateFunc func(*Rule) error
 
 func IterateParse(name string, fn IterateFunc) error {
-	if !com.IsFile(name) {
+	if !utils.IsFile(name) {
 		return fmt.Errorf("file(%s) does not exist or is not a file", name)
 	}
 
@@ -92,7 +92,7 @@ func IterateParse(name string, fn IterateFunc) error {
 
 		r := new(Rule)
 		infos := strings.Split(line, ",")
-		r.Factor, err = com.StrTo(infos[0]).Int()
+		r.Factor, err = utils.StrTo(infos[0]).Int()
 		if err != nil {
 			return fmt.Errorf("%d: cannot parse factor of line[%s]: %v", idx, line, err)
 		}

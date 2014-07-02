@@ -12,13 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Unknwon/com"
-
-	"github.com/genomelightning/tileruler/abv"
+	"github.com/curoverse/lightning/experimental/tileruler/abv"
+	"github.com/curoverse/lightning/experimental/tileruler/utils"
 )
 
 const (
-	VERSION = "0.1.0.0701"
+	VERSION = "0.1.1.0702"
 )
 
 var (
@@ -97,9 +96,9 @@ func validateInput() (*Option, error) {
 // getAbvList returns a list of abv file paths.
 // It recognize if given path is a file.
 func getAbvList(abvPath string) ([]string, error) {
-	if !com.IsExist(abvPath) {
+	if !utils.IsExist(abvPath) {
 		return nil, errors.New("Given abv path does not exist")
-	} else if com.IsFile(abvPath) {
+	} else if utils.IsFile(abvPath) {
 		return []string{abvPath}, nil
 	}
 
@@ -127,7 +126,7 @@ func rangeString(idx int) string {
 	if idx < 0 {
 		return "MAX"
 	}
-	return com.ToStr(idx)
+	return utils.ToStr(idx)
 }
 
 func main() {
