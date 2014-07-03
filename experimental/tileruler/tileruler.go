@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,7 +18,7 @@ import (
 )
 
 const (
-	VERSION = "0.1.1.0702"
+	VERSION = "0.1.2.0703"
 )
 
 var (
@@ -33,6 +34,7 @@ var (
 	maxPosIdx    = flag.Int("max-pos", 49, "max position index")
 	boxNum       = flag.Int("box-num", 15, "box number of width and height")
 	workNum      = flag.Int("work-num", 10, "work chan buffer")
+	colorSpec    = flag.String("color-spec", "", "path of color specification file")
 )
 
 var start = time.Now()
@@ -58,6 +60,17 @@ type Option struct {
 
 func validateInput() (*Option, error) {
 	flag.Parse()
+
+	if utils.IsFile(*colorSpec) {
+		spec, err := ioutil.ReadFile(*colorSpec)
+		if err != nil {
+			return nil, err
+		}
+		parseVarColors(string(spec))
+	} else {
+		parseVarColors(defaultVarColors)
+	}
+
 	opt := &Option{
 		ImgDir:    *imgDir,
 		SlotPixel: *slotPixel,

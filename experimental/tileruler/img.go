@@ -9,23 +9,40 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/curoverse/lightning/experimental/tileruler/abv"
 	"github.com/curoverse/lightning/experimental/tileruler/utils"
 )
 
-var varColors = []color.Color{
-	color.RGBA{0, 153, 0, 255},
-	color.RGBA{0, 204, 0, 255},
-	color.RGBA{0, 255, 0, 255},
-	color.RGBA{0, 255, 255, 255},
-	color.RGBA{0, 204, 255, 255},
-	color.RGBA{0, 153, 255, 255},
-	color.RGBA{0, 102, 255, 255},
-	color.RGBA{0, 51, 255, 255},
-	color.RGBA{0, 0, 255, 255},
-	color.RGBA{0, 0, 102, 255},
+var Gray = image.NewUniform(color.RGBA{230, 230, 230, 255})
+
+const defaultVarColors = `255, 255, 255
+0, 204, 0
+0, 255, 0
+0, 255, 255
+0, 204, 255
+0, 153, 255
+0, 102, 255
+0, 51, 255
+0, 0, 255`
+
+var varColors = make([]color.Color, 0, 10)
+
+func parseVarColors(str string) error {
+	lines := strings.Split(str, "\n")
+	for i, line := range lines {
+		infos := strings.Split(line, ",")
+		if len(infos) < 3 {
+			return fmt.Errorf("Not enough color assigned in line[%d]: %s", i, line)
+		}
+		varColors = append(varColors, color.RGBA{
+			utils.StrTo(strings.TrimSpace(infos[0])).MustUint8(),
+			utils.StrTo(strings.TrimSpace(infos[1])).MustUint8(),
+			utils.StrTo(strings.TrimSpace(infos[2])).MustUint8(), 255})
+	}
+	return nil
 }
 
 func calInitImgX(opt *Option, boxNum, border int) int {
@@ -49,7 +66,7 @@ func initImage(opt *Option) *image.RGBA {
 
 	// Transparent layer doesn't need base color.
 	if opt.Mode != ALL_IN_ONE_ABV {
-		draw.Draw(m, m.Bounds(), image.White, image.ZP, draw.Src)
+		draw.Draw(m, m.Bounds(), Gray, image.ZP, draw.Src)
 	}
 	return m
 }
