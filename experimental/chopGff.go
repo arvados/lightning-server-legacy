@@ -8,32 +8,64 @@ package main
 
 import "fmt"
 import "os"
-
 import "strings"
 import "strconv"
+import "flag"
 
 import "compress/gzip"
 
 import "./recache"
 import "./aux"
+import "./bioenv"
 
 var gDebugFlag bool
 
-func main() {
+var g_cytoBand *string
+var g_gffFileName *string
+var g_outBaseDir *string
+var g_verboseFlag *bool
 
-  CYTOMAP_FILENAME := "ucsc.cytomap.hg19.txt"
-  BAND_BOUNDS := make( map[string]map[int][2]int  )
+var benv bioenv.BioEnvContext
 
-  if len(os.Args) != 3 {
-    fmt.Println("usage:")
-    fmt.Println("./chopGff.go <gffFileName> <outputBaseDir>")
-    os.Exit(0)
+func init() {
+  var err error
+
+  benv,err = bioenv.BioEnv()
+  if err != nil { panic(fmt.Sprintf("bioenv: %s", err)) }
+
+  g_verboseFlag = flag.Bool( "v", false, "Verbose")
+  flag.BoolVar( g_verboseFlag, "verbose", false, "Verbose")
+
+  g_gffFileName = flag.String( "i", "", "Input GFF file")
+  flag.StringVar( g_gffFileName, "input-gff", "", "Input GFF file")
+
+  g_outBaseDir = flag.String( "D", "", "Output directory")
+  flag.StringVar( g_outBaseDir, "output-directory", "", "Output directory")
+
+  g_cytoBand = flag.String( "cytoBand", benv.Env["cytoBand"], "cytoband file")
+
+  flag.Parse()
+  benv.ProcessFlag()
+
+  if len(*g_gffFileName)==0 {
+    fmt.Fprintf( os.Stderr, "Provide input gff file" )
+    flag.PrintDefaults()
+    os.Exit(2)
   }
 
-  gffFn         := os.Args[1]
-  outputBaseDir := os.Args[2]
+  if len(*g_outBaseDir)==0 {
+    fmt.Fprintf( os.Stderr, "Provide output directory" )
+    flag.PrintDefaults()
+    os.Exit(2)
+  }
 
-  aux.BuildBandBounds( BAND_BOUNDS, CYTOMAP_FILENAME)
+}
+
+func main() {
+
+  BAND_BOUNDS := make( map[string]map[int][2]int  )
+
+  aux.BuildBandBounds( BAND_BOUNDS, *g_cytoBand )
 
   lineCount := 0
   prevChrom := "-"
@@ -42,12 +74,12 @@ func main() {
   var curFp  *os.File
   var writer *gzip.Writer
 
-  gffFp,scanner,err := aux.OpenScanner( gffFn )
+  gffHandle,err := bioenv.OpenScanner( *g_gffFileName )
   if err != nil { panic(err) }
-  defer gffFp.Close()
+  defer gffHandle.Close()
 
-  for scanner.Scan() {
-    l := scanner.Text()
+  for gffHandle.Scanner.Scan() {
+    l := gffHandle.Scanner.Text()
     lineCount++
 
     if b,_ := recache.MatchString( `^#`, l )  ;b { continue }
@@ -76,7 +108,7 @@ func main() {
       startBand := BAND_BOUNDS[curChrom][curBand][0]
       endBand   := BAND_BOUNDS[curChrom][curBand][1]
 
-      fn := fmt.Sprintf( "%s/%s_band%d_s%d_e%d.gff.gz", outputBaseDir, curChrom, curBand, startBand, endBand )
+      fn := fmt.Sprintf( "%s/%s_band%d_s%d_e%d.gff.gz", *g_outBaseDir, curChrom, curBand, startBand, endBand )
 
       curFp,err = os.Create( fn )
       if err != nil { panic(err) }
@@ -106,7 +138,7 @@ func main() {
       startBand := BAND_BOUNDS[curChrom][curBand][0]
       endBand   := BAND_BOUNDS[curChrom][curBand][1]
 
-      fn := fmt.Sprintf( "%s/%s_band%d_s%d_e%d.gff.gz", outputBaseDir, curChrom, curBand, startBand, endBand)
+      fn := fmt.Sprintf( "%s/%s_band%d_s%d_e%d.gff.gz", *g_outBaseDir, curChrom, curBand, startBand, endBand)
       curFp,err = os.Create( fn )
       if err != nil { panic(err) }
 
