@@ -260,12 +260,10 @@ func main() {
   //gDebugFlag = true
 
   tagLen := 24
-  //CYTOMAP_FILENAME = "ucsc.cytomap.hg19.txt"
 
   // Count number of variations in a tile.
   // Key is start position of the tile (hg19 ref)
   //
-  //TILE_VAR_COUNT := make( map[int]int )
 
   if len(os.Args) < 5 {
     fmt.Println("usage:")
@@ -280,11 +278,6 @@ func main() {
   if len(os.Args) > 5 { gNoteLine = os.Args[5] }
 
   gDebugString = fmt.Sprintf( "%s %s %s %s %s", gffFn, fastjFn, chrFaFn, outFastjFn, gNoteLine )
-
-  // Load band boundaries
-  //
-  //BAND_BOUNDS = make( map[string]map[int][2]int  )
-  //aux.BuildBandBounds( BAND_BOUNDS, CYTOMAP_FILENAME)
 
   // Load the tile set for this band.
   //
@@ -302,7 +295,6 @@ func main() {
   // Sort starting position of each of the tile.
   //
   for _,tcc := range referenceTileSet.TileCopyCollectionMap {
-    //a,_ := recache.FindAllStringSubmatch( `hg19 chr[^ ]* (\d+)(-\d+)? (\d+)(\+\d+)?`, tcc.Meta[0], -1 )
     a,_ := recache.FindAllStringSubmatch( `hg\d+ chr[^ ]* (\d+)(-\d+)? (\d+)(\+\d+)?`, tcc.Meta[0], -1 )
 
     s,_ := strconv.Atoi(a[0][1])
@@ -323,8 +315,8 @@ func main() {
   // Load our hg19 reference band.
   //
   if gDebugFlag { fmt.Println("# loading", chrFaFn, "into memory...") }
-  chrFa := aux.FaToByteArray( chrFaFn )
-  _ = chrFa
+  chrFa,err := aux.FaToByteArray( chrFaFn )
+  if err!=nil { panic(err) }
 
   count := 0
 
@@ -410,15 +402,6 @@ func main() {
       continue
 
     }
-
-    /*
-    if gDebugFlag {
-      fmt.Printf("# [s: %d, e: %d] (refStart: %d, refLen: %d) startPos< %d, %d, %d >\n",
-        s, e,
-        gss.refStart, gss.refLen,
-        gss.startPos[ gss.startPosIndex-1 ], gss.startPos[ gss.startPosIndex ], gss.startPos[ gss.startPosIndex+1 ] )
-    }
-    */
 
     // Continue our contiguous sequence from the previous gff line.
     //
