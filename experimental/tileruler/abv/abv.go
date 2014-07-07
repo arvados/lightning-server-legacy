@@ -14,8 +14,8 @@ import (
 )
 
 type Range struct {
-	StartBandIdx, EndBandIdx int
-	StartPosIdx, EndPosIdx   int
+	EndBandIdx int
+	EndPosIdx  int
 }
 
 // Block represents a block for a human in given position in slippy map.
@@ -28,8 +28,8 @@ type Block struct {
 
 type Human struct {
 	Name            string
-	Blocks          map[int]map[int]*Block
-	BandLength      map[int]int // 1-based.
+	Blocks          map[int]map[int]*Block // map[bandIdx]map[posIdx]*Block
+	BandLength      map[int]int            // 1-based. map[bandIdx]posCount
 	PosCount        int
 	MaxBand, MaxPos int // 0-based.
 }
@@ -37,7 +37,7 @@ type Human struct {
 var encodeStd = []byte("CDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
 // Parse parses a abv file based on given tile rules and returns all blocks.
-func Parse(name string, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Human, error) {
+func Parse(name string, countOnly bool, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Human, error) {
 	if !com.IsFile(name) {
 		return nil, fmt.Errorf("file(%s) does not exist or is not a file", name)
 	}
@@ -52,6 +52,8 @@ func Parse(name string, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Hu
 	h.Blocks = make(map[int]map[int]*Block)
 	h.BandLength = make(map[int]int)
 	var bandIdx int // Current band index.
+	var colIdx int  // Current column index.
+	var char uint8  // Current char.
 
 	var line []byte
 	buf := bufio.NewReader(fr)
@@ -92,18 +94,14 @@ func Parse(name string, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Hu
 				h.MaxBand = bandIdx
 			}
 		} else {
-			if bandIdx < r.StartBandIdx {
-				isInBody = !isInBody
-				continue
-			}
-			h.BandLength[bandIdx] = len(line)
-			for i, char := range line {
-				if i < r.StartPosIdx {
-					continue
-				} else if r.EndPosIdx >= 0 && i > r.EndPosIdx {
+			for colIdx, char = range line {
+				if r.EndPosIdx >= 0 && colIdx > r.EndPosIdx {
+					colIdx--
 					break
-				} else if i > h.MaxPos {
-					h.MaxPos = i
+				}
+
+				if countOnly {
+					continue
 				}
 
 				varIdx := -1
@@ -129,7 +127,7 @@ func Parse(name string, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Hu
 				if _, ok := h.Blocks[bandIdx]; !ok {
 					h.Blocks[bandIdx] = make(map[int]*Block)
 				}
-				h.Blocks[bandIdx][i] = b
+				h.Blocks[bandIdx][colIdx] = b
 				// if _, ok := h.Blocks[b.Band]; !ok {
 				// 	h.Blocks[b.Band] = make(map[int]*Block)
 				// }
@@ -141,6 +139,11 @@ func Parse(name string, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Hu
 				// }
 				// b.Factor = r.Factor
 			}
+
+			if colIdx > h.MaxPos {
+				h.MaxPos = colIdx
+			}
+			h.BandLength[bandIdx] = colIdx + 1
 		}
 		isInBody = !isInBody
 	}

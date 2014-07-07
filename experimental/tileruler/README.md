@@ -16,8 +16,9 @@ Tile Ruler is a command line tool for generating PNGs based on given abv files.
 	- `2`: all abv in one full-size PNG
 	- `3`: every full-size transparent layer per abv
 - `-slot-pixel`: slot pixel of width and height. Default is `2`.
-- `-max-band`: max(inclusive) band index. `-1` means auto-detect.
-- `-max-pos`: max(inclusive) position index. `-1` means auto-detect.
+- `-max-band`: max(inclusive) band index. `-1` means auto-detect. Default is `9`.
+- `-max-pos`: max(inclusive) position index. `-1` means auto-detect. Default is `49`.
+- `-max-col`: max(inclusive) column index. Default is `3999`.
 - `-color-spec`: path of color specification file. Just for an example of format, which is the default colors:
 	
 	```
