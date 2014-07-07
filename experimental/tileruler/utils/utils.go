@@ -31,6 +31,16 @@ func (f StrTo) Exist() bool {
 	return string(f) != string(0x1E)
 }
 
+func (f StrTo) Uint8() (uint8, error) {
+	v, err := strconv.ParseUint(f.String(), 10, 8)
+	return uint8(v), err
+}
+
+func (f StrTo) MustUint8() uint8 {
+	v, _ := f.Uint8()
+	return v
+}
+
 func (f StrTo) Int() (int, error) {
 	v, err := strconv.ParseInt(f.String(), 10, 32)
 	return int(v), err

@@ -6,37 +6,55 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/curoverse/lightning/experimental/tileruler/abv"
 	"github.com/curoverse/lightning/experimental/tileruler/utils"
 )
 
-var varColors = []color.Color{
-	color.RGBA{0, 153, 0, 255},
-	color.RGBA{0, 204, 0, 255},
-	color.RGBA{0, 255, 0, 255},
-	color.RGBA{0, 255, 255, 255},
-	color.RGBA{0, 204, 255, 255},
-	color.RGBA{0, 153, 255, 255},
-	color.RGBA{0, 102, 255, 255},
-	color.RGBA{0, 51, 255, 255},
-	color.RGBA{0, 0, 255, 255},
-	color.RGBA{0, 0, 102, 255},
+var Gray = image.NewUniform(color.RGBA{230, 230, 230, 255})
+
+const defaultVarColors = `255, 255, 255
+0, 204, 0
+0, 255, 0
+0, 255, 255
+0, 204, 255
+0, 153, 255
+0, 102, 255
+0, 51, 255
+0, 0, 255`
+
+var varColors = make([]color.Color, 0, 10)
+
+func parseVarColors(str string) error {
+	lines := strings.Split(str, "\n")
+	for i, line := range lines {
+		infos := strings.Split(line, ",")
+		if len(infos) < 3 {
+			return fmt.Errorf("Not enough color assigned in line[%d]: %s", i, line)
+		}
+		varColors = append(varColors, color.RGBA{
+			utils.StrTo(strings.TrimSpace(infos[0])).MustUint8(),
+			utils.StrTo(strings.TrimSpace(infos[1])).MustUint8(),
+			utils.StrTo(strings.TrimSpace(infos[2])).MustUint8(), 255})
+	}
+	return nil
 }
 
 func calInitImgX(opt *Option, boxNum, border int) int {
-	return (opt.EndPosIdx+1)*boxNum*opt.SlotPixel + border*opt.EndPosIdx
+	return (opt.EndPosIdx%(opt.MaxColIdx+1)+1)*boxNum*opt.SlotPixel + border*opt.EndPosIdx%(opt.MaxColIdx+1)
 }
 
-func calInitImgY(opt *Option, boxNum, border int) int {
-	return (opt.EndBandIdx+1)*boxNum*opt.SlotPixel + border*opt.EndBandIdx
+func calInitImgY(opt *Option, totalRows, boxNum, border int) int {
+	return totalRows*boxNum*opt.SlotPixel + border*opt.EndBandIdx
 }
 
-func initImage(opt *Option) *image.RGBA {
+func initImage(opt *Option, totalRows int) *image.RGBA {
 	boxNum := 1
 	border := 0
 	switch opt.Mode {
@@ -45,11 +63,11 @@ func initImage(opt *Option) *image.RGBA {
 		border = opt.Border
 	}
 	m := image.NewRGBA(image.Rect(0, 0,
-		calInitImgX(opt, boxNum, border), calInitImgY(opt, boxNum, border)))
+		calInitImgX(opt, boxNum, border), calInitImgY(opt, totalRows, boxNum, border)))
 
 	// Transparent layer doesn't need base color.
 	if opt.Mode != ALL_IN_ONE_ABV {
-		draw.Draw(m, m.Bounds(), image.White, image.ZP, draw.Src)
+		draw.Draw(m, m.Bounds(), Gray, image.ZP, draw.Src)
 	}
 	return m
 }
@@ -85,9 +103,9 @@ func saveImgFile(name string, m *image.RGBA) error {
 
 // GenerateAbvImg generates one PNG for each abv file.
 func GenerateAbvImg(opt *Option, h *abv.Human) error {
-	m := initImage(opt)
-	for i := opt.StartBandIdx; i <= opt.EndBandIdx; i++ {
-		for j := opt.StartPosIdx; j <= opt.EndPosIdx; j++ {
+	m := initImage(opt, opt.EndBandIdx+1)
+	for i := 0; i <= opt.EndBandIdx; i++ {
+		for j := 0; j <= opt.EndPosIdx; j++ {
 			if b, ok := h.Blocks[i][j]; ok {
 				drawSingleSquare(opt, m, int(b.Variant), j, i)
 			}
@@ -107,7 +125,7 @@ func GenerateAbvImgs(opt *Option, names []string) error {
 			// continue
 		}
 
-		h, err := abv.Parse(name, opt.Range, nil)
+		h, err := abv.Parse(name, false, opt.Range, nil)
 		if err != nil {
 			return fmt.Errorf("Fail to parse abv file(%s): %v", name, err)
 		}
@@ -158,29 +176,77 @@ func GenerateGiantGenomeImg(opt *Option, names []string) error {
 	// NOTE: current implementatio does not support for sorting by colors,
 	// which uses multi-reader to load data piece by piece to save memory.
 
-	m := initImage(opt)
-	fmt.Println("Time spent(init image):", time.Since(start))
+	// NOTE: Go has huge memory usage for image process, consider generate small ones
+	// and combine by github.com/gographics/imagick
+	// or http://superuser.com/questions/290656/combine-multiple-images-using-imagemagick
 
-	for idx, name := range names {
-		h, err := abv.Parse(name, opt.Range, nil)
+	// TODO: generate output file which describes how many rows in every band.
+
+	// First pass, determine how many rows are going to draw.
+	maxRows := make(map[int]int)
+	for _, name := range names {
+		h, err := abv.Parse(name, true, opt.Range, nil)
 		if err != nil {
 			return fmt.Errorf("Fail to parse abv file(%s): %v", name, err)
 		}
 		h.Name = filepath.Base(name)
 
-		for i, _ := range h.Blocks {
-			for j, b := range h.Blocks[i] {
-				drawAllInOneSquare(opt, m, int(b.Variant),
-					j*(opt.SlotPixel*opt.BoxNum)+2*j+(idx%opt.BoxNum)*opt.SlotPixel,
-					i*(opt.SlotPixel*opt.BoxNum)+2*i+(idx/opt.BoxNum)*opt.SlotPixel)
+		for i := 0; i <= opt.EndBandIdx; i++ {
+			row := (h.BandLength[i]-1)/(opt.MaxColIdx+1) + 1
+			if row > maxRows[i] {
+				maxRows[i] = row
+			} else if maxRows[i] == 0 {
+				maxRows[i] = 1
 			}
+		}
+	}
+
+	totalRows := 0
+	bandRows := make([]string, opt.EndBandIdx+1)
+	for i := 0; i <= opt.EndBandIdx; i++ {
+		totalRows += maxRows[i]
+		bandRows[i] = utils.ToStr(maxRows[i])
+	}
+
+	ioutil.WriteFile(fmt.Sprintf("%s/all-in-one-%d(%d)*%d(%d).txt",
+		opt.ImgDir, opt.EndBandIdx+1, totalRows,
+		opt.EndPosIdx+1, opt.EndPosIdx%(opt.MaxColIdx+1)+1),
+		[]byte(strings.Join(bandRows, ",")), os.ModePerm)
+
+	fmt.Printf("[%s] Total rows: %d\n", time.Since(start), totalRows)
+
+	m := initImage(opt, totalRows)
+	fmt.Println("Time spent(init image):", time.Since(start))
+
+	// Second pass, actually draw slots.
+	for idx, name := range names {
+		h, err := abv.Parse(name, false, opt.Range, nil)
+		if err != nil {
+			return fmt.Errorf("Fail to parse abv file(%s): %v", name, err)
+		}
+		h.Name = filepath.Base(name)
+
+		offsetRow := 0
+		for i := 0; i <= opt.EndBandIdx; i++ {
+			if _, ok := h.Blocks[i]; ok {
+				for j, b := range h.Blocks[i] {
+					rowIdx := j/(opt.MaxColIdx+1) + offsetRow
+					colIdx := j % (opt.MaxColIdx + 1)
+					drawAllInOneSquare(opt, m, int(b.Variant),
+						colIdx*(opt.SlotPixel*opt.BoxNum)+2*colIdx+(idx%opt.BoxNum)*opt.SlotPixel,
+						rowIdx*(opt.SlotPixel*opt.BoxNum)+2*rowIdx+(idx/opt.BoxNum)*opt.SlotPixel)
+				}
+			}
+
+			offsetRow += maxRows[i]
 		}
 		fmt.Printf("%d[%s]: %s: %d * %d\n", idx, time.Since(start), h.Name, h.MaxBand, h.MaxPos)
 		runtime.GC()
 	}
 
-	if err := saveImgFile(fmt.Sprintf("%s/all-in-one-%d*%d.png",
-		opt.ImgDir, opt.EndBandIdx+1, opt.EndPosIdx+1), m); err != nil {
+	if err := saveImgFile(fmt.Sprintf("%s/all-in-one-%d(%d)*%d(%d).png",
+		opt.ImgDir, opt.EndBandIdx+1, totalRows,
+		opt.EndPosIdx+1, opt.EndPosIdx%(opt.MaxColIdx+1)+1), m); err != nil {
 		return fmt.Errorf("giant PNG file: %v", err)
 	}
 	return nil
@@ -201,7 +267,7 @@ func drawTransparentLayerSquare(opt *Option, m *image.RGBA, idx, x, y int) {
 
 // GenerateTransparentLayer generates transparent layer for each abv file.
 func GenerateTransparentLayer(opt *Option, h *abv.Human) error {
-	m := initImage(opt)
+	m := initImage(opt, opt.EndBandIdx+1)
 	for i, _ := range h.Blocks {
 		for j, b := range h.Blocks[i] {
 			drawTransparentLayerSquare(opt, m, int(b.Variant),
@@ -230,7 +296,7 @@ func GenerateTransparentLayers(opt *Option, names []string) error {
 	}
 
 	for i, name := range names {
-		h, err := abv.Parse(name, opt.Range, nil)
+		h, err := abv.Parse(name, false, opt.Range, nil)
 		if err != nil {
 			return fmt.Errorf("Fail to parse abv file(%s): %v", name, err)
 		}

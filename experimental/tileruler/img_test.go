@@ -5,7 +5,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"github.com/genomelightning/tileruler/abv"
+	"github.com/curoverse/lightning/experimental/tileruler/abv"
 )
 
 func Test_calInitImg(t *testing.T) {
@@ -42,7 +42,7 @@ func Test_calInitImg(t *testing.T) {
 				SlotPixel: v.slotPixel,
 			}
 			So(calInitImgX(opt, v.boxNum, v.border), ShouldEqual, v.x)
-			So(calInitImgY(opt, v.boxNum, v.border), ShouldEqual, v.y)
+			So(calInitImgY(opt, opt.EndBandIdx+1, v.boxNum, v.border), ShouldEqual, v.y)
 		}
 	})
 }
