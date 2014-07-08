@@ -51,7 +51,7 @@ func calInitImgX(opt *Option, boxNum, border int) int {
 }
 
 func calInitImgY(opt *Option, totalRows, boxNum, border int) int {
-	return totalRows*boxNum*opt.SlotPixel + border*opt.EndBandIdx
+	return totalRows*boxNum*opt.SlotPixel + border*(totalRows-1)
 }
 
 func initImage(opt *Option, totalRows int) *image.RGBA {
@@ -205,7 +205,7 @@ func GenerateGiantGenomeImg(opt *Option, names []string) error {
 	bandRows := make([]string, opt.EndBandIdx+1)
 	for i := 0; i <= opt.EndBandIdx; i++ {
 		totalRows += maxRows[i]
-		bandRows[i] = utils.ToStr(maxRows[i])
+		bandRows[i] = utils.ToStr(totalRows)
 	}
 
 	ioutil.WriteFile(fmt.Sprintf("%s/all-in-one-%d(%d)*%d(%d).txt",
@@ -214,6 +214,9 @@ func GenerateGiantGenomeImg(opt *Option, names []string) error {
 		[]byte(strings.Join(bandRows, ",")), os.ModePerm)
 
 	fmt.Printf("[%s] Total rows: %d\n", time.Since(start), totalRows)
+	if opt.CountOnly {
+		return nil
+	}
 
 	m := initImage(opt, totalRows)
 	fmt.Println("Time spent(init image):", time.Since(start))
