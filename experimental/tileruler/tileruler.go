@@ -33,6 +33,7 @@ var (
 	boxNum     = flag.Int("box-num", 15, "box number of width and height")
 	workNum    = flag.Int("work-num", 10, "work chan buffer")
 	colorSpec  = flag.String("color-spec", "", "path of color specification file")
+	countOnly  = flag.Bool("count-only", false, "for mode 2 and count only mode")
 )
 
 var start = time.Now()
@@ -54,6 +55,7 @@ type Option struct {
 	MaxColIdx  int
 	BoxNum     int
 	MaxWorkNum int // Max goroutine number.
+	CountOnly  bool
 }
 
 func validateInput() (*Option, error) {
@@ -81,6 +83,7 @@ func validateInput() (*Option, error) {
 		MaxColIdx:  *maxColIdx,
 		BoxNum:     *boxNum,
 		MaxWorkNum: *workNum,
+		CountOnly:  *countOnly,
 	}
 
 	if opt.SlotPixel < 1 {
