@@ -369,21 +369,9 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
 
   refTcc := referenceTileSet.TileCopyCollectionMap[ baseTileId ]
 
-  /*
-  fmt.Println("### DEBUG!");
-  fmt.Println(">>>> baseTileId:", baseTileId)
-  fmt.Printf("\n\n")
-  //fmt.Println( string(gss.gffCurSeq) )
-  */
-
   header := TileHeader{}
   json.Unmarshal( []byte( refTcc.Meta[0] ), &header )
 
-
-  /*
-  fmt.Printf("--(%d)>> %s\n", len(gss.gffLeftTagSeq), gss.gffLeftTagSeq )
-  fmt.Printf("\n")
-  */
 
   NormalizeTileSeq( gss.gffCurSeq, len(gss.gffLeftTagSeq), len(gss.gffRightTagSeq) )
 
@@ -423,11 +411,6 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   }
   fmt.Printf("\n\n")
 
-  /*
-  fmt.Printf("--(%d)<< %s\n", len(gss.gffRightTagSeq), gss.gffRightTagSeq )
-  fmt.Printf("\n\n\n\n")
-  */
-
 
 }
 
@@ -453,7 +436,6 @@ func (gss *GffScanState) AdvanceState() {
   gss.refLen = gss.TagLen
 
   gss.startPosIndex++
-  //if gss.startPosIndex == len(gss.startPos) { return }
   if gss.startPosIndex >= len(gss.startPos) { return }
 
   gss.nextTagStart = gss.startPos[ gss.startPosIndex ]
@@ -480,7 +462,6 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
 
   if (gss.refStart + gss.refLen) < refStartPos {
     gapLen := refStartPos - (gss.refStart + gss.refLen)
-    //fmt.Println("   $>>>> GAP", gss.refLen, gapLen )
 
     gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d GAP %d %d", gRefGenome, gss.curChrom, gss.refStart+gss.refLen, refStartPos-1, gss.refLen, gapLen) )
 
@@ -573,13 +554,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
 
   }
 
-  /*
-  //DEBUG
-  fmt.Println("starting processSUB")
-  fmt.Println( "   refStartPos:", refStartPos )
-  */
-
-
   // Now refStartPos to entryLen contains only the SUB contained in subvar.
   //
 
@@ -608,36 +582,22 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
   lastNote := ""
   for ; (refStartPos + entryLen) >= (gss.nextTagStart + gss.TagLen) ; {
 
-
-    //DEBUG
-    //fmt.Fprintf(os.Stderr, "sub crosses tile boundary.  (refStartPos %d + entryLen %d) >= (gss.nextTagStart %d + gss.TagLen %d)\n",
-    //  refStartPos, entryLen, gss.nextTagStart, gss.TagLen )
-
-
     if gss.refStart == gss.startPos[ gss.startPosIndex-1 ] {
 
       refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStart + gss.refLen)
       posInSeq := len(gss.gffCurSeq)
 
       //DEBUG
+      /*
       fmt.Fprintf(os.Stderr, "overflow --> %s %s %d %d %s %s %d %d\n\n",
             gRefGenome, gss.curChrom, gss.refStart+gss.refLen, gss.nextTagStart+gss.TagLen-1,
             subType, subvar, posInSeq, refLenRemain )
-
-      //DEBUG
-      //fmt.Fprintf(os.Stderr, "valid start position, refLenRemain %d, posInSeq %d\n", refLenRemain, posInSeq )
-      //fmt.Fprintf(os.Stderr, "  subvar %s (%d)\n", subvar, len(subvar) )
-      //fmt.Fprintf(os.Stderr, "  gss.refStart %d + gss.refLen %d = %d\n", gss.refStart, gss.refLen, gss.refStart + gss.refLen )
-
-
+      */
 
 
       // Add the rest of the subvar to our current sequence.
       //
       gss.gffCurSeq        = append( gss.gffCurSeq, subvar[0:refLenRemain]... )
-
-      //DEBUG
-      //fmt.Println( "  @>>>>", subType, "--->", subvar, posInSeq, refLenRemain )
 
       if noteFlag {
 
@@ -666,11 +626,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
         //dbeg := gss.nextTagStart - gss.refStart
         dbeg := refLenRemain - gss.TagLen
 
-        //DEBUG
-        //fmt.Fprintf( os.Stderr, "DEBUG: len(subvar) %d\n", len(subvar) )
-        //fmt.Fprintf( os.Stderr, "DEBUG: gss.refStart %d, gss.nextTagStart %d\n", gss.refStart, gss.nextTagStart )
-        //fmt.Fprintf( os.Stderr, "DEBUG: dbeg %d, dbeg+taglen %d subvar %s\n", dbeg, dbeg+gss.TagLen, subvar )
-
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[ dbeg : dbeg + gss.TagLen ]... )
 
         if subType == "SNP" {
@@ -697,10 +652,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
 
       subvar = subvar[refLenRemain:]
 
-      //Not needed?
-      //refStartPos += len(subvar)
-      //entryLen     = len(subvar)
-
     }
 
     // From this point on, the sequence must be ref, so just keep pushing the releveant
@@ -726,14 +677,7 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
   //REQUIRES MORE THOUGHT>>>
   if dn<=0 { return }
 
-  //DEBUG
-  //fmt.Println("dn:", dn, "refStartPos:", refStartPos, "entryLen:", entryLen, "gss.refStart:", gss.refStart, "gss.refLen:", gss.refLen)
-
   gss.gffCurSeq = append( gss.gffCurSeq, subvar[0:dn]... )
-
-
-  //!!
-  //fmt.Println("  @>>>>", subType, "--->", subvar, posInSeq, dn )
 
   if noteFlag {
     gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d %s %s %d %d", gRefGenome, gss.curChrom, gss.refStart+gss.refLen, refStartPos+entryLen-1, subType, subvar, posInSeq, dn) )
@@ -788,9 +732,6 @@ func (gss *GffScanState) processINS( finalTileSet *tile.TileSet, referenceTileSe
     gss.gffRightTagSeq = append( gss.gffRightTagSeq, ins_seq... )
   }
 
-  //DEBUG
-  //fmt.Println("   @>>>> INS", insPosInSeq, ins_seq  )
-
   if noteFlag {
     gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d INS %d %s", gRefGenome, gss.curChrom, refStartPos, refStartPos-1, insPosInSeq, ins_seq ) )
   }
@@ -807,21 +748,11 @@ func (gss *GffScanState) processDEL( finalTileSet *tile.TileSet, referenceTileSe
     gss.processREF( finalTileSet, referenceTileSet, chromFa, refStartPos, 0 )
   }
 
-  /*
-  //DEBUG
-  fmt.Println("starting processDEL")
-  fmt.Println( "   refStartPos:", refStartPos )
-  */
-
   for ; (refStartPos + del_len) >= (gss.nextTagStart + gss.TagLen) ; {
 
     if gss.refStart == gss.startPos[ gss.startPosIndex-1 ] {
 
-      //refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStart + gss.refLen)
       posInSeq := len(gss.gffCurSeq)
-
-      //DEBUG
-      //fmt.Println("  @>>>> DEL", posInSeq, del_len )
 
       if noteFlag {
         gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d DEL %d %d", gRefGenome, gss.curChrom, refStartPos, refStartPos+del_len-1, posInSeq, del_len) )
@@ -840,10 +771,6 @@ func (gss *GffScanState) processDEL( finalTileSet *tile.TileSet, referenceTileSe
 
   offset := gss.refLen
   dn := (refStartPos + del_len) - (gss.refStart + gss.refLen)
-
-
-  // DEBUG
-  //fmt.Println( "  >>>> DEL", offset, dn )
 
   if noteFlag {
     gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d DEL %d %d", gRefGenome, "chZ", gss.refStart + gss.refLen, gss.refStart + gss.refLen + del_len - 1, offset, -dn) )
@@ -879,8 +806,6 @@ func (gss *GffScanState) processINDEL( finalTileSet *tile.TileSet, referenceTile
     gss.processREF( finalTileSet, referenceTileSet, chromFa, refStartPos, 0 )
   }
 
-  //origTile := gss.
-
   startPos := gss.startPos[ gss.startPosIndex-1 ]
   baseTileId := gss.baseTileIdFromStartPosMap[ startPos ]
 
@@ -898,9 +823,6 @@ func (gss *GffScanState) processINDEL( finalTileSet *tile.TileSet, referenceTile
   gss.notes = append( gss.notes, commentString )
 
 
-  //DEBUG
-  //fmt.Printf("!!!! INDEL indelvar %s, ref_seq %s\n", indelvar, ref_seq )
-
   // Take the minimum of the indelvar and ref_seq length
   //
   m := len(indelvar)
@@ -912,29 +834,14 @@ func (gss *GffScanState) processINDEL( finalTileSet *tile.TileSet, referenceTile
   // If there is some overlap, replace it with a 'virtual' SUB
   //
   if m>0 {
-
-    //DEBUG
-    //fmt.Printf(">>> indel cp0: refStartPos %d, indelvar[0:%d] %s\n", refStartPos, m, indelvar[0:m] )
-
     gss.processSUB( finalTileSet, referenceTileSet, chromFa, refStartPos, indelvar[0:m], "SUB", false )
   }
 
   if len(indelvar) > len(ref_seq) {
     ds := len(indelvar) - len(ref_seq)
-
-    //DEBUG
-    //fmt.Printf(">>> indel ins cp1: refStartPos %d, indelvar[%d:%d] %s\n", refStartPos+m, m, m+ds, indelvar[m:m+ds] )
-
-
-
     gss.processINS( finalTileSet, referenceTileSet, chromFa, refStartPos + m, indelvar[m:m+ds], false )
   } else if len(indelvar) < len(ref_seq) {
     ds := len(ref_seq) - len(indelvar)
-
-    //DEBUG
-    //fmt.Printf(">>> indel del cp1: refStartPos %d (%d+%d), -%d\n", refStartPos+m, refStartPos, m, ds )
-
-
     gss.processDEL( finalTileSet, referenceTileSet, chromFa, refStartPos + m, ds, false )
   }
 
@@ -945,33 +852,6 @@ func (gss *GffScanState) processINDEL( finalTileSet *tile.TileSet, referenceTile
   if newBaseTileId != baseTileId {
     gss.notes = append( gss.notes, commentString )
   }
-
-
-  /*
-  comments := strings.SplitN( comment, ";", -1 )
-
-  m,_ := recache.FindAllStringSubmatch( `alleles ([^/]+)(/(.+))?`, comments[0] , -1 )
-  var0 := m[0][1]
-  var1 := m[0][2]
-  if ( len(var1) > 0 ) { var1 = var1[1:] }
-
-  m,_ = recache.FindAllStringSubmatch( `ref_allele ([^;]+)`, comment, -1 )
-  ref_seq := m[0][1]
-
-  if gDebugFlag { fmt.Printf("# var1 %s, var2 %s, ref_seq %s\n", var0, var1, ref_seq ) }
-
-  if ref_seq == "-" {
-
-    ins_seq := var0
-    if var0 == "-" { ins_seq = var1 }
-    gss.processINS( finalTileSet, referenceTileSet, chromFa, startPos, ins_seq )
-
-  } else {
-
-    gss.processDEL( finalTileSet, referenceTileSet, chromFa, startPos, entryLen )
-
-  }
-  */
 
 }
 
@@ -1076,7 +956,6 @@ func main() {
   //
   gss0 := GffScanState{}
   gss1 := GffScanState{}
-  //gss1 := GffScanState{}
 
   gss0.phase = "A"
   gss1.phase = "B"
@@ -1158,7 +1037,6 @@ func main() {
     comment := fields[8]
 
     condensed_comment,_ := recache.ReplaceAllString( `\s+`, comment, " " )
-    //fmt.Printf("condensed_comment:>> %s\n", condensed_comment)
 
     // converting to 0 based, end inclusive
     //
@@ -1166,17 +1044,10 @@ func main() {
     e -= 1
 
 
-    //fmt.Println(">>", s, e, varType, comment)
-
     if ( varType == "REF" ) {
 
       gss0.processREF( finalTileSet, referenceTileSet, chromFa, s, e - s + 1 )
       gss1.processREF( finalTileSet, referenceTileSet, chromFa, s, e - s + 1 )
-
-
-      //DEBUG
-      //fmt.Printf(" >> gss0 processREF s %d, e-s+1 %d --> %d\n", s, e-s+1, gss0.refStart )
-      //fmt.Printf(" >> gss1 processREF s %d, e-s+1 %d --> %d\n", s, e-s+1, gss1.refStart )
 
     } else if ( varType == "INDEL" ) {
 
@@ -1352,15 +1223,6 @@ func main() {
       default:
         //???
       }
-
-    /*
-    } else if ( varType == "SNP" ) {
-
-      gss.notes = append( gss.notes, condensed_comment )
-      snpvar0, snpvar1, ref_seq := parseSNPSUB( comment ) ;  _ = snpvar1 ;  _ = snpvar0
-      gss.processSUB( finalTileSet, referenceTileSet, chromFa, s, snpvar0, "SNP" )
-
-    */
 
     } else {
 
