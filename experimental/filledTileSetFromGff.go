@@ -1,38 +1,104 @@
+// Sample usage:
+//
+// ./filledTileSetFromGff -i /scratch/tmp/chr19_band2_s13900000_e14000000.gff.gz  \
+//                        -f /scratch/ref/hg19.fj/chr19_band2_s13900000_e14000000.fj.gz \
+//                        -fasta-chromosome /scratch/ref/hg19.fa/chr19.fa \
+//                        -o -
+//
+
 // TODO:
-//  - notice het/hom
-//    * will report the full line from GFF, so one can infer het/hom.  Will report which reported het/hom it was.
-//
-//  - fastj output
-//
-//  - annotations in fastj
 //
 //  - band ends handling (synthetic insert of ref?)
 //    *working for beginning?  Need to look at end (still a little weird).
 //
 //  - error checking (verification)
 //
+
+// NOTES
+// =====
+
+// Variant Policy
+// --------------
+//
+// There are three variant policies: HETA, REPORTED and RANDOM.  These inform how the FastJ will
+// be generated from how the variants are reported in the the GFF file.
+//
+// HETA:
+//    - If there is only one non-ref variant, place it on the first allele (allele "A").
+//    - If there are two non-ref variants, be it het or hom, place the first on allele "A" and the second
+//      on allele "B".  They are placed in the order reported in the GFF file.
+//
+// REPORTED:
+//    - Place the variant(s) on the allele in the order reported in the GFF file.
+//
+// RANDOM:
+//    - Place the variant(s) randomely on either allele "A" or "B".  The RNG can be seeded witha value
+//      from the command line.  Default is taken to be the current time
+//
+
+// Gaps
+// ----
+//
+// Gaps are filled in with the relevant reference genome.  An annotation is generated and put in the
+// JSON 'notes' array.
+
+// Variants crossing tile boundaries
+// ---------------------------------
+//
+
+// Simple Substitutions:
+//
+// This is a special case and an artifact of the way we tile the genome.  When substitutions cross
+//   tile boundaries, then the first part of the subsititution will be placed in the end part of
+//   the tail of the right tag of the first tile.  The second tile will also have the substitution
+//   in the left tag but will also have the remaining substitution in the body (or beyond).
+//
+// The substitutions will be added to the 'notes' filed in the JSON header.  The full substitution
+//   sequence might be reported for verbosity, but the length portion will indicate how much of
+//   the substitution sequence appears in the tile.
+//
+// For example:
+// > { "tileID" : ..., "n" : 249, ..., "notes" : [ { ... , "hg19 chr3 1234 1244 SUB ATTATTATTA 247 2", ... }], ...  }
+// ...
+// tcccaaaatgttgggagtgagccaccgtgccaggaaaggcccccccccAT
+//
+// Which indicates there is a substitution that is 10 bp long, but only the first 2 bp appear in the tile (starting at position 247, 0ref).
+// The next tile might look as follows
+//
+// > { "tileID" : ..., "n" : 253, ..., "notes" : [ { ... , "hg19 chr3 1234 1244 SUB ATTATTATTA 22 2", "hg19 chr3 1236 1244 SUB TATTATTA 24 8", ... }], ...  }
+// gtgccaggaaaggcccccccccATTATTATTA...
+// ...
+//
+// This way it should be able to construct what was reported by the GFF and to easily verify how the FastJ was generated.
+
+// INDELs:
+//
 // INDELs are handled 'under the hood' as a substitution of the first min( len(refseq), len(indel) )
 //   base pairs, followed by either an insertion or deletion, depending on whether len(indel) > len(refseq)
 //   or len(indel) < len(refseq) respectively.  The annotation is an INDEL and if the INDEL is contained
 //   inside a tile, this should be pretty transparent.  If the INDEL crosses a tile boundary, then the
-//   implications of how the INDEL is done.  For example, if the first part of the synthetic INDEL (the
-//   substitution) crosses the boundary, the first tile will contain part of the substitution, while the
-//   next tile will contain the rest, including the latter portion of the substitution and the insertion
-//   or deletion, depending.
+//   implications of how the INDEL is done become apparent when viewing the annotations.  For example,
+//   if the first part of the synthetic INDEL (the substitution) crosses the boundary, the first tile
+//   will contain part of the substitution, while the next tile will contain the rest, including the
+//   latter portion of the substitution and the insertion or deletion, depending.
+//
 // Here is a contrived example:
 //
-//  say we have (in 1ref):     INDEL 1001 1006  AGTAGT/-;ref_allele CCC
+// say we have (in 1ref):
+//
+//      INDEL 1001 1006  AGTAGT/-;ref_allele CCC
 //
 //  and for arguments sake we have a tile that ends at (0ref) 1002, then this INDEL would go from
 //
-//  xxxxxxxxxxxxxxxCC | Cxxxxxxxxxxxxxxxx
+//      xxxxxxxxxxxxxxxCC | Cxxxxxxxxxxxxxxxx
 //
 //  to
 //
-//  xxxxxxxxxxxxxxxAG | T(AGT)xxxxxxxxxxxxxxxx
+//      xxxxxxxxxxxxxxxAG | T(AGT)xxxxxxxxxxxxxxxx
 //
 //  Where the sequence in the parens () is an insertion and the '|' represents a tile boundary.
 //
+
 
 /***************************************************
 
@@ -85,6 +151,7 @@ import "os"
 import "./aux"
 import "strconv"
 import "strings"
+import "time"
 
 import _ "bufio"
 
@@ -166,7 +233,7 @@ func (ts *TileStat) Advance() {
 type GffScanState struct {
   nextTagStart int
 
- startPos []int
+  startPos []int
   startPosIndex int
   baseTileIdFromStartPosMap map[int]string
 
@@ -214,6 +281,9 @@ var g_verboseFlag *bool
 
 func init() {
 
+  _ = time.Now()
+
+
   g_gffFileName = flag.String( "i", "", "Input GFF file")
   flag.StringVar( g_gffFileName, "input-gff", "", "Input GFF file")
 
@@ -229,8 +299,9 @@ func init() {
   g_variantPolicy = flag.String( "P", gVariantPolicy, "Variant policy (one of 'REPORTED' - as reported in gff, 'HETA' - all het var. go to first allele, 'RANDOM' - choose random allele)")
   flag.StringVar( g_variantPolicy, "variant-policy", gVariantPolicy, "Variant policy (one of 'REPORTED' - as reported in gff, 'HETA' - all het var. go to first allele, 'RANDOM' - choose random allele)")
 
-  g_randomSeed = flag.Int64( "S", 1234, "Random seed (defaults to time)")
-  flag.Int64Var( g_randomSeed, "seed", 1234, "Random seed (defaults to time)")
+  ts := time.Now().UnixNano()
+  g_randomSeed = flag.Int64( "S", ts, "Random seed (defaults to time)")
+  flag.Int64Var( g_randomSeed, "seed", ts, "Random seed (defaults to time)")
 
   // Disable these options for now
   //g_discardVariantOnTag = flag.Bool( "T", false, "Discard tile when a variant falls on a tag")
@@ -238,6 +309,11 @@ func init() {
 
   //g_discardGaps = flag.Bool( "G", false, "Discard tile when a gap falls within a tile")
   //flag.BoolVar( g_discardGaps , "discard-gaps", false, "Discard tile when a gap falls within a tile")
+
+  //g_discardGapThreshold = flag.Int( "gap-threshold", -1, "Discard tile when the number of gaps equals or exceeds the gap threshold")
+  //g_keepVariants = flag.Bool( "keep-variant", true, "Keep a tile if there is at least one variant, even if there are gaps")
+  //g_keepVariantThreshold = flag.Bool( "variant-threshold", true, "Keep a tile if the number of variants equals or exceeds the variant threshold, even if there are gaps")
+
 
   g_verboseFlag = flag.Bool( "v", false, "Verbose flag")
   flag.BoolVar( g_verboseFlag, "verbose", false, "Verbose flag")
@@ -389,6 +465,8 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   fmt.Printf(", \"startTag\":\"%s\"", refTcc.StartTag )
   fmt.Printf(", \"endTag\":\"%s\""  , refTcc.EndTag )
 
+  gss.notes = append( gss.notes, fmt.Sprintf("Phase (%s) %s", *g_variantPolicy, gss.phase ) )
+
   if len(gss.notes) > 0 {
     fmt.Printf(", \"notes\":[")
     for i:=0; i<len(gss.notes); i++ {
@@ -399,7 +477,7 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   }
 
   //DEBUG
-  fmt.Printf(", \"phase\" : \"%s\"", gss.phase )
+  //fmt.Printf(", \"phase\" : \"%s\"", gss.phase )
 
   fmt.Printf("}\n")
 
@@ -454,11 +532,12 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
                                      chromFa []byte,
                                      refStartPos int, entryLen int ) {
 
+  // Clamp if we spill over
+  //
   if (refStartPos + entryLen) > gss.endPos {
     refStartPos = gss.endPos
     entryLen = 0
   }
-
 
   if (gss.refStart + gss.refLen) < refStartPos {
     gapLen := refStartPos - (gss.refStart + gss.refLen)
@@ -467,6 +546,7 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
 
     gss.gapStat.AddBody( gapLen )
   }
+
 
   // The refStartPos + entryLen (end of the reference sequence) has shot past the current tag
   // end boundary.  We want to peel off the head of the sequence, adding it to the finalTileSet
@@ -549,10 +629,12 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
   // Fill in with reference.
   //
   if refStartPos > (gss.refStart + gss.refLen) {
-
     gss.processREF( finalTileSet, referenceTileSet, chromFa, refStartPos, 0 )
-
   }
+
+  // We've reached the end of our band, just bail out
+  //
+  if gss.startPosIndex == (len(gss.startPos)-1) { return }
 
   // Now refStartPos to entryLen contains only the SUB contained in subvar.
   //
@@ -594,6 +676,13 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
             subType, subvar, posInSeq, refLenRemain )
       */
 
+      /*
+      //DEBUG
+      fmt.Printf("nextTagStart %d\n", gss.nextTagStart)
+      fmt.Printf("refStartPos %d\n", refStartPos)
+      fmt.Printf("len(subvar) %d, refLenRemain %d\n", len(subvar), refLenRemain)
+      fmt.Printf("subvar:\n%s\n", subvar)
+      */
 
       // Add the rest of the subvar to our current sequence.
       //
@@ -856,40 +945,26 @@ func (gss *GffScanState) processINDEL( finalTileSet *tile.TileSet, referenceTile
 }
 
 
-// This does not handle SUBINS/SUBDEL (e.g. AA -> AAAA/- )
+// Parse the variants.
+// This will pass through the phase information as inferred by the order
+// of the variants.
+// If the variants are homozygous non-ref, then both var0 and var1 are filled
+// in with the appropriate value.
+// All '-' sequences as they appear in the GFF are returned as blank strings.
 //
-func (gss *GffScanState) processINDEL_OLD( finalTileSet *tile.TileSet, referenceTileSet *tile.TileSet, chromFa []byte, startPos int, entryLen int, comment string ) {
-
-  comments := strings.SplitN( comment, ";", -1 )
-
-  m,_ := recache.FindAllStringSubmatch( `alleles ([^/]+)(/(.+))?`, comments[0] , -1 )
-  var0 := m[0][1]
-  var1 := m[0][2]
-  if ( len(var1) > 0 ) { var1 = var1[1:] }
-
-  m,_ = recache.FindAllStringSubmatch( `ref_allele ([^;]+)`, comment, -1 )
-  ref_seq := m[0][1]
-
-  if gDebugFlag { fmt.Printf("# var1 %s, var2 %s, ref_seq %s\n", var0, var1, ref_seq ) }
-
-  if ref_seq == "-" {
-
-    ins_seq := var0
-    if var0 == "-" { ins_seq = var1 }
-    gss.processINS( finalTileSet, referenceTileSet, chromFa, startPos, ins_seq, true )
-
-  } else {
-
-    gss.processDEL( finalTileSet, referenceTileSet, chromFa, startPos, entryLen, true )
-
-  }
-
-}
-
-// Parse the SNP variations.  Ignores phase information.
-// var0 returned will be non-ref (assuming input doesn't have errors).
-// var1 is either empty or reference base for a het var, otherwise
-// ...?
+// For example
+// -----------
+//
+//  alleles A/C;...;ref_allele C
+//
+//  represents ref C, A on the first allele and C (ref) on the second allele.
+//
+//  alleles T;...;ref_allele G
+//
+//  represents ref G, T on the first allele and T on the second allele.
+//
+// This just passes pahse information through, so if the incoming phase information
+// should be ignored, so should the resulting phase information.
 //
 func parseVariants( comment string ) (var0 string, var1 string, ref_seq string) {
 
@@ -1042,7 +1117,6 @@ func main() {
     //
     s -= 1
     e -= 1
-
 
     if ( varType == "REF" ) {
 
@@ -1230,5 +1304,8 @@ func main() {
     }
 
   }
+
+  gss0.AddTile( finalTileSet, referenceTileSet )
+  gss1.AddTile( finalTileSet, referenceTileSet )
 
 }
