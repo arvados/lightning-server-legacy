@@ -867,33 +867,6 @@ func parseINDEL( comment string ) ( var0 string, var1 string, ref_seq string ) {
 
   return
 
-  indel_type := "" ; _ = indel_type
-  hethom := "" ; _ = hethom
-
-
-  // reference is not there, must be a deletion
-  if ref_seq == "-" {
-    indel_type = "INS"
-
-    if      (len(var1) == 0) { hethom = "HOM"
-    } else if ( var0 == var1 ) { hethom = "HOM"
-    } else if ( var1 == "-" )  { hethom = "HETA"
-    } else if ( var0 == "-" )  { hethom = "HETB"
-    } else { }
-    return
-  }
-
-  if len(var1)==0 { hethom = "HOM" }
-
-
-  if ref_seq == "-" {
-    indel_type = "DEL"
-  } else if ( ref_seq != "-" ) && ( (var0 == "-") || (var1 == "-") ) {
-    indel_type = "INS"
-  }
-
-  return
-
 }
 
 // working on it....
