@@ -47,7 +47,9 @@ func parseVarColors(str string) error {
 }
 
 func calInitImgX(opt *Option, boxNum, border int) int {
-	return (opt.EndPosIdx%(opt.MaxColIdx+1)+1)*boxNum*opt.SlotPixel + border*opt.EndPosIdx%(opt.MaxColIdx+1)
+  columns := opt.EndPosIdx%(opt.MaxColIdx + 1)
+  fmt.Println(opt.MaxColIdx+1)
+	return (columns+1)*boxNum*opt.SlotPixel + border*columns
 }
 
 func calInitImgY(opt *Option, totalRows, boxNum, border int) int {

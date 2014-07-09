@@ -132,11 +132,31 @@ func getAbvList(abvPath string) ([]string, error) {
 	return abvs, nil
 }
 
+//rangeString prepares the index range as a string for output,
+//where a negative value indicates using the maximum possible
+//value as the ending index.
 func rangeString(idx int) string {
 	if idx < 0 {
 		return "MAX"
 	}
 	return utils.ToStr(idx)
+}
+
+//getMaxBandAndPos gets the maximum values of bandIdx and maxPosIdx
+//given a list of abv Human structures.
+//It returns the maxband and maxpos as integers.
+func getMaxBandAndPos(humans []*abv.Human) (int, int){
+	realMaxBandIdx := -1
+	realMaxPosIdx := -1
+	for _, h := range humans {
+		if h.MaxBand > realMaxBandIdx {
+			realMaxBandIdx = h.MaxBand
+		}
+		if h.MaxPos > realMaxPosIdx {
+			realMaxPosIdx = h.MaxPos
+		}
+	}
+  return realMaxBandIdx, realMaxPosIdx
 }
 
 func main() {
@@ -193,18 +213,7 @@ func main() {
 	fmt.Println("Time spent(parse blocks):", time.Since(start))
 	fmt.Println()
 
-	// Get max band and position index.
-	realMaxBandIdx := -1
-	realMaxPosIdx := -1
-	for _, h := range humans {
-		if h.MaxBand > realMaxBandIdx {
-			realMaxBandIdx = h.MaxBand
-		}
-		if h.MaxPos > realMaxPosIdx {
-			realMaxPosIdx = h.MaxPos
-		}
-		// fmt.Println("Pos Count:", h.PosCount)
-	}
+  realMaxBandIdx, realMaxPosIdx := getMaxBandAndPos(humans)
 
 	if opt.EndBandIdx < 0 || opt.EndBandIdx > realMaxBandIdx {
 		opt.EndBandIdx = realMaxBandIdx
