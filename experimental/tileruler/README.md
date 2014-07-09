@@ -7,6 +7,13 @@ Tile Ruler is a command line tool for generating PNGs based on given abv files.
 
 	go get -u github.com/curoverse/lightning/experimental/tileruler
 
+### Building locally
+
+- Set GOPATH to the cloned repo.
+- Within the repo create a src directory.
+- From within source `ln -s ../experimental/tileruler`
+- `go install tileruler`
+
 ### Usage
 
 - `-abv-path`: directory or path of abv file(s), can be a file path for one abv or a directory path for all abv files in that directory, both absolute or relative path are acceptable. Default is the work directory.
@@ -20,7 +27,7 @@ Tile Ruler is a command line tool for generating PNGs based on given abv files.
 - `-max-pos`: max(inclusive) position index. `-1` means auto-detect. Default is `49`.
 - `-max-col`: max(inclusive) column index. Default is `3999`.
 - `-color-spec`: path of color specification file. Just for an example of format, which is the default colors:
-	
+
 	```
 	255, 255, 255
 	0, 204, 0
@@ -39,9 +46,9 @@ Tile Ruler is a command line tool for generating PNGs based on given abv files.
 
 ### Known Issues
 
-- For `-mode=1`, there might be Go `image/png.Encoder` bug for `-slot-pixel>1` and `-max-pos>20000`. To get correct PNG, make sure `-slot-pixel` is `1` or `-max-pos` is less than `20000`. 
+- For `-mode=1`, there might be Go `image/png.Encoder` bug for `-slot-pixel>1` and `-max-pos>20000`. To get correct PNG, make sure `-slot-pixel` is `1` or `-max-pos` is less than `20000`.
 	- Execute `-slot-pixel=2 -max-pos=19999` will be fine.
-	
+
 ### Time Consuming
 
 - Command `tileruler -mode=X -max-band=-1 -max-pos=-1`
@@ -67,4 +74,3 @@ Tile Ruler is a command line tool for generating PNGs based on given abv files.
 	- Pixels: **127998 * 27614**
 	- Size: **16.4MB**
 	- Time: 7m5s * 154 = **19hours**
-	
