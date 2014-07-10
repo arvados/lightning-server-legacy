@@ -48,7 +48,6 @@ func parseVarColors(str string) error {
 
 func calInitImgX(opt *Option, boxNum, border int) int {
   columns := opt.EndPosIdx%(opt.MaxColIdx + 1)
-  fmt.Println(opt.MaxColIdx+1)
 	return (columns+1)*boxNum*opt.SlotPixel + border*columns
 }
 
