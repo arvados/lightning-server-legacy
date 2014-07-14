@@ -7,10 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/curoverse/lightning/experimental/tileruler/abv"
@@ -18,22 +15,24 @@ import (
 )
 
 const (
-	VERSION = "0.1.3.0707"
+	VERSION = "0.1.4.0714"
 )
 
 var (
-	abvPath    = flag.String("abv-path", "./", "directory or path of abv file(s)")
-	imgDir     = flag.String("img-dir", "pngs", "path to store PNG file(s)")
-	mode       = flag.Int("mode", 0, "1-single; 2-all in one; 3-all in one abv")
-	slotPixel  = flag.Int("slot-pixel", 2, "slot pixel of width and height")
-	border     = flag.Int("border", 2, "pxiel of border")
-	maxBandIdx = flag.Int("max-band", 9, "max band index")
-	maxPosIdx  = flag.Int("max-pos", 49, "max position index")
-	maxColIdx  = flag.Int("max-col", 3999, "max column index")
-	boxNum     = flag.Int("box-num", 15, "box number of width and height")
-	workNum    = flag.Int("work-num", 10, "work chan buffer")
-	colorSpec  = flag.String("color-spec", "", "path of color specification file")
-	countOnly  = flag.Bool("count-only", false, "for mode 2 and count only mode")
+	abvPath     = flag.String("abv-path", "./", "directory or path of abv file(s)")
+	imgDir      = flag.String("img-dir", "pngs", "path to store PNG file(s)")
+	mode        = flag.Int("mode", 0, "run mode(1-4), see README.md for detail")
+	slotPixel   = flag.Int("slot-pixel", 2, "slot pixel of width and height")
+	border      = flag.Int("border", 2, "pxiel of border")
+	maxBandIdx  = flag.Int("max-band", 9, "max band index")
+	maxPosIdx   = flag.Int("max-pos", 49, "max position index")
+	maxColIdx   = flag.Int("max-col", 3999, "max column index")
+	boxNum      = flag.Int("box-num", 15, "box number of width and height")
+	workNum     = flag.Int("work-num", 10, "work chan buffer")
+	colorSpec   = flag.String("color-spec", "", "path of color specification file")
+	countOnly   = flag.Bool("count-only", false, "for mode 2 and count only mode")
+	force       = flag.Bool("force", false, "force regenerate existed PNG")
+	reversePath = flag.String("reverse-path", "./", "directory or path of reverse PNG file(s)")
 )
 
 var start = time.Now()
@@ -44,6 +43,7 @@ const (
 	SINGLE Mode = iota + 1
 	ALL_IN_ONE
 	ALL_IN_ONE_ABV
+	REVERSE
 )
 
 type Option struct {
@@ -56,6 +56,7 @@ type Option struct {
 	BoxNum     int
 	MaxWorkNum int // Max goroutine number.
 	CountOnly  bool
+	Force      bool
 }
 
 func validateInput() (*Option, error) {
@@ -84,6 +85,7 @@ func validateInput() (*Option, error) {
 		BoxNum:     *boxNum,
 		MaxWorkNum: *workNum,
 		CountOnly:  *countOnly,
+		Force:      *force,
 	}
 
 	if opt.SlotPixel < 1 {
@@ -101,35 +103,6 @@ func validateInput() (*Option, error) {
 		log.Fatalln("-border cannot be smaller than 1")
 	}
 	return opt, nil
-}
-
-// getAbvList returns a list of abv file paths.
-// It recognize if given path is a file.
-func getAbvList(abvPath string) ([]string, error) {
-	if !utils.IsExist(abvPath) {
-		return nil, errors.New("Given abv path does not exist")
-	} else if utils.IsFile(abvPath) {
-		return []string{abvPath}, nil
-	}
-
-	// Given path is a directory.
-	dir, err := os.Open(abvPath)
-	if err != nil {
-		return nil, err
-	}
-
-	fis, err := dir.Readdir(0)
-	if err != nil {
-		return nil, err
-	}
-
-	abvs := make([]string, 0, len(fis))
-	for _, fi := range fis {
-		if strings.HasSuffix(fi.Name(), ".abv") {
-			abvs = append(abvs, filepath.Join(abvPath, fi.Name()))
-		}
-	}
-	return abvs, nil
 }
 
 func rangeString(idx int) string {
@@ -153,15 +126,16 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	// Parse abv file.
-	var humans []*abv.Human
-	names, err := getAbvList(*abvPath)
-	if err != nil {
-		log.Fatalf("Fail to get abv list: %v", err)
-	} else if len(names) == 0 {
-		log.Fatalf("No abv files found: %s", *abvPath)
+	var names []string
+	if opt.Mode != REVERSE {
+		// Get list of abv file(s).
+		names, err = utils.GetFileListBySuffix(*abvPath, ".abv")
+		if err != nil {
+			log.Fatalf("Fail to get abv list: %v", err)
+		} else if len(names) == 0 {
+			log.Fatalf("No abv files found: %s", *abvPath)
+		}
 	}
-	// humans = make([]*abv.Human, len(names))
 
 	switch opt.Mode {
 	case SINGLE:
@@ -173,44 +147,14 @@ func main() {
 	case ALL_IN_ONE_ABV:
 		fmt.Println("Mode: All-in-one abv\n")
 		err = GenerateTransparentLayers(opt, names)
+	case REVERSE:
+		fmt.Println("Mode: Reverse\n")
+		err = ReverseImgsToAbvs(*reversePath)
 	default:
 		log.Fatalln("Unknown run mode:", opt.Mode)
 	}
 	if err != nil {
-		log.Fatalf("Fail to generate PNG files: %v", err)
+		log.Fatalf("Fail to run tile ruler: %v", err)
 	}
 	fmt.Println("Time spent(total):", time.Since(start))
-	return
-
-	for i, name := range names {
-		humans[i], err = abv.Parse(name, false, opt.Range, nil)
-		if err != nil {
-			log.Fatalf("Fail to parse abv file(%s): %v", name, err)
-		}
-		humans[i].Name = filepath.Base(name)
-		fmt.Printf("%d: %s: %d * %d\n", i, humans[i].Name, humans[i].MaxBand, humans[i].MaxPos)
-	}
-	fmt.Println("Time spent(parse blocks):", time.Since(start))
-	fmt.Println()
-
-	// Get max band and position index.
-	realMaxBandIdx := -1
-	realMaxPosIdx := -1
-	for _, h := range humans {
-		if h.MaxBand > realMaxBandIdx {
-			realMaxBandIdx = h.MaxBand
-		}
-		if h.MaxPos > realMaxPosIdx {
-			realMaxPosIdx = h.MaxPos
-		}
-		// fmt.Println("Pos Count:", h.PosCount)
-	}
-
-	if opt.EndBandIdx < 0 || opt.EndBandIdx > realMaxBandIdx {
-		opt.EndBandIdx = realMaxBandIdx
-	}
-	if opt.EndPosIdx < 0 || opt.EndPosIdx > realMaxPosIdx {
-		opt.EndPosIdx = realMaxPosIdx
-	}
-	fmt.Println("Max Band Index:", opt.EndBandIdx, "\nMax Pos Index:", opt.EndPosIdx)
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
@@ -8,6 +10,7 @@ import (
 	"image/png"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -44,6 +47,28 @@ func parseVarColors(str string) error {
 			utils.StrTo(strings.TrimSpace(infos[2])).MustUint8(), 255})
 	}
 	return nil
+}
+
+// getVarColorIdx returns index of given variant color based on current color map.
+// It returns -1 when it's the background color, -2 when no match.
+func getVarColorIdx(c color.Color) int {
+	r, g, b, a := c.RGBA()
+	var vr, vg, vb, va uint32 // Declare once to save cost.
+
+	// Compare to background color first.
+	vr, vg, vb, va = Gray.RGBA()
+	if r == vr && g == vg && b == vb && a == va {
+		return -1
+	}
+
+	// Try to match on color map.
+	for i, vc := range varColors {
+		vr, vg, vb, va = vc.RGBA()
+		if r == vr && g == vg && b == vb && a == va {
+			return i
+		}
+	}
+	return -2
 }
 
 func calInitImgX(opt *Option, boxNum, border int) int {
@@ -101,6 +126,13 @@ func saveImgFile(name string, m *image.RGBA) error {
 	return nil
 }
 
+// GetAbvImgName returns corresponding image name
+// based on current option and human abv file name.
+func GetAbvImgName(opt *Option, name string) string {
+	return fmt.Sprintf("SI_%s_%d_%d.png", strings.TrimSuffix(name, ".abv"),
+		opt.EndBandIdx+1, opt.EndPosIdx+1)
+}
+
 // GenerateAbvImg generates one PNG for each abv file.
 func GenerateAbvImg(opt *Option, h *abv.Human) error {
 	m := initImage(opt, opt.EndBandIdx+1)
@@ -112,7 +144,46 @@ func GenerateAbvImg(opt *Option, h *abv.Human) error {
 		}
 	}
 
-	if err := saveImgFile(fmt.Sprintf("%s/%s.png", opt.ImgDir, h.Name), m); err != nil {
+	if err := saveImgFile(filepath.Join(opt.ImgDir,
+		GetAbvImgName(opt, filepath.Base(h.Name))), m); err != nil {
+		return fmt.Errorf("%s: %v", h.Name, err)
+	}
+	return nil
+}
+
+// AbvProfile represents a single abv image profile.
+type AbvProfile struct {
+	Type      Mode   `json:"type"`
+	Name      string `json:"name"`
+	SlotPixel int    `json:"slot_pixel"`
+	BandLen   []int  `json:"band_len"`
+}
+
+// SaveAbvImgProfile generates and saves corresponding image profile
+// of given information for converting back from image to abv file.
+func SaveAbvImgProfile(opt *Option, h *abv.Human) error {
+	rawName := strings.TrimSuffix(h.Name, ".abv")
+	// Create profile information file directory.
+	dirName := filepath.Join(opt.ImgDir,
+		strings.TrimSuffix(GetAbvImgName(opt, rawName), ".png"))
+	os.MkdirAll(dirName, os.ModePerm)
+
+	lens := make([]int, h.MaxBand+1)
+	for i := 0; i < len(lens); i++ {
+		lens[i] = h.BandLength[i]
+	}
+
+	ap := &AbvProfile{
+		Type:      SINGLE,
+		Name:      rawName,
+		SlotPixel: opt.SlotPixel,
+		BandLen:   lens,
+	}
+	data, err := json.MarshalIndent(ap, "", "\t")
+	if err != nil {
+		return fmt.Errorf("%s: %v", h.Name, err)
+	} else if err = ioutil.WriteFile(filepath.Join(dirName, "profile.json"),
+		data, 0644); err != nil {
 		return fmt.Errorf("%s: %v", h.Name, err)
 	}
 	return nil
@@ -121,10 +192,6 @@ func GenerateAbvImg(opt *Option, h *abv.Human) error {
 // GenerateAbvImgs is a high level function to generate PNG for each abv file.
 func GenerateAbvImgs(opt *Option, names []string) error {
 	for i, name := range names {
-		if utils.IsExist(fmt.Sprintf("%s/%s.png", opt.ImgDir, filepath.Base(name))) {
-			// continue
-		}
-
 		h, err := abv.Parse(name, false, opt.Range, nil)
 		if err != nil {
 			return fmt.Errorf("Fail to parse abv file(%s): %v", name, err)
@@ -140,9 +207,18 @@ func GenerateAbvImgs(opt *Option, names []string) error {
 		} else if opt.EndPosIdx > h.MaxPos {
 			opt.EndPosIdx = h.MaxPos
 		}
+
+		if !opt.Force && utils.IsExist(filepath.Join(opt.ImgDir,
+			GetAbvImgName(opt, filepath.Base(name)))) {
+			continue
+		}
+
 		if err = GenerateAbvImg(opt, h); err != nil {
 			return err
+		} else if err = SaveAbvImgProfile(opt, h); err != nil {
+			return err
 		}
+
 		fmt.Printf("%d[%s]: %s: %d * %d\n", i, time.Since(start), h.Name, h.MaxBand, h.MaxPos)
 	}
 	return nil
@@ -301,7 +377,7 @@ func GenerateTransparentLayers(opt *Option, names []string) error {
 	for i, name := range names {
 		h, err := abv.Parse(name, false, opt.Range, nil)
 		if err != nil {
-			return fmt.Errorf("Fail to parse abv file(%s): %v", name, err)
+			return fmt.Errorf("fail to parse abv file(%s): %v", name, err)
 		}
 		h.Name = filepath.Base(name)
 
@@ -309,6 +385,95 @@ func GenerateTransparentLayers(opt *Option, names []string) error {
 			return err
 		}
 		fmt.Printf("%d[%s]: %s\n", i, time.Since(start), h.Name)
+	}
+	return nil
+}
+
+// reverseImgToAbv accepts an image and its profile to reverse it
+// to abv raw data file.
+func reverseImgToAbv(imgPath string) error {
+	// Gather information of given image file.
+	profDir := strings.TrimSuffix(imgPath, ".png")
+	if !utils.IsDir(profDir) {
+		return fmt.Errorf("given image does not have profile information or not a directory: %s", imgPath)
+	}
+
+	ap := new(AbvProfile)
+	data, err := ioutil.ReadFile(path.Join(profDir, "profile.json"))
+	if err != nil {
+		return fmt.Errorf("fail to read profile.json(%s): %v", imgPath, err)
+	} else if err = json.Unmarshal(data, ap); err != nil {
+		return fmt.Errorf("fail to decode profile.json(%s): %v", imgPath, err)
+	}
+
+	// Decode image file.
+	fr, err := os.Open(imgPath)
+	if err != nil {
+		return fmt.Errorf("fail to open image(%s): %v", imgPath, err)
+	}
+	defer fr.Close()
+
+	m, _, err := image.Decode(fr)
+	if err != nil {
+		return fmt.Errorf("fail to decode image(%s): %v", imgPath, err)
+	}
+
+	// Prepare file write stream.
+	fw, err := os.Create(profDir + ".abv")
+	if err != nil {
+		return fmt.Errorf("fail to create abv file(%s): %v", imgPath, err)
+	}
+	defer fw.Close()
+
+	// Declare once to save cost.
+	space := byte(' ')
+	buf := new(bytes.Buffer)
+
+	fw.WriteString("\"" + ap.Name + "\" ")
+
+	// Reverse image.
+	fmt.Println("Start reversing image:", path.Base(imgPath))
+
+	// Loop by band, so that we can write to file stream as soon as we have data.
+	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y += ap.SlotPixel {
+		yIdx := y / ap.SlotPixel
+		buf.WriteString(utils.Int2HexStr(yIdx))
+		buf.WriteByte(space)
+		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x += ap.SlotPixel {
+			if x >= ap.BandLen[yIdx] {
+				break
+			}
+			idx := getVarColorIdx(m.At(x, y))
+			switch idx {
+			case -2:
+				return fmt.Errorf("color does not recognize at (%d, %d)", x, y)
+			case -1:
+				buf.WriteByte('-')
+			case 0:
+				buf.WriteByte('.')
+			default:
+				buf.WriteByte(abv.EncodeStd[idx])
+			}
+		}
+		buf.WriteByte(space)
+		fw.Write(buf.Bytes())
+		buf.Reset()
+	}
+	return nil
+}
+
+// ReverseImgsToAbvs is a high level function
+// to reverse images to abv files.
+func ReverseImgsToAbvs(imgPath string) error {
+	names, err := utils.GetFileListBySuffix(imgPath, ".png")
+	if err != nil {
+		return err
+	}
+
+	for _, name := range names {
+		if err = reverseImgToAbv(name); err != nil {
+			return err
+		}
 	}
 	return nil
 }

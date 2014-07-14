@@ -1,10 +1,13 @@
-// Content in this file is copied from github.com/Unknwon/com.
+// Most of content in this file is copied from github.com/Unknwon/com.
 package utils
 
 import (
 	"fmt"
 	"os"
+	"path"
+	"sort"
 	"strconv"
+	"strings"
 )
 
 // IsFile returns true if given path is a file,
@@ -15,6 +18,16 @@ func IsFile(filePath string) bool {
 		return false
 	}
 	return !f.IsDir()
+}
+
+// IsDir returns true if given path is a directory,
+// or returns false when it's a file or does not exist.
+func IsDir(dir string) bool {
+	f, e := os.Stat(dir)
+	if e != nil {
+		return false
+	}
+	return f.IsDir()
 }
 
 // IsExist checks whether a file or directory exists.
@@ -137,4 +150,52 @@ func HexStr2int(hexStr string) (int, error) {
 		num += factor * PowInt(16, i)
 	}
 	return num, nil
+}
+
+// Int2HexStr converts decimal number to hex format string.
+func Int2HexStr(num int) (hex string) {
+	for num > 0 {
+		r := num % 16
+
+		c := "?"
+		if r >= 0 && r <= 9 {
+			c = string(r + '0')
+		} else {
+			c = string(r + 'a' - 10)
+		}
+		hex = c + hex
+		num = num / 16
+	}
+	return hex
+}
+
+// GetFileListBySuffix returns an ordered list of file paths.
+// It recognize if given path is a file, and don't do recursive find.
+func GetFileListBySuffix(dirPath, suffix string) ([]string, error) {
+	if !IsExist(dirPath) {
+		return nil, fmt.Errorf("given path does not exist: %s", dirPath)
+	} else if IsFile(dirPath) {
+		return []string{dirPath}, nil
+	}
+
+	// Given path is a directory.
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	fis, err := dir.Readdir(0)
+	if err != nil {
+		return nil, err
+	}
+
+	files := make([]string, 0, len(fis))
+	for _, fi := range fis {
+		if strings.HasSuffix(fi.Name(), suffix) {
+			files = append(files, path.Join(dirPath, fi.Name()))
+		}
+	}
+
+	sort.Strings(files)
+	return files, nil
 }

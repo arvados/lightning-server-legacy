@@ -8,9 +8,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/Unknwon/com"
-
 	"github.com/curoverse/lightning/experimental/tileruler/rule"
+	"github.com/curoverse/lightning/experimental/tileruler/utils"
 )
 
 type Range struct {
@@ -34,11 +33,11 @@ type Human struct {
 	MaxBand, MaxPos int // 0-based.
 }
 
-var encodeStd = []byte("CDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+var EncodeStd = []byte("CDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
 // Parse parses a abv file based on given tile rules and returns all blocks.
 func Parse(name string, countOnly bool, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Human, error) {
-	if !com.IsFile(name) {
+	if !utils.IsFile(name) {
 		return nil, fmt.Errorf("file(%s) does not exist or is not a file", name)
 	}
 
@@ -82,7 +81,7 @@ func Parse(name string, countOnly bool, r *Range, rules map[int]map[int]map[int]
 		}
 
 		if !isInBody {
-			bandIdx, err = com.HexStr2int(string(line))
+			bandIdx, err = utils.HexStr2int(string(line))
 			if err != nil {
 				fmt.Println(string(line))
 				return nil, err
@@ -112,7 +111,7 @@ func Parse(name string, countOnly bool, r *Range, rules map[int]map[int]map[int]
 					varIdx = 0
 				default:
 					// Non-default variant.
-					varIdx = bytes.IndexByte(encodeStd, char)
+					varIdx = bytes.IndexByte(EncodeStd, char)
 					if varIdx < 1 {
 						return nil, fmt.Errorf("Invalid version of variant[%s]: %s", line, string(char))
 					}
