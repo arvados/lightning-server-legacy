@@ -56,13 +56,26 @@ After all the tools are downloaded, you will need to run the program `createBand
 
 and execute it:
 
-    $ createBandBedGraph
+    $ mkdir -p /scratch/lightning/bedGraph ; createBandBedGraph /scratch/lightning/bedGraph/
 
 This should take a while, generating 863 files, each ranging from 0-160M.  The following files should be produced:
 
-
-
 Once we have the chopped BedGraph files, we can now walk through each one and find our tag sets, generating Fastj files from the reference genome along the way.
+Calling `buildTileSet` for each chopped bedGraph file will give us a tile set from the bedGraph file.  To execute, run `buildTileSet` once for each bedGraph file with the appropriate chromosome name, chromosome fasta file, band number, bedGraph file and output Fastj filename.  For example:
+
+    $ mkdir /scratch/lightning/data/fj
+    $ ./buildTileSet 3 /scratch/lightning/data/chr3.fa 38 /scratch/lightning/bedGraph/chr3_band38_s119000000_e121900000.bedGraph /scratch/lightning/fj/chr3_band38_s119000000_e121900000.fj
+
+
+The following should work to iteratively construct each of the desired Fastj Files:
+
+    $ ls /scratch/lightning/data/fj | sed 's/^chr\([^_]*\)_band\([0-9]*\)_s\([0-9]*\)_e\([0-9]*\)\.bedGraph/ .\/buildTileSet \1 \/scratch\/lightning\/data\/chr\1.fa \2 \/scratch\/lightning\/bedGraph\/chr\1_band\2_s\3_e\4.bedGraph \/scratch\/lightning\/fj\/chr\1_band\2_s\3_e\4.fj /' | xargs -n 6 -I {} sh -c "{}"
+
+(All the above does is list out each of the generated bedGraph file and uses the file name to figure out the chromosome, band and destination file name).
+
+
+Once this has been completed, there should be a library of Fastj files, one file per band, with each file representing the tile set for that band, constructed from the hg19 reference.
+
 
 
 

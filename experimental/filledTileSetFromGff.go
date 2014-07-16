@@ -8,10 +8,16 @@
 
 // TODO:
 //
-//  - band ends handling (synthetic insert of ref?)
-//    *working for beginning?  Need to look at end (still a little weird).
-//
 //  - error checking (verification)
+//  - Proper variantion/gap annotation on tags.  Right now this is a bit of a hodge
+//    podge when it comes to variants crossing a single (or more) tile variants or
+//    gaps crossing multiple tile variants, along with their associated annotations
+//    whent hey fall on tags.
+//    Right now, gaps are at least labelled if they crossover, though where exactly
+//    needs to be inferred from the gap line and the build/locus annotation.
+//    INDELs only handle the case then they cross over at most once and an INDEL covers
+//    more than two tiles, it will not be annotated correctly.  SUBs/SNPs should be
+//    handled properly.
 //
 
 // NOTES
@@ -163,6 +169,8 @@ import "flag"
 
 import "math/rand"
 
+import "crypto/md5"
+
 import "./recache"
 import "./tile"
 import "./bioenv"
@@ -190,6 +198,7 @@ type TileHeader struct {
 }
 
 
+/*
 type TileStat struct {
   occurance, bpCount int
   stag_occurance, etag_occurance int
@@ -227,6 +236,7 @@ func (ts *TileStat) Advance() {
   ts.etag_occurance = 0
   ts.etag_n = 0
 }
+*/
 
 
 
@@ -245,7 +255,10 @@ type GffScanState struct {
   gffLeftTagSeq, gffRightTagSeq []byte
 
   notes []string
+  carryOverNotes []string
   simpleLocusBuild string
+
+  md5sum [16]byte
 
   curChrom string
 
@@ -257,14 +270,28 @@ type GffScanState struct {
 
   // Statistics (for later use)
   //
-  gapStat TileStat
-  snpStat TileStat
-  subStat TileStat
-  insStat TileStat
-  delStat TileStat
+  //gapStat TileStat
+  //snpStat TileStat
+  //subStat TileStat
+  //insStat TileStat
+  //delStat TileStat
 
 }
 
+func (gss *GffScanState) PrintState() {
+  fmt.Printf("nextTagStart %d\n", gss.nextTagStart)
+  fmt.Printf("len(startPos) %d\n", len(gss.startPos) )
+  fmt.Printf("startPosIndex %d\n", gss.startPosIndex )
+  fmt.Printf("endPos %d\n", gss.endPos )
+  fmt.Printf("gffCurSeq %s\n", gss.gffCurSeq )
+  fmt.Printf("refStart %d, refLen %d\n", gss.refStart, gss.refLen )
+  fmt.Printf("simpleLocusBuild %s\n", gss.simpleLocusBuild )
+  fmt.Printf("curChrom %s\n", gss.curChrom)
+  fmt.Printf("tagLen %d\n", gss.TagLen )
+  fmt.Printf("phase %s\n", gss.phase )
+  fmt.Printf("gffLeftTagSeq %s\n", string(gss.gffLeftTagSeq) )
+  fmt.Printf("gffRightTagSeq %s\n", string(gss.gffRightTagSeq) )
+}
 
 var g_gffFileName *string
 var g_fastjFileName *string
@@ -457,6 +484,14 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   fmt.Printf("> { ")
   //fmt.Printf("\"tileID\" : \"%s.%s\"", baseTileId, "000" )
   fmt.Printf("\"tileID\" : \"%s\"", newTileId )
+
+  gss.md5sum = md5.Sum( gss.gffCurSeq )
+  fmt.Printf(", \"md5sum\":\"")
+  for i:=0; i<len(gss.md5sum); i++ {
+    fmt.Printf("%02x", gss.md5sum[i])
+  }
+  fmt.Printf("\"")
+
   fmt.Printf(", \"locus\":[{\"build\":\"%s\"}]", header.Locus[0]["build"] )
   fmt.Printf(", \"n\":%d", len(gss.gffCurSeq) )
   fmt.Printf(", \"copy\":%d", 0 )
@@ -475,9 +510,6 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
     }
     fmt.Printf("]")
   }
-
-  //DEBUG
-  //fmt.Printf(", \"phase\" : \"%s\"", gss.phase )
 
   fmt.Printf("}\n")
 
@@ -502,6 +534,8 @@ func (gss *GffScanState) AdvanceState() {
 
   gss.notes = gss.notes[0:0]
   if len(*g_notes) > 0 { gss.notes = append( gss.notes, *g_notes) }
+  if len(gss.carryOverNotes) > 0 { gss.notes = append(gss.notes, gss.carryOverNotes... ) }
+  gss.carryOverNotes = gss.carryOverNotes[0:0]
 
   gss.gffLeftTagSeq = gss.gffLeftTagSeq[0:0]
   gss.gffLeftTagSeq = append( gss.gffLeftTagSeq, gss.gffRightTagSeq... )
@@ -518,13 +552,17 @@ func (gss *GffScanState) AdvanceState() {
 
   gss.nextTagStart = gss.startPos[ gss.startPosIndex ]
 
-
+  /*
   gss.gapStat.Advance()
   gss.snpStat.Advance()
   gss.subStat.Advance()
   gss.insStat.Advance()
   gss.delStat.Advance()
+  */
+
+
 }
+
 
 
 func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
@@ -539,12 +577,16 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
     entryLen = 0
   }
 
-  if (gss.refStart + gss.refLen) < refStartPos {
-    gapLen := refStartPos - (gss.refStart + gss.refLen)
+  gapLen := refStartPos - (gss.refStart + gss.refLen)
+  gapEndPos := refStartPos
+  gapNote := ""
 
+  if (gss.refStart + gss.refLen) < refStartPos {
     gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d GAP %d %d", gRefGenome, gss.curChrom, gss.refStart+gss.refLen, refStartPos-1, gss.refLen, gapLen) )
 
-    gss.gapStat.AddBody( gapLen )
+    gapNote = fmt.Sprintf("gapOnTag %s %s %d %d GAP - %d", gRefGenome, gss.curChrom, gss.refStart+gss.refLen, refStartPos-1, gapLen)
+
+    //gss.gapStat.AddBody( gapLen )
   }
 
 
@@ -565,7 +607,8 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
       //
       refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStart + gss.refLen)
       if refLenRemain > gss.TagLen {
-        gss.gffRightTagSeq = chromFa[ gss.nextTagStart : gss.nextTagStart + gss.TagLen ]
+        gss.gffRightTagSeq = gss.gffRightTagSeq[0:0]
+        gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gss.nextTagStart : gss.nextTagStart + gss.TagLen ]... )
       } else {
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gss.refStart + gss.refLen : gss.nextTagStart + gss.TagLen ]... )
       }
@@ -577,6 +620,10 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
     // From this point on, the sequence must be ref, so just keep pushing the releveant
     // sequence onto gffCurSeq so it can get peeled off by the above.
     //
+
+    if gapEndPos > (gss.refStart + gss.refLen) {
+      gss.carryOverNotes = append( gss.carryOverNotes, gapNote )
+    }
 
     gss.AdvanceState()
 
@@ -602,6 +649,11 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
   if refLenTagOverflow > 0 {
     begRightTag := gss.nextTagStart + refLenRightTag
     gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ begRightTag : begRightTag + refLenTagOverflow ]... )
+
+    if gapEndPos > begRightTag {
+      gss.carryOverNotes = append( gss.carryOverNotes, gapNote )
+    }
+
   }
 
   gss.refLen += dn
@@ -669,21 +721,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
       refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStart + gss.refLen)
       posInSeq := len(gss.gffCurSeq)
 
-      //DEBUG
-      /*
-      fmt.Fprintf(os.Stderr, "overflow --> %s %s %d %d %s %s %d %d\n\n",
-            gRefGenome, gss.curChrom, gss.refStart+gss.refLen, gss.nextTagStart+gss.TagLen-1,
-            subType, subvar, posInSeq, refLenRemain )
-      */
-
-      /*
-      //DEBUG
-      fmt.Printf("nextTagStart %d\n", gss.nextTagStart)
-      fmt.Printf("refStartPos %d\n", refStartPos)
-      fmt.Printf("len(subvar) %d, refLenRemain %d\n", len(subvar), refLenRemain)
-      fmt.Printf("subvar:\n%s\n", subvar)
-      */
-
       // Add the rest of the subvar to our current sequence.
       //
       gss.gffCurSeq        = append( gss.gffCurSeq, subvar[0:refLenRemain]... )
@@ -717,6 +754,14 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
 
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[ dbeg : dbeg + gss.TagLen ]... )
 
+        if noteFlag {
+          subNote := fmt.Sprintf("ltag: %s %s %d %d %s %s %d %d",
+            gRefGenome, gss.curChrom, gss.refStart+gss.refLen, gss.nextTagStart+gss.TagLen-1,
+            subType, subvar[dbeg:dbeg+gss.TagLen], gss.refLen, len(subvar[dbeg:dbeg+gss.TagLen]))
+          gss.carryOverNotes = append( gss.carryOverNotes, subNote )
+        }
+
+        /*
         if subType == "SNP" {
           gss.snpStat.AddRight( gss.TagLen )
           gss.snpStat.AddBody( refLenRemain - gss.TagLen )
@@ -724,15 +769,25 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
           gss.subStat.AddRight( gss.TagLen )
           gss.subStat.AddBody( refLenRemain - gss.TagLen )
         }
+        */
 
       } else {
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[ 0 : refLenRemain ]... )
 
+        if noteFlag {
+          subNote := fmt.Sprintf("ltag: %s %s %d %d %s %s %d %d",
+            gRefGenome, gss.curChrom, gss.refStart+gss.refLen, gss.nextTagStart+gss.refLen+refLenRemain,
+            subType, subvar[0:refLenRemain], gss.refLen, len(subvar[0:refLenRemain]))
+          gss.carryOverNotes = append( gss.carryOverNotes, subNote )
+        }
+
+        /*
         if subType == "SNP" {
           gss.snpStat.AddRight( refLenRemain )
         } else if subType == "SUB"  {
           gss.subStat.AddRight( refLenRemain )
         }
+        */
 
 
       }
@@ -763,13 +818,16 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
   //
   dn := (refStartPos + entryLen) - (gss.refStart + gss.refLen)
 
-  //REQUIRES MORE THOUGHT>>>
-  if dn<=0 { return }
+  // If the last bp in the subvar has fallen on the end of a tag,
+  // the above block has taken care of updating state and
+  // there is nothing more to do.
+  //
+  if dn <= 0 { return }
 
   gss.gffCurSeq = append( gss.gffCurSeq, subvar[0:dn]... )
 
   if noteFlag {
-    gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d %s %s %d %d", gRefGenome, gss.curChrom, gss.refStart+gss.refLen, refStartPos+entryLen-1, subType, subvar, posInSeq, dn) )
+    gss.notes = append( gss.notes ,fmt.Sprintf("%s %s %d %d %s %s %d %d", gRefGenome, gss.curChrom, gss.refStart+gss.refLen, refStartPos+entryLen-1, subType, subvar, posInSeq, dn) ) 
   }
 
 
@@ -783,6 +841,18 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
     gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[subvarOffset:]... )
 
 
+    if noteFlag {
+      t := refStartPos - gss.nextTagStart
+      subNote := fmt.Sprintf("%s %s %d %d %s %s %d %d",
+        gRefGenome, gss.curChrom,
+        gss.refStart+gss.refLen, refStartPos+entryLen-1,
+        subType, subvar, t, dn)
+      gss.carryOverNotes = append( gss.carryOverNotes, subNote )
+    }
+
+
+
+    /*
     if subType == "SNP" {
       gss.snpStat.AddRight( gss.TagLen )
       //gss.snpStat.AddBody( refLenRemain - gss.TagLen )
@@ -790,6 +860,7 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
       gss.subStat.AddRight( gss.TagLen )
       //gss.subStat.AddBody( refLenRemain - gss.TagLen )
     }
+    */
 
 
   }
@@ -815,15 +886,16 @@ func (gss *GffScanState) processINS( finalTileSet *tile.TileSet, referenceTileSe
   //
 
   insPosInSeq := len(gss.gffCurSeq)
+  _ = insPosInSeq
 
   gss.gffCurSeq = append( gss.gffCurSeq, ins_seq... )
   if refStartPos  >= gss.nextTagStart {
     gss.gffRightTagSeq = append( gss.gffRightTagSeq, ins_seq... )
   }
 
-  if noteFlag {
-    gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d INS %d %s", gRefGenome, gss.curChrom, refStartPos, refStartPos-1, insPosInSeq, ins_seq ) )
-  }
+  //if noteFlag {
+  //  gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d INS %d %s", gRefGenome, gss.curChrom, refStartPos, refStartPos-1, insPosInSeq, ins_seq ) )
+  //}
 
 }
 
@@ -842,10 +914,11 @@ func (gss *GffScanState) processDEL( finalTileSet *tile.TileSet, referenceTileSe
     if gss.refStart == gss.startPos[ gss.startPosIndex-1 ] {
 
       posInSeq := len(gss.gffCurSeq)
+      _ = posInSeq
 
-      if noteFlag {
-        gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d DEL %d %d", gRefGenome, gss.curChrom, refStartPos, refStartPos+del_len-1, posInSeq, del_len) )
-      }
+      //if noteFlag {
+      //  gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d DEL %d %d", gRefGenome, gss.curChrom, refStartPos, refStartPos+del_len-1, posInSeq, del_len) )
+      //}
 
       // Since it's a deletion, nothin need be added to the right tag sequence
       //
@@ -859,11 +932,12 @@ func (gss *GffScanState) processDEL( finalTileSet *tile.TileSet, referenceTileSe
   }
 
   offset := gss.refLen
+  _ = offset
   dn := (refStartPos + del_len) - (gss.refStart + gss.refLen)
 
-  if noteFlag {
-    gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d DEL %d %d", gRefGenome, "chZ", gss.refStart + gss.refLen, gss.refStart + gss.refLen + del_len - 1, offset, -dn) )
-  }
+  //if noteFlag {
+  //  gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d DEL %d %d", gRefGenome, "chZ", gss.refStart + gss.refLen, gss.refStart + gss.refLen + del_len - 1, offset, -dn) )
+  //}
 
   gss.refLen += dn
 
@@ -885,7 +959,9 @@ func parseINDEL( comment string ) ( var0 string, var1 string, ref_seq string ) {
 
 }
 
-// working on it....
+// TODO: make sure to annotate INDELs that are longer than a tile to the
+// tiles in the middle.  Right now it will only annotate the start INDEL
+// tile and the end INDEL tile.
 //
 func (gss *GffScanState) processINDEL( finalTileSet *tile.TileSet, referenceTileSet *tile.TileSet, chromFa []byte, refStartPos int, indelvar string, ref_seq string, comment string ) {
 
@@ -1046,6 +1122,8 @@ func main() {
   gss0.baseTileIdFromStartPosMap = make( map[int]string )
   gss0.refStart, gss0.refLen = -1, 0
   gss0.TagLen = tagLen
+  //gss0.md5sum = make( []byte, 0, 16 )
+  gss0.carryOverNotes = make( []string, 0, 10 )
 
   gss0.generateTileStartPositions( referenceTileSet )
 
@@ -1054,6 +1132,8 @@ func main() {
   gss1.baseTileIdFromStartPosMap = make( map[int]string )
   gss1.refStart, gss1.refLen = -1, 0
   gss1.TagLen = tagLen
+  //gss1.md5sum = make( []byte, 0, 16 )
+  gss1.carryOverNotes = make( []string, 0, 10 )
 
   gss1.generateTileStartPositions( referenceTileSet )
 
@@ -1178,21 +1258,18 @@ func main() {
         if r < 0.5 {
 
           if indelvar0 == ref_seq {
-
             gss0.notes = append( gss0.notes, condensed_comment )
 
             gss0.processINDEL( finalTileSet, referenceTileSet, chromFa, s, indelvar1, ref_seq, comment )
             gss1.processREF( finalTileSet, referenceTileSet, chromFa, s, len(ref_seq) )
 
           } else if indelvar1 == ref_seq {
-
             gss1.notes = append( gss1.notes, condensed_comment )
 
             gss0.processREF( finalTileSet, referenceTileSet, chromFa, s, len(ref_seq) )
             gss1.processINDEL( finalTileSet, referenceTileSet, chromFa, s, indelvar0, ref_seq, comment )
 
           } else {
-
             gss0.notes = append( gss0.notes, condensed_comment )
             gss1.notes = append( gss1.notes, condensed_comment )
 
@@ -1205,10 +1282,6 @@ func main() {
 
       default:
       }
-
-
-      //gss.notes = append( gss.notes, condensed_comment )
-      //gss.processINDEL( finalTileSet, referenceTileSet, chromFa, s, e-s+1, comment )
 
     } else if ( (varType == "SUB") || (varType == "SNP") ) {
 
