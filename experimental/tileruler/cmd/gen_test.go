@@ -1,11 +1,11 @@
-package main
+package cmd
 
 import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"github.com/curoverse/lightning/experimental/tileruler/abv"
+	"github.com/curoverse/lightning/experimental/tileruler/modules/base"
 )
 
 func Test_calInitImg(t *testing.T) {
@@ -34,8 +34,8 @@ func Test_calInitImg(t *testing.T) {
 	}
 	Convey("Calculate init image x and y", t, func() {
 		for _, v := range vals {
-			opt := &Option{
-				Range: &abv.Range{
+			opt := base.Option{
+				Range: &base.Range{
 					EndBandIdx: v.endBandIdx,
 					EndPosIdx:  v.endPosIdx,
 				},

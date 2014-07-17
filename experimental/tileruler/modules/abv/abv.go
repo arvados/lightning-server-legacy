@@ -8,14 +8,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/curoverse/lightning/experimental/tileruler/rule"
-	"github.com/curoverse/lightning/experimental/tileruler/utils"
+	"github.com/curoverse/lightning/experimental/tileruler/modules/base"
+	"github.com/curoverse/lightning/experimental/tileruler/modules/rule"
 )
-
-type Range struct {
-	EndBandIdx int
-	EndPosIdx  int
-}
 
 // Block represents a block for a human in given position in slippy map.
 type Block struct {
@@ -36,8 +31,8 @@ type Human struct {
 var EncodeStd = []byte("CDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
 // Parse parses a abv file based on given tile rules and returns all blocks.
-func Parse(name string, countOnly bool, r *Range, rules map[int]map[int]map[int]*rule.Rule) (*Human, error) {
-	if !utils.IsFile(name) {
+func Parse(name string, countOnly bool, r *base.Range, rules map[int]map[int]map[int]*rule.Rule) (*Human, error) {
+	if !base.IsFile(name) {
 		return nil, fmt.Errorf("file(%s) does not exist or is not a file", name)
 	}
 
@@ -81,7 +76,7 @@ func Parse(name string, countOnly bool, r *Range, rules map[int]map[int]map[int]
 		}
 
 		if !isInBody {
-			bandIdx, err = utils.HexStr2int(string(line))
+			bandIdx, err = base.HexStr2int(string(line))
 			if err != nil {
 				fmt.Println(string(line))
 				return nil, err

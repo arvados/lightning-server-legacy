@@ -1,8 +1,9 @@
-// Most of content in this file is copied from github.com/Unknwon/com.
-package utils
+// Content in this file is copied from github.com/Unknwon/com.
+package base
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"sort"
@@ -154,6 +155,10 @@ func HexStr2int(hexStr string) (int, error) {
 
 // Int2HexStr converts decimal number to hex format string.
 func Int2HexStr(num int) (hex string) {
+	if num == 0 {
+		return "0"
+	}
+
 	for num > 0 {
 		r := num % 16
 
@@ -198,4 +203,46 @@ func GetFileListBySuffix(dirPath, suffix string) ([]string, error) {
 
 	sort.Strings(files)
 	return files, nil
+}
+
+// Copy copies file from source to target path.
+func Copy(src, dest string) error {
+	// Gather file information to set back later.
+	si, err := os.Lstat(src)
+	if err != nil {
+		return err
+	}
+
+	// Handle symbolic link.
+	if si.Mode()&os.ModeSymlink != 0 {
+		target, err := os.Readlink(src)
+		if err != nil {
+			return err
+		}
+		// NOTE: os.Chmod and os.Chtimes don't recoganize symbolic link,
+		// which will lead "no such file or directory" error.
+		return os.Symlink(target, dest)
+	}
+
+	sr, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sr.Close()
+
+	dw, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer dw.Close()
+
+	if _, err = io.Copy(dw, sr); err != nil {
+		return err
+	}
+
+	// Set back file information.
+	if err = os.Chtimes(dest, si.ModTime(), si.ModTime()); err != nil {
+		return err
+	}
+	return os.Chmod(dest, si.Mode())
 }
