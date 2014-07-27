@@ -109,6 +109,8 @@ func reverseSingleImg(opt base.Option, profDir string) {
 				buf.WriteByte('-')
 			case 0:
 				buf.WriteByte('.')
+			case 99:
+				buf.WriteByte('#')
 			default:
 				buf.WriteByte(abv.EncodeStd[idx])
 			}

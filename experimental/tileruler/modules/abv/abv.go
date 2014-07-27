@@ -28,10 +28,156 @@ type Human struct {
 	MaxBand, MaxPos int // 0-based.
 }
 
+type WindowStat struct {
+	Desc          string
+	Variant       int // Non-default variant count.
+	VariantSum    int // Sum of variant values.
+	AvgVariantVal float32
+	Unrecognize   int
+}
+
+type Statistic struct {
+	WindowSize int
+	WindowStat
+	Windows map[int][]*WindowStat
+}
+
 var EncodeStd = []byte("CDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
+func Stat(name string, opt base.Option) (*Statistic, error) {
+	if !base.IsFile(name) {
+		return nil, fmt.Errorf("file(%s) does not exist or is not a file", name)
+	}
+
+	fr, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer fr.Close()
+
+	s := &Statistic{
+		WindowSize: opt.WindowSize,
+		WindowStat: WindowStat{
+			Desc: "band index " + base.ToStr(opt.EndBandIdx),
+		},
+		Windows: make(map[int][]*WindowStat, opt.EndBandIdx+1),
+	}
+	for i := range s.Windows {
+		s.Windows[i] = make([]*WindowStat, 0, 1000)
+	}
+
+	var bandIdx int    // Current band index.
+	var colIdx int     // Current column index.
+	var char uint8     // Current char.
+	var ws *WindowStat // Current window statistic.
+
+	var line []byte
+	buf := bufio.NewReader(fr)
+
+	// To skip header e.g.: "huFE71F3"
+	_, errRead := buf.ReadBytes(' ')
+	if errRead != nil {
+		return nil, errRead
+	}
+
+	// True for next thing read will be actual body not band index.
+	isInBody := false
+
+	for errRead != io.EOF {
+		line, errRead = buf.ReadBytes(' ')
+		line = bytes.TrimSpace(line)
+
+		if errRead != nil {
+			if errRead != io.EOF {
+				return nil, errRead
+			}
+		}
+		if len(line) == 0 {
+			isInBody = !isInBody
+			continue
+		}
+
+		if !isInBody {
+			bandIdx, err = base.HexStr2int(string(line))
+			if err != nil {
+				fmt.Println(string(line))
+				return nil, err
+			}
+
+			if bandIdx > opt.EndBandIdx {
+				break
+			}
+		} else {
+			for colIdx, char = range line {
+				if colIdx > 3999 {
+					colIdx--
+					break
+				}
+
+				if colIdx == 0 {
+					ws = &WindowStat{
+						Desc: fmt.Sprintf("%d-%d", 0, opt.WindowSize-1),
+					}
+				} else if colIdx%opt.WindowSize == 0 {
+					if ws.Variant > 0 {
+						ws.AvgVariantVal = float32(ws.VariantSum) / float32(ws.Variant)
+					}
+					s.Windows[bandIdx] = append(s.Windows[bandIdx], ws)
+					s.Unrecognize += ws.Unrecognize
+					s.Variant += ws.Variant
+					s.VariantSum += ws.VariantSum
+					ws = &WindowStat{
+						Desc: fmt.Sprintf("%d-%d", colIdx, colIdx+opt.WindowSize-1),
+					}
+				}
+
+				varIdx := -1
+				switch char {
+				case '-': // Not recognize.
+					ws.Unrecognize++
+					continue
+				case '#':
+					ws.Variant++
+					varIdx = 62
+				case '.': // Default variant.
+					varIdx = 1000
+				default:
+					ws.Variant++
+					// Non-default variant.
+					varIdx = bytes.IndexByte(EncodeStd, char)
+					if varIdx < 1 {
+						return nil, fmt.Errorf("Invalid version of variant[%s]: %s", line, string(char))
+					}
+				}
+				ws.VariantSum += varIdx
+			}
+
+			if colIdx%opt.WindowSize != 0 {
+				if ws.Variant > 0 {
+					ws.AvgVariantVal = float32(ws.VariantSum) / float32(ws.Variant)
+				}
+				ws.Desc = fmt.Sprintf("%d-%d", colIdx-colIdx%opt.WindowSize, colIdx)
+				s.Windows[bandIdx] = append(s.Windows[bandIdx], ws)
+				s.Unrecognize += ws.Unrecognize
+				s.Variant += ws.Variant
+				s.VariantSum += ws.VariantSum
+			}
+		}
+
+		isInBody = !isInBody
+	}
+
+	s.AvgVariantVal = float32(s.VariantSum) / float32(s.Variant)
+	return s, nil
+}
+
 // Parse parses a abv file based on given tile rules and returns all blocks.
-func Parse(name string, countOnly bool, r *base.Range, rules map[int]map[int]map[int]*rule.Rule) (*Human, error) {
+func Parse(
+	name string,
+	countOnly bool,
+	r *base.Range,
+	rules map[int]map[int]map[int]*rule.Rule) (*Human, error) {
+
 	if !base.IsFile(name) {
 		return nil, fmt.Errorf("file(%s) does not exist or is not a file", name)
 	}
@@ -45,6 +191,7 @@ func Parse(name string, countOnly bool, r *base.Range, rules map[int]map[int]map
 	h := new(Human)
 	h.Blocks = make(map[int]map[int]*Block)
 	h.BandLength = make(map[int]int)
+
 	var bandIdx int // Current band index.
 	var colIdx int  // Current column index.
 	var char uint8  // Current char.
@@ -100,8 +247,10 @@ func Parse(name string, countOnly bool, r *base.Range, rules map[int]map[int]map
 
 				varIdx := -1
 				switch char {
-				case '-', '#': // Not recognize or just skip.
+				case '-': // Not recognize.
 					continue
+				case '#':
+					varIdx = 99
 				case '.': // Default variant.
 					varIdx = 0
 				default:

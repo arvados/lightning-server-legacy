@@ -1,60 +1,8 @@
 package main
 
-// CompareAbvs compares 2 abv files with special treatments based on color map.
-func CompareAbvs(abvPath1, abvPath2 string) error {
-	// fr1, err := os.Open(abvPath1)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer fr1.Close()
-	// fr2, err := os.Open(abvPath2)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer fr2.Close()
-
-	// buf1 := bufio.NewReader(fr1)
-	// buf2 := bufio.NewReader(fr2)
-
-	// // Any character over the max variant index are treated the same color.
-	// maxVarIdx := len(varColors) - 1
-	// idx := 0
-	// for {
-	// 	c1, err1 := buf1.ReadByte()
-	// 	c2, err2 := buf2.ReadByte()
-
-	// 	if err1 != nil && err1 != io.EOF {
-	// 		return err1
-	// 	} else if err2 != nil && err2 != io.EOF {
-	// 		return err2
-	// 	}
-
-	// 	if err1 == nil && err2 == io.EOF {
-	// 		fmt.Printf("%s has more characters\n", abvPath1)
-	// 		return nil
-	// 	} else if err1 == io.EOF && err2 == nil {
-	// 		fmt.Printf("%s has more characters\n", abvPath2)
-	// 		return nil
-	// 	} else if err1 == io.EOF && err2 == io.EOF {
-	// 		break
-	// 	}
-
-	// 	idx++
-	// 	if c1 != c2 {
-	// 		i1 := bytes.IndexByte(abv.EncodeStd, c1)
-	// 		i2 := bytes.IndexByte(abv.EncodeStd, c2)
-	// 		if (i1 >= maxVarIdx && i2 >= maxVarIdx) ||
-	// 			(c1 == '#' || c2 == '#') {
-	// 			continue
-	// 		}
-	// 		fmt.Printf("In index %d, c1='%s' but c2='%s'\n", idx-1, string(c1), string(c2))
-	// 		return nil
-	// 	}
-	// }
-
-	// fmt.Println("Two abv files are prefect match!")
-	return nil
-}
+// var (
+// 	workNum = flag.Int("work-num", 10, "work chan buffer")
+// )
 
 // NOTE: not doing it for now, maybe next stage of server.
 // var rules map[int]map[int]map[int]*rule.Rule

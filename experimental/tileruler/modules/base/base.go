@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/curoverse/lightning/experimental/tileruler/modules/cli"
+	"github.com/curoverse/lightning/experimental/tileruler/modules/log"
 )
 
 type Mode int
@@ -36,6 +37,7 @@ type Option struct {
 	Force       bool
 	CountOnly   bool
 	ReversePath string
+	WindowSize  int
 }
 
 // ParseOption parses command arguments into Option sutrct.
@@ -56,11 +58,20 @@ func ParseOption(ctx *cli.Context) Option {
 		Force:       ctx.Bool("force"),
 		CountOnly:   ctx.Bool("count-only"),
 		ReversePath: ctx.String("reverse-path"),
+		WindowSize:  ctx.Int("size"),
+	}
+
+	switch {
+	case (opt.Mode == FULL_SIZE || opt.Mode == TRANSPARENT) && opt.BoxNum < 13:
+		log.Fatal("-box-num cannot be smaller than 13 in full size or transparent mode")
 	}
 	return opt
 }
 
-var Gray = image.NewUniform(color.RGBA{230, 230, 230, 255})
+var (
+	Gray      = image.NewUniform(color.RGBA{230, 230, 230, 255})
+	PoundGray = image.NewUniform(color.RGBA{230, 230, 231, 255}) // #
+)
 
 // Make large enough to store and being able to convert back to abv file.
 const DefaultVarColors = `255, 255, 255
@@ -81,7 +92,50 @@ const DefaultVarColors = `255, 255, 255
 0, 7, 255
 0, 8, 255
 0, 9, 255
-0, 10, 255`
+0, 10, 255
+0, 11, 255
+0, 12, 255
+0, 13, 255
+0, 14, 255
+0, 15, 255
+0, 16, 255
+0, 17, 255
+0, 18, 255
+0, 19, 255
+0, 20, 255
+0, 21, 255
+0, 22, 255
+0, 23, 255
+0, 24, 255
+0, 25, 255
+0, 26, 255
+0, 27, 255
+0, 28, 255
+0, 29, 255
+0, 30, 255
+0, 31, 255
+0, 32, 255
+0, 33, 255
+0, 34, 255
+0, 35, 255
+0, 36, 255
+0, 37, 255
+0, 38, 255
+0, 39, 255
+0, 40, 255
+0, 41, 255
+0, 42, 255
+0, 43, 255
+0, 44, 255
+0, 45, 255
+0, 46, 255
+0, 47, 255
+0, 48, 255
+0, 49, 255
+0, 50, 255
+0, 51, 255
+0, 52, 255
+0, 53, 255`
 
 var VarColors = make([]color.Color, 0, 20)
 
@@ -104,6 +158,13 @@ func GetVarColorIdx(c color.Color) int {
 			return i
 		}
 	}
+
+	// See if it's a pound gray.
+	vr, vg, vb, va = PoundGray.RGBA()
+	if r == vr && g == vg && b == vb && a == va {
+		return 99
+	}
+
 	return -2
 }
 

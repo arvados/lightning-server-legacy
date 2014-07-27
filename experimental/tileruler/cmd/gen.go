@@ -41,6 +41,15 @@ var CmdGen = cli.Command{
 func runGen(ctx *cli.Context) {
 	opt := setup(ctx)
 
+	switch {
+	case opt.SlotPixel < 1:
+		log.Fatal("-slot-pixel cannot be smaller than 1")
+	case opt.MaxColIdx < 1:
+		log.Fatal("-max-col cannot be smaller than 1")
+	case opt.Border < 1:
+		log.Fatal("-border cannot be smaller than 1")
+	}
+
 	names, err := base.GetFileListBySuffix(opt.AbvPath, ".abv")
 	if err != nil {
 		log.Fatal("Fail to get abv list: %v", err)
@@ -115,6 +124,7 @@ func saveImgFile(name string, m *image.RGBA) error {
 type AbvProfile struct {
 	Type      base.Mode `json:"type"`
 	Name      string    `json:"name"`
+	MaxCol    int       `json:"max_col"`
 	SlotPixel int       `json:"slot_pixel"`
 	BandLen   []int     `json:"band_len"`
 }
@@ -128,13 +138,17 @@ func getAbvImgName(opt base.Option, name string) string {
 
 func drawSingleSquare(opt base.Option, m *image.RGBA, idx, x, y int) {
 	// In case variant number is too large.
-	if idx >= len(base.VarColors) {
+	if idx >= len(base.VarColors) && idx < 99 {
 		idx = len(base.VarColors) - 1
 	}
 
 	for i := 0; i < opt.SlotPixel; i++ {
 		for j := 0; j < opt.SlotPixel; j++ {
-			m.Set(x*opt.SlotPixel+i, y*opt.SlotPixel+j, base.VarColors[idx])
+			if idx == 99 {
+				m.Set(x*opt.SlotPixel+i, y*opt.SlotPixel+j, base.PoundGray)
+			} else {
+				m.Set(x*opt.SlotPixel+i, y*opt.SlotPixel+j, base.VarColors[idx])
+			}
 		}
 	}
 }
@@ -170,6 +184,7 @@ func saveAbvImgProfile(opt base.Option, h *abv.Human) error {
 	ap := &AbvProfile{
 		Type:      base.SINGLE,
 		Name:      rawName,
+		MaxCol:    opt.MaxColIdx,
 		SlotPixel: opt.SlotPixel,
 	}
 
@@ -218,6 +233,7 @@ func generateSingleAbvImgs(opt base.Option, names []string) {
 		// Skip if existed.
 		if !opt.Force && base.IsExist(path.Join(
 			opt.ImgDir, getAbvImgName(opt, path.Base(name)))) {
+			log.Debug("Skip existed image, to regenerate use -force=1")
 			continue
 		}
 
@@ -254,13 +270,17 @@ type FullSizeProfile struct {
 
 func drawFullSizeSquare(opt base.Option, m *image.RGBA, idx, x, y int) {
 	// In case variant number is too large.
-	if idx >= len(base.VarColors) {
+	if idx >= len(base.VarColors) && idx < 99 {
 		idx = len(base.VarColors) - 1
 	}
 
 	for i := 0; i < opt.SlotPixel; i++ {
 		for j := 0; j < opt.SlotPixel; j++ {
-			m.Set(x+i, y+j, base.VarColors[idx])
+			if idx == 99 {
+				m.Set(x+i, y+j, base.PoundGray)
+			} else {
+				m.Set(x+i, y+j, base.VarColors[idx])
+			}
 		}
 	}
 }
@@ -408,7 +428,7 @@ func generateFullSizeImg(opt base.Option, names []string) {
 
 func drawTransparentSquare(opt base.Option, m *image.RGBA, idx, x, y int) {
 	// In case variant number is too large.
-	if idx >= len(base.VarColors) {
+	if idx < 0 || idx >= len(base.VarColors) {
 		idx = len(base.VarColors) - 1
 	}
 
