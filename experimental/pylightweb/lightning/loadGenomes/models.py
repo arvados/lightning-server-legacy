@@ -36,7 +36,7 @@ class Tile(models.Model):
 
     TODO: possible pointer to png
     """
-    tilename = models.PositiveIntegerField(primary_key=True) 
+    tilename = models.BigIntegerField(primary_key=True) 
     startTag = models.CharField(max_length=24)
     endTag = models.CharField(max_length=24)
     visualization = models.CommaSeparatedIntegerField(max_length=4, blank=True)
