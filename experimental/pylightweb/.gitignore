@@ -11,4 +11,5 @@ lightning/loadgenomes/hidefixtures
 lightning/loadgenomes/hide/*
 lightning/loadgenomes/hide
 lightning/loadgenomes/sql
-
+lightning/src/*
+lightning/src
