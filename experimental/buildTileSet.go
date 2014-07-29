@@ -40,6 +40,8 @@ import "runtime/pprof"
 import "./aux"
 import "./bioenv"
 
+import "crypto/md5"
+
 var CHR = []string{ "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",
                     "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20",
                     "chr21", "chr22", "chrX", "chrY", "chrM" }
@@ -54,6 +56,16 @@ type FastjInfo struct {
   bodyLineWidth int
   info map[string]interface{}
   build string
+}
+
+func uc( b byte ) byte {
+  if (b >= 0x61) && (b <= 0x7a) { return b-32 }
+  return b
+}
+
+func lc( b byte ) byte {
+  if (b >= 0x41) && (b <= 0x5a) { return b+32 }
+  return b
 }
 
 /* We're still thinking about fastj formats.  Current thinking (2014-05-07)
@@ -71,13 +83,44 @@ func printFastjElement( writerFastj *bufio.Writer,
                         bodyLineWidth int,
                         buildInfo string) {
 
+  var md5sum [16]byte;
+  tileseq := make( []byte, 0, 300 )
+
   str := fmt.Sprintf(">{ \"tileID\":\"%s\", ", tileID)
   writerFastj.WriteString( str )
+
+
+
+
+  //-------------------------
+
+
+  tileseq = append( tileseq, strings.ToUpper( string( chrFa[ tileStart: tileStart + tagLength] ) )... )
+  tileseq = append( tileseq, strings.ToLower( string( chrFa[ tileStart + tagLength: tileEnd - tagLength ]) )... )
+  tileseq = append( tileseq, strings.ToUpper( string( chrFa[ tileEnd - tagLength: tileEnd ] ) )... )
+
+  md5sum = md5.Sum( tileseq )
+
+  var str_md5sum [32]byte
+  for i:=0; i<16; i++ {
+    x := fmt.Sprintf("%02x", md5sum[i])
+    str_md5sum[2*i]   = x[0]
+    str_md5sum[2*i+1] = x[1]
+  }
+
+  str = fmt.Sprintf("\"md5sum\":\"%s\", ", str_md5sum)
+  writerFastj.WriteString( str )
+
+  //-------------------------
+
+
 
   m := 0
   offsetBeg, offsetEnd := tagLength, tagLength
   if leftEndStopFlag { offsetBeg = 0; m += tagLength }
   if rightEndStopFlag { offsetEnd = 0; m += tagLength }
+
+  _ = offsetBeg
 
   //str = fmt.Sprintf("\"locus\":[{ \"build\" : \"hg19 ")
   str = fmt.Sprintf("\"locus\":[{ \"build\" : \"%s ", buildInfo)
@@ -140,6 +183,7 @@ func printFastjElement( writerFastj *bufio.Writer,
 
   //---
 
+  /*
   bpCount := 0
 
   leftTag_b := make( []byte, tagLength )
@@ -190,6 +234,26 @@ func printFastjElement( writerFastj *bufio.Writer,
   }
 
   //---
+  */
+
+  bpCount := 0
+  for bpCount<tagLength {
+    if (bpCount>0) && ((bpCount%bodyLineWidth) == 0) { writerFastj.WriteString( "\n" ) }
+    writerFastj.WriteByte( uc( chrFa[ tileStart + bpCount ] ) )
+    bpCount++
+  }
+
+  for (tileStart+bpCount) < (tileEnd - tagLength) {
+    if (bpCount>0) && ((bpCount%bodyLineWidth) == 0) { writerFastj.WriteString( "\n" ) }
+    writerFastj.WriteByte( lc( chrFa[ tileStart + bpCount ] ) )
+    bpCount++
+  }
+
+  for (tileStart+bpCount) < tileEnd {
+    if (bpCount>0) && ((bpCount%bodyLineWidth) == 0) { writerFastj.WriteString( "\n" ) }
+    writerFastj.WriteByte( uc( chrFa[ tileStart + bpCount ] ) )
+    bpCount++
+  }
 
   writerFastj.WriteString("\n")
 
