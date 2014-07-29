@@ -44,7 +44,7 @@ class Tile(models.Model):
     
     def getTileString(self):
         """Displays hex indexing for tile """
-        strTilename = hex(self.tilename)[2:]
+        strTilename = hex(self.tilename)[2:-1]
         strTilename = strTilename.zfill(9)
         supertile = strTilename[:3]
         path = strTilename[3:5]
