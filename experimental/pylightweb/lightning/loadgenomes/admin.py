@@ -2,7 +2,7 @@ from django.contrib import admin
 from nested_inlines.admin import NestedModelAdmin, NestedTabularInline
 
 # We only want the annotations to be modifiable by the admin, not the tiles
-from loadGenomes.models import Tile, TileVariant, TileVarAnnotation, varLocusAnnotation, tileLocusAnnotation
+from loadgenomes.models import Tile, TileVariant, TileVarAnnotation, varLocusAnnotation, tileLocusAnnotation
 
 class AnnotationInLine(NestedTabularInline):
     model = TileVarAnnotation
@@ -24,8 +24,8 @@ class TileVarInLine(NestedTabularInline):
     extra = 0
     #Awesome thing would be to customize whether the tags are collapsed if the tags are actually different
     fieldsets = [
-        (None, {'fields':['tile', 'reference', 'hasGap', 'hasGapOnTag', 'length', 'populationSize', 'sequence']}),
-        ('Tags', {'fields':['startTag', 'endTag', 'md5sum'], 'classes': ['collapse']}),
+        (None, {'fields':['tile', 'reference', 'length', 'populationSize', 'md5sum', 'sequence']}),
+        ('Tags', {'fields':['startTag', 'endTag'], 'classes': ['collapse']}),
     ]
     inlines = [LocusInLine, AnnotationInLine,]
     can_delete=False

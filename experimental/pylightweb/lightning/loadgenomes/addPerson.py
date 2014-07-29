@@ -1,6 +1,6 @@
 #Add person to current database
 
-from loadGenomes.models import Tile, TileVariant, TileVarAnnotation
+from loadgenomes.models import Tile, TileVariant, TileVarAnnotation
 import json
 
 def addAnnotations(variant, annotations):
@@ -17,7 +17,7 @@ def addAnnotations(variant, annotations):
         if add:
             variant.annotations.create(annotationType=t, trusted=True, annotationText=annotation)
 
-with open('loadGenomes/chr1_band0_s0_e2300000_ext.fj', 'r') as f:
+with open('loadgenomes/chr1_band0_s0_e2300000_ext.fj', 'r') as f:
     #Now need to add
     # tilevar = [tilename, length, populationSize, startTag, endTag, sequence]
     tilevar = [0, 0, 0, '', '', '']

@@ -1,7 +1,7 @@
 from django.db import models
 
 #TODO: Possibly want to Add a model for Annotations that span tiles. I could also see this working as a function
-#TODO: Add lift-over information/function for Tile
+#TODO: Add lift-over information/function for Tile?
 #TODO: Consider adding pointer to png for Tile
 #TODO: Possibly add color variant is associated with for TileVariant
 
@@ -64,9 +64,6 @@ class TileVariant(models.Model):
 
     reference: (Boolean) is this the reference tile according to the reference genome
 
-    hasGap: (Boolean) contains at least one gap
-    hasGapOnTag: (Boolean) contains at least one gap on the tag
-
     length: Length of the tile in bases
 
     populationSize: number of people in the saved population who have this tile
@@ -83,8 +80,6 @@ class TileVariant(models.Model):
 
     tile = models.ForeignKey(Tile, related_name='variants')
     reference = models.BooleanField()
-    hasGap = models.BooleanField()
-    hasGapOnTag = models.BooleanField()
     length = models.PositiveIntegerField()
     populationSize = models.BigIntegerField()
     startTag = models.TextField(blank=True)

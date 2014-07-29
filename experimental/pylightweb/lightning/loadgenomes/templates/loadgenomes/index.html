@@ -2,7 +2,7 @@
 	<h1> Annotations to Review: </h1>
 	<ul>
 	{% for annotation in uncertain_list %}
-		<li><a href="{% url 'loadGenomes:review' annotation.id %}">{{ annotation }}</a></li>
+		<li><a href="{% url 'loadgenomes:review' annotation.id %}">{{ annotation }}</a></li>
 	{% endfor %}
 	</ul>
 {% else %}
@@ -13,7 +13,7 @@
 	<h2> Trusted annotations: </h2>
 	<ul>
 	{% for annotation in trusted_list %}
-		<li><a href="{% url 'loadGenomes:detail' annotation.id %}">{{ annotation }}</a></li>
+		<li><a href="{% url 'loadgenomes:detail' annotation.id %}">{{ annotation }}</a></li>
 	{% endfor %}
 	</ul>
 {% else %}
