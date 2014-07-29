@@ -20,7 +20,7 @@ const html = `{{define "T"}}
     </head>
     <body>
         <div style="padding-top:30px;">
-            By <a href="http://www.bigendian123.com/skoo.html" target="_blank">skoo</a>
+            By <a href="http://www.bigendian123.com/skoo.html" target="_blank">skoo</a>, file: {{.Name}}
         </div>
         <div style="padding-top:30px;"></div>
         {{.Canvas}}
@@ -79,6 +79,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		chart = ChartHandlers[prop.Name]
+		Args["Name"] = file
 
 		canvas := chart.Canvas("line", prop.Height, prop.Width)
 		Args["Canvas"] = canvas

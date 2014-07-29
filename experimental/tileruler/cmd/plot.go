@@ -9,11 +9,13 @@ var CmdPlot = cli.Command{
 	Name:   "plot",
 	Usage:  "run plot",
 	Action: runPlot,
-	Flags:  []cli.Flag{},
+	Flags: []cli.Flag{
+		cli.StringFlag{"http-port", "8000", "HTTP port"},
+	},
 }
 
 func runPlot(ctx *cli.Context) {
-	setup(ctx)
+	opt := setup(ctx)
 
-	plot.Start()
+	plot.Start(opt)
 }

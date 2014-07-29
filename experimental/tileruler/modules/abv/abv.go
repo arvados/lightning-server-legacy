@@ -140,7 +140,11 @@ func Stat(name string, opt base.Option) (*Statistic, error) {
 					ws.Variant++
 					varIdx = 62
 				case '.': // Default variant.
-					varIdx = 1000
+					if opt.Mode == 1 {
+						varIdx = 0
+					} else {
+						varIdx = 1000
+					}
 				default:
 					ws.Variant++
 					// Non-default variant.

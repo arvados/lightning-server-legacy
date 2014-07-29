@@ -38,6 +38,7 @@ type Option struct {
 	CountOnly   bool
 	ReversePath string
 	WindowSize  int
+	HttpPort    string
 }
 
 // ParseOption parses command arguments into Option sutrct.
@@ -59,10 +60,12 @@ func ParseOption(ctx *cli.Context) Option {
 		CountOnly:   ctx.Bool("count-only"),
 		ReversePath: ctx.String("reverse-path"),
 		WindowSize:  ctx.Int("size"),
+		HttpPort:    ctx.String("http-port"),
 	}
 
 	switch {
-	case (opt.Mode == FULL_SIZE || opt.Mode == TRANSPARENT) && opt.BoxNum < 13:
+	case ctx.Command.Name != "stat" &&
+		(opt.Mode == FULL_SIZE || opt.Mode == TRANSPARENT) && opt.BoxNum < 13:
 		log.Fatal("-box-num cannot be smaller than 13 in full size or transparent mode")
 	}
 	return opt
