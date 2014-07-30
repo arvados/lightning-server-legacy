@@ -42,7 +42,7 @@ type Statistic struct {
 	Windows map[int][]*WindowStat
 }
 
-var EncodeStd = []byte("CDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+var EncodeStd = []byte(".DEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
 func Stat(name string, opt base.Option) (*Statistic, error) {
 	if !base.IsFile(name) {

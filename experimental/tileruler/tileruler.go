@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	APP_VER = "0.2.4.0728"
+	APP_VER = "0.3.0.0729"
 )
 
 func init() {
@@ -29,6 +29,7 @@ func main() {
 		cmd.CmdCompare,
 		cmd.CmdStat,
 		cmd.CmdPlot,
+		cmd.CmdAbv,
 	}
 	app.Flags = append(app.Flags, []cli.Flag{
 		cli.BoolFlag{"noterm, n", "disable color output"},

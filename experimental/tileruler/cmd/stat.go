@@ -168,6 +168,8 @@ func getChr(name string) int {
 		return 23
 	case "Y":
 		return 24
+	case "M":
+		return 25
 	default:
 		num, _ := base.StrTo(chr).Int()
 		return num
@@ -245,7 +247,8 @@ func fastjChrStat(ctx *cli.Context) error {
 
 func getBand(name string) int {
 	name = path.Base(name)
-	band, _ := base.StrTo(name[9 : 9+strings.Index(name[9:], "_")]).Int()
+	start := strings.Index(name, "_") + 5
+	band, _ := base.StrTo(name[start : start+strings.Index(name[start:], "_")]).Int()
 	return band
 }
 
