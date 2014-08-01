@@ -144,6 +144,9 @@ func runAbv(ctx *cli.Context) {
 	for i, name := range names {
 		fmt.Println(i, name)
 		fjName := strings.TrimSuffix(name, ".lz4")
+		if ctx.GlobalBool("crunch") {
+			fjName = "/tmp/fastj/" + path.Base(fjName)
+		}
 		if !base.IsExist(fjName) {
 			_, stderr, err := base.ExecCmd(lz4, "-d", name, fjName)
 			if err != nil {
