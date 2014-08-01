@@ -1,4 +1,5 @@
 from django.db import models
+import string
 
 #TODO: Possibly want to Add a model for Annotations that span tiles. I could also see this working as a function
 #TODO: Add lift-over information/function for Tile?
@@ -23,8 +24,8 @@ class Tile(models.Model):
     This representation guarantees that the supertile, path, and tile ID
     will be present in any tile
 
-    startTag: start Tag (24 character limit)
-    endTag: end Tag (24 character limit)
+    start_tag: start Tag (24 character limit)
+    end_tag: end Tag (24 character limit)
 
     visualization: CommaSeparatedIntegerField, currently allowed to be blank
         because visualization indices can vary without the tile information varying.
@@ -37,8 +38,8 @@ class Tile(models.Model):
     TODO: possible pointer to png
     """
     tilename = models.BigIntegerField(primary_key=True) 
-    startTag = models.CharField(max_length=24)
-    endTag = models.CharField(max_length=24)
+    start_tag = models.CharField(max_length=24)
+    end_tag = models.CharField(max_length=24)
     visualization = models.CommaSeparatedIntegerField(max_length=4, blank=True)
     created = models.DateField(auto_now_add=True)
     
@@ -49,7 +50,7 @@ class Tile(models.Model):
         supertile = strTilename[:3]
         path = strTilename[3:5]
         tile = strTilename[5:]
-        return supertile + "." + path + "." + tile + ".00"
+        return string.join([supertile, path, tile, "xxx"], ".")
     getTileString.short_description='Tile Name'
     def __unicode__(self):
         return self.getTileString()
@@ -58,60 +59,80 @@ class Tile(models.Model):
 
 class TileVariant(models.Model):
     """
-    Implements a TileVariant. Each Tile can have many TileVariants. The reference tile is also termed a TileVariant
+    Implements a TileVariant. Each Tile can have many TileVariants. A reference tile is also a TileVariant
 
-    tile: The parent tile
+    Values in database:
+        tile_variant_name (bigint; primary key):Includes the parent tile name to ensure uniqueness.
+            xxx.xx.xxxx.xxx. Last three digits indicate the TileVariant value.
+            The reference tile has a TileVariant value equal to 000.
+        tile (bigint; foreignkey): The parent tile
+        length (int; positive): Length of the TileVariant in bases
+        population_size (bigint): Number of people in the saved population who have this TileVariant
+        md5sum (charfield(40)): The hash for the TileVariant sequence
+        last_modified(datefield): The last day the TileVariant was modified
+        sequence (textfield): The sequence of the TileVariant
+        start_tag (textfield): the start tag of the TileVariant if the start tag varies from tile.start_tag
+        end_tag (textfield): the end tag of the TileVariant if the end tag varies from tile.end_tag
 
-    reference: (Boolean) is this the reference tile according to the reference genome
-
-    length: Length of the tile in bases
-
-    populationSize: number of people in the saved population who have this tile
-
-    startTag: only present if the startTag varies from tile.startTag
-    endTag: only present if the endTag varies from tile.endTag
-
-    sequence: the sequence of the tile
-
-    md5sum: (CharField) the hash for the TileVariant
-    
-    TODO: color of visualization
+    Functions:
+        getString(): returns string: human readable tile variant name
+        isReference(): returns boolean: True if the variant is the reference variant.
+            Depends on tile_variant_name (check if variant is equal to 000)
+        getPosition(): returns string: index of self in the list of all tile variants for
+            self.tile (sorted by population_size)
+        isDefault(): returns boolean: True if the variant is the default for the population.
+            Depends on population_size comparison with other TileVariants
+        TODO: color of visualization
     """
-
+    
+    tile_variant_name = models.BigIntegerField(primary_key=True)
     tile = models.ForeignKey(Tile, related_name='variants')
-    reference = models.BooleanField()
     length = models.PositiveIntegerField()
-    populationSize = models.BigIntegerField()
-    startTag = models.TextField(blank=True)
-    endTag = models.TextField(blank=True)
-    sequence = models.TextField()
+    population_size = models.BigIntegerField()
     md5sum = models.CharField(max_length=40)
-    lastModified = models.DateField(auto_now=True)
-    #color = models
+    last_modified = models.DateField(auto_now=True)
+    sequence = models.TextField()
+    start_tag = models.TextField(blank=True)
+    end_tag = models.TextField(blank=True)
+    
+    def getString(self):
+        """Displays hex indexing for tile variant"""
+        strTilename = hex(self.tile_variant_name)[2:-1]
+        strTilename = strTilename.zfill(12)
+        supertile = strTilename[:3]
+        path = strTilename[3:5]
+        tile = strTilename[5:9]
+        var = strTilename[9:]
+        return string.join([supertile, path, tile, var], ".")
+    getString.short_description='Variant Name'
+    def isReference(self):
+        strTilename = hex(self.tile_variant_name)[2:-1]
+        strTilename = strTilename.zfill(12)
+        var = strTilename[10:]
+        return var == '000'
     def getPosition(self):
-        allVariants = sorted(self.tile.variants.all(), key=lambda var: var.populationSize)
+        allVariants = sorted(self.tile.variants.all(), key=lambda var: var.population_size)
         return str(allVariants.index(self))
-    def getVarString(self):
-        #Currently assumes that Default will always be highly popualted
-        #Also assumes getPosition works...
-        if self.reference:
-            return self.tile.getTileString() + ": Reference"
-        else:
-            return self.tile.getTileString() + ": Variant " + self.getPosition()
+    def isDefault(self):
+        allVariants = sorted(self.tile.variants.all(), key=lambda var: var.population_size)
+        return allVariants.index(self) == 0
     def __unicode__(self):
-        return self.getVarString()
+        return self.getString()
 
 class TileVarAnnotation(models.Model):
     """Model of Annotations on TileVariants
     Currently one-to-many relation with TileVariant
-    
-    annotationType indicates what the annotation describes; TYPE_CHOICES is ordered
+
+    tile_variant
+    annotation_type indicates what the annotation describes; TYPE_CHOICES is ordered
         by proximity to the DNA sequence
     trusted indicates whether the annotation was generated by a user or the code.
         Could change trusted to a Field that supports choices to have a wider range
         of possible sources: the code that generated it vs people, etc
-    annotationText is the text field of the annotation. Currently, it is completely
+    annotation_text is the text field of the annotation. Currently, it is completely
         unorganized, which will slow queries down
+    created
+    last_modified
 
     """
     SNP_OR_INDEL = 'SNP_INDEL'
@@ -138,23 +159,23 @@ class TileVarAnnotation(models.Model):
         (GROSS_PHENOTYPE, 'Phenotype Annotation'),
         (OTHER, 'Other Type of Annotation'),
     )
-    tileVariant = models.ForeignKey(TileVariant, related_name='annotations')
-    annotationType = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    tile_variant = models.ForeignKey(TileVariant, related_name='annotations')
+    annotation_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     trusted = models.BooleanField()
-    annotationText = models.TextField()
+    annotation_text = models.TextField()
     created = models.DateField(auto_now_add=True)
-    lastModified = models.DateField(auto_now=True)
+    last_modified = models.DateField(auto_now=True)
     def __unicode__(self):
         typeIndex = [i for i,j in self.TYPE_CHOICES]
         humanReadable = self.TYPE_CHOICES[typeIndex.index(self.annotationType)][1]
-        return humanReadable + ' for ' +  self.tileVariant.getVarString()
+        return humanReadable + ' for ' +  self.tile_variant.getString()
 
 class locusAnnotation(models.Model):
     """Abstract Model of translations between assembly and tiles
     assembly is the integer mapping to the name of the assembly
     chromosome is the integer mapping to the name of the chromosome the tile is associated with
-    beginning is the integer for the beginning
-    ending is the integer for the ending
+    begin_int is the integer for the beginning
+    end_int is the integer for the ending
     chromosome_name is the text for the name of the chromosome if chromosome=26 (OTHER)
     """
     ASSEMBLY_16 = 16
@@ -225,9 +246,9 @@ class locusAnnotation(models.Model):
     )
     assembly= models.PositiveSmallIntegerField(choices=SUPPORTED_ASSEMBLY_CHOICES)
     chromosome = models.PositiveSmallIntegerField(choices=CHR_CHOICES)
-    beginning = models.PositiveIntegerField()
-    end = models.PositiveIntegerField()
-    chromosomeName = models.CharField(max_length=100)
+    begin_int = models.PositiveIntegerField()
+    end_int = models.PositiveIntegerField()
+    chromosome_name = models.CharField(max_length=100)
     class Meta:
         abstract = True
 

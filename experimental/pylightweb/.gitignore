@@ -10,6 +10,9 @@ lightning/loadgenomes/hidefixtures/*
 lightning/loadgenomes/hidefixtures
 lightning/loadgenomes/hide/*
 lightning/loadgenomes/hide
+lightning/loadgenomes/testfiles
+lightning/loadgenomes/testfiles/*
 lightning/loadgenomes/sql
 lightning/src/*
 lightning/src
+

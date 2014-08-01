@@ -1,6 +1,7 @@
 import json
 import datetime
 import gzip
+import string
 
 now = datetime.date.today()
 today = str(now.year) + "-" + str(now.month) + "-" + str(now.day)
@@ -37,24 +38,21 @@ CHR_CHOICES = {
 
 if ".fj.gz" in input_file:
     with gzip.open(input_file, 'rb') as f:
-        tiles_to_write = ['BEGIN;']
-        tilevars_to_write = ['BEGIN;']
-        annotations_to_write = ['BEGIN;']
+        tiles_to_write = []
+        tilevars_to_write = []
+        annotations_to_write = []
         i = 0
         j = 0
         ignoreDuplicate = False
         for line in f:
             if line[:2] == '>{' and i > 0 and not ignoreDuplicate:
-                #Append sql statements
-                tiles_to_write.append('INSERT INTO "loadgenomes_tile" ("tilename", "startTag", "endTag", "visualization", "created") VALUES (' + str(tile[0]) +
-                                      ", '" + tile[2] + "', '" + tile[3] + "', '', '" + today + "');\n")
-                tilevars_to_write.append('INSERT INTO "loadgenomes_tilevariant" ("tile_id", "reference", "length", "populationSize", ' +
-                                         '"startTag", "endTag", "sequence", "md5sum", "lastModified") VALUES (' + str(tile[0]) +
-                                         ', true, ' + str(tilevar[0]) + ", 0, '', '', '" + tilevar[1] + "', '" + tilevar[2] + "', '" + today + "');\n")
-                annotations_to_write.append('INSERT INTO "loadgenomes_varlocusannotation" ("assembly", "chromosome", "beginning", "end", "chromosomeName", ' +
-                                            '"tilevar_id") VALUES ('  + str(annotation[0]) + ', ' + str(annotation[1]) + ', ' +
-                                            str(annotation[2]) + ', ' + str(annotation[3]) + ", '', (select id from loadgenomes_tilevariant where md5sum = '" +
-                                            str(tilevar[2]) + "'));\n")
+                #Append csv statements
+                # for loadgenomes_tile: tilename, start_tag, end_tag, viaualization, created
+                # for loadgenomes_tilevariant: tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag
+                # for loadgenomes_varlocusannotation: tilevar_id, assembly, chromosome, begin_int, end_int, chromosome_name
+                tiles_to_write.append(string.join([str(tile[0]), tile[2], tile[3], '""', today + '\n'], sep=','))
+                tilevars_to_write.append(string.join([str(tilevar[0]), str(tile[0]), str(tilevar[1]), '0', tilevar[3], today, tilevar[2], '""', '""\n'], sep=','))
+                annotations_to_write.append(string.join([str(tilevar[0]), str(annotation[0]), str(annotation[1]), str(annotation[2]), str(annotation[3]), '""\n'], sep=','))
             if line[:2] == '>{':
                 ignoreDuplicate = False
                 j = 0
@@ -67,8 +65,9 @@ if ".fj.gz" in input_file:
                 band, path, tile, variant = tilename.split('.')
                 tile = tile.zfill(4)
                 tilename = int(band+path+tile, 16)
+                tilevarname = int(band+path+tile+'000', 16)
                 tile = [tilename, 19, str(test[u'startTag']), str(test[u'endTag'])]
-                tilevar = [test[u'n'], '']
+                tilevar = [tilevarname, test[u'n'], '']
                 try:
                     tilevar.append(str(test[u'md5sum']))
                 except KeyError:
@@ -95,17 +94,14 @@ if ".fj.gz" in input_file:
             elif line != '\n' and not ignoreDuplicate:
                 j += 1
                 if j < 20000:
-                    tilevar[1] += line.strip()
+                    tilevar[2] += line.strip()
                 elif j == 20000:
                     print "Tile was too long to reasonably store in memory"
-                    tilevar[1] += " ERROR: READ IS TOO LONG TO REASONABLY STORE IN MEMORY "
+                    tilevar[2] += " ERROR: READ IS TOO LONG TO REASONABLY STORE IN MEMORY "
 
-tiles_to_write.append('COMMIT;')
-tilevars_to_write.append('COMMIT;')
-annotations_to_write.append('COMMIT;')
-with open('hide/tile.sql', 'w') as f:
+with open('hide/tile.csv', 'w') as f:
     f.writelines(tiles_to_write)
-with open('hide/tilevariant.sql', 'w') as f:
+with open('hide/tilevariant.csv', 'w') as f:
     f.writelines(tilevars_to_write)
-with open('hide/varlocusannotation.sql', 'w') as f:
+with open('hide/varlocusannotation.csv', 'w') as f:
     f.writelines(annotations_to_write)
