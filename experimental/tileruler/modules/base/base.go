@@ -39,8 +39,10 @@ type Option struct {
 	ReversePath string
 	WindowSize  int
 	HttpPort    string
+	Human       string
 	FastjPath   string
 	RefLibPath  string
+	CountGap    bool
 }
 
 // ParseOption parses command arguments into Option sutrct.
@@ -63,8 +65,10 @@ func ParseOption(ctx *cli.Context) Option {
 		ReversePath: ctx.String("reverse-path"),
 		WindowSize:  ctx.Int("size"),
 		HttpPort:    ctx.String("http-port"),
+		Human:       ctx.String("human"),
 		FastjPath:   ctx.String("fastj-path"),
 		RefLibPath:  ctx.String("lib-path"),
+		CountGap:    ctx.Bool("count-gap"),
 	}
 
 	switch {

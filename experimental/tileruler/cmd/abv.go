@@ -22,8 +22,10 @@ var CmdAbv = cli.Command{
 	Usage:  "generate abv files from fastj",
 	Action: runAbv,
 	Flags: []cli.Flag{
+		cli.StringFlag{"human", "", "human name"},
 		cli.StringFlag{"fastj-path", "fastj/hu011C57/fj.fill", "path to fastj file(s)"},
 		cli.StringFlag{"lib-path", "fastj/tile_md5sum_hu154_sort.csv.gz", "path to fastj file(s)"},
+		cli.BoolFlag{"count-gap", "count gaps as no-call"},
 	},
 }
 
@@ -117,13 +119,13 @@ func runAbv(ctx *cli.Context) {
 		defer glr.Close()
 		libReaders[phase] = bufio.NewReader(glr)
 
-		humanName := "hu011C57"
-		os.MkdirAll(path.Dir("abvs/"+humanName+"_"+phases[phase]+".abv"), os.ModePerm)
-		outputs[phase], err = os.Create("abvs/" + humanName + "_" + phases[phase] + ".abv")
+		abvPath := "abvs/" + opt.Human + "_" + phases[phase] + ".abv"
+		os.MkdirAll(path.Dir(abvPath), os.ModePerm)
+		outputs[phase], err = os.Create(abvPath)
 		if err != nil {
-			log.Fatal("Fail to create abv file(%s): %v", "abvs/"+humanName+"_"+phases[phase]+".abv", err)
+			log.Fatal("Fail to create abv file(%s): %v", abvPath, err)
 		}
-		outputs[phase].WriteString(humanName)
+		outputs[phase].WriteString(opt.Human)
 		defer outputs[phase].Close()
 	}
 
@@ -183,7 +185,6 @@ func runAbv(ctx *cli.Context) {
 			// fmt.Println(band, pos, ":", cacheBands[phase], cachePoss[phase])
 			if band != cacheBands[phase] || pos != cachePoss[phase] || len(cacheInfos[phase]) > 0 {
 				if pos == 0 {
-					// fmt.Scanln()
 					outputs[phase].WriteString(" ")
 					outputs[phase].Write([]byte(base.Int2HexStr(band)))
 					outputs[phase].WriteString(" ")
@@ -192,15 +193,20 @@ func runAbv(ctx *cli.Context) {
 			}
 
 			var ch uint8
-			md5 := string(line[44:76])
-			if rank, ok := m[md5]; ok {
-				if rank >= len(abv.EncodeStd) {
-					ch = '#'
-				} else {
-					ch = abv.EncodeStd[rank]
-				}
-			} else {
+
+			if opt.CountGap && bytes.Index(line, []byte("GAP")) > -1 {
 				ch = '-'
+			} else {
+				md5 := string(line[44:76])
+				if rank, ok := m[md5]; ok {
+					if rank >= len(abv.EncodeStd) {
+						ch = '#'
+					} else {
+						ch = abv.EncodeStd[rank]
+					}
+				} else {
+					ch = '-'
+				}
 			}
 			// fmt.Println(string(ch))
 			outputs[phase].Write([]byte{ch})
