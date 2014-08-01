@@ -136,11 +136,15 @@ func runAbv(ctx *cli.Context) {
 	}
 	sort.Sort(FastjNames(names))
 
+	lz4 := "lz4"
+	if ctx.Bool("crunch") {
+		lz4 = "/tmp/crunch-src/crunch_scripts/lz4"
+	}
 	for i, name := range names {
 		fmt.Println(i, name)
 		fjName := strings.TrimSuffix(name, ".lz4")
 		if !base.IsExist(fjName) {
-			_, stderr, err := base.ExecCmd("lz4", "-d", name, fjName)
+			_, stderr, err := base.ExecCmd(lz4, "-d", name, fjName)
 			if err != nil {
 				log.Fatal("Fail to lz4 file(%s): %v", name, stderr)
 			}

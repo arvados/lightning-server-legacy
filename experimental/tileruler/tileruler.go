@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	APP_VER = "0.3.1.0730"
+	APP_VER = "0.3.2.0801"
 )
 
 func init() {
@@ -33,6 +33,7 @@ func main() {
 	}
 	app.Flags = append(app.Flags, []cli.Flag{
 		cli.BoolFlag{"noterm, n", "disable color output"},
+		cli.BoolFlag{"crunch, c", "crunch job mode"},
 	}...)
 	app.Run(os.Args)
 }
