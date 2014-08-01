@@ -36,6 +36,9 @@ func Print(level int, format string, args ...interface{}) {
 		fmt.Printf("%s %s [%s] %s\n",
 			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
 			fmt.Sprintf(format, args...))
+		if level == FATAL {
+			os.Exit(1)
+		}
 		return
 	}
 
