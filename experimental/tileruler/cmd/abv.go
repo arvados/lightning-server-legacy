@@ -225,5 +225,6 @@ func runAbv(ctx *cli.Context) {
 			// fmt.Scanln()
 		}
 		fr.Close()
+		os.Remove(name)
 	}
 }
