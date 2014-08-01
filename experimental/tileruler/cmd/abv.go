@@ -137,7 +137,7 @@ func runAbv(ctx *cli.Context) {
 	sort.Sort(FastjNames(names))
 
 	lz4 := "lz4"
-	if ctx.Bool("crunch") {
+	if ctx.GlobalBool("crunch") {
 		log.Info("Crunch mode enabled")
 		lz4 = "/tmp/crunch-src/crunch_scripts/lz4"
 	}
