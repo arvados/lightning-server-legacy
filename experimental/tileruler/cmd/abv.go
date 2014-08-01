@@ -138,6 +138,7 @@ func runAbv(ctx *cli.Context) {
 
 	lz4 := "lz4"
 	if ctx.Bool("crunch") {
+		log.Info("Crunch mode enabled")
 		lz4 = "/tmp/crunch-src/crunch_scripts/lz4"
 	}
 	for i, name := range names {
@@ -146,7 +147,7 @@ func runAbv(ctx *cli.Context) {
 		if !base.IsExist(fjName) {
 			_, stderr, err := base.ExecCmd(lz4, "-d", name, fjName)
 			if err != nil {
-				log.Fatal("Fail to lz4 file(%s): %v", name, stderr)
+				log.Fatal("Fail to lz4 file(%s): %v, %v", name, err, stderr)
 			}
 		}
 		name = fjName
