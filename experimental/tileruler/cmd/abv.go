@@ -145,6 +145,7 @@ func runAbv(ctx *cli.Context) {
 		fmt.Println(i, name)
 		fjName := strings.TrimSuffix(name, ".lz4")
 		if ctx.GlobalBool("crunch") {
+			os.MkdirAll("/tmp/fastj/", os.ModePerm)
 			fjName = "/tmp/fastj/" + path.Base(fjName)
 		}
 		if !base.IsExist(fjName) {
