@@ -159,7 +159,7 @@ import "strconv"
 import "strings"
 import "time"
 
-import _ "bufio"
+import "bufio"
 
 import "sort"
 import "encoding/json"
@@ -174,6 +174,10 @@ import "crypto/md5"
 import "./recache"
 import "./tile"
 import "./bioenv"
+
+//var gOutputWriter bioenv.BioEnvHandle
+var gBioEnvWriter bioenv.BioEnvHandle
+var gOutputWriter *bufio.Writer
 
 
 var gDebugFlag bool = false
@@ -320,8 +324,8 @@ func init() {
   g_chromFileName = flag.String( "c", "", "Input chromosome Fasta file")
   flag.StringVar( g_chromFileName, "fasta-chromosome", "", "Input chromosome Fasta file")
 
-  g_outputFastjFileName = flag.String( "o", "", "Output FastJ file")
-  flag.StringVar( g_outputFastjFileName, "output-fastj", "", "Output FastJ file")
+  g_outputFastjFileName = flag.String( "o", "-", "Output FastJ file")
+  flag.StringVar( g_outputFastjFileName, "output-fastj", "-", "Output FastJ file")
 
   g_variantPolicy = flag.String( "P", gVariantPolicy, "Variant policy (one of 'REPORTED' - as reported in gff, 'HETA' - all het var. go to first allele, 'RANDOM' - choose random allele)")
   flag.StringVar( g_variantPolicy, "variant-policy", gVariantPolicy, "Variant policy (one of 'REPORTED' - as reported in gff, 'HETA' - all het var. go to first allele, 'RANDOM' - choose random allele)")
@@ -378,11 +382,11 @@ func init() {
     os.Exit(2)
   }
 
-  if len(*g_outputFastjFileName)==0 {
-    fmt.Fprintf( os.Stderr, "Provide output FastJ file\n")
-    flag.PrintDefaults()
-    os.Exit(2)
-  }
+  var err error
+  gBioEnvWriter,err = bioenv.CreateWriter( *g_outputFastjFileName )
+  if err != nil { panic(err) }
+
+  gOutputWriter = gBioEnvWriter.Writer
 
 }
 
@@ -481,45 +485,53 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   f := strings.SplitN( baseTileId, ".", -1 )
   newTileId := fmt.Sprintf("%s.%s.%04s.000", f[0], f[1], f[2] )
 
-  fmt.Printf("> { ")
-  //fmt.Printf("\"tileID\" : \"%s.%s\"", baseTileId, "000" )
-  fmt.Printf("\"tileID\" : \"%s\"", newTileId )
+  //fmt.Printf("> { ")
+  //fmt.Printf("\"tileID\" : \"%s\"", newTileId )
+
+  gOutputWriter.WriteString("> { ")
+  gOutputWriter.WriteString( fmt.Sprintf("\"tileID\" : \"%s\"", newTileId ) )
+
 
   gss.md5sum = md5.Sum( gss.gffCurSeq )
-  fmt.Printf(", \"md5sum\":\"")
-  for i:=0; i<len(gss.md5sum); i++ {
-    fmt.Printf("%02x", gss.md5sum[i])
-  }
-  fmt.Printf("\"")
 
-  fmt.Printf(", \"locus\":[{\"build\":\"%s\"}]", header.Locus[0]["build"] )
-  fmt.Printf(", \"n\":%d", len(gss.gffCurSeq) )
-  fmt.Printf(", \"copy\":%d", 0 )
-  fmt.Printf(", \"startSeq\":\"%s\"", gss.gffLeftTagSeq)
-  fmt.Printf(", \"endSeq\":\"%s\""  , gss.gffRightTagSeq)
-  fmt.Printf(", \"startTag\":\"%s\"", refTcc.StartTag )
-  fmt.Printf(", \"endTag\":\"%s\""  , refTcc.EndTag )
+  gOutputWriter.WriteString(", \"md5sum\":\"")
+
+  for i:=0; i<len(gss.md5sum); i++ {
+
+    gOutputWriter.WriteString( fmt.Sprintf("%02x", gss.md5sum[i]) )
+
+  }
+
+  gOutputWriter.WriteString("\"")
+
+  gOutputWriter.WriteString( fmt.Sprintf(", \"locus\":[{\"build\":\"%s\"}]", header.Locus[0]["build"] ) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"n\":%d", len(gss.gffCurSeq) ) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"copy\":%d", 0 ) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"startSeq\":\"%s\"", gss.gffLeftTagSeq) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"endSeq\":\"%s\""  , gss.gffRightTagSeq) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"startTag\":\"%s\"", refTcc.StartTag ) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"endTag\":\"%s\""  , refTcc.EndTag ) )
 
   gss.notes = append( gss.notes, fmt.Sprintf("Phase (%s) %s", *g_variantPolicy, gss.phase ) )
 
   if len(gss.notes) > 0 {
-    fmt.Printf(", \"notes\":[")
+    gOutputWriter.WriteString(", \"notes\":[")
     for i:=0; i<len(gss.notes); i++ {
-      if i>0 { fmt.Printf(", ") }
-      fmt.Printf("\"%s\"", gss.notes[i])
+      if i>0 { gOutputWriter.WriteString(", ") }
+      gOutputWriter.WriteString( fmt.Sprintf("\"%s\"", gss.notes[i]) )
     }
-    fmt.Printf("]")
+    gOutputWriter.WriteString("]")
   }
 
-  fmt.Printf("}\n")
+  gOutputWriter.WriteString("}\n")
 
 
   for i:=0; i<len(gss.gffCurSeq); i+=50 {
     e := i+50
     if (i+50) > len(gss.gffCurSeq) { e = len(gss.gffCurSeq) }
-    fmt.Printf("%s\n",  gss.gffCurSeq[i:e] )
+    gOutputWriter.WriteString( fmt.Sprintf("%s\n",  gss.gffCurSeq[i:e] ) )
   }
-  fmt.Printf("\n\n")
+  gOutputWriter.WriteString("\n\n")
 
 
 }
@@ -1078,14 +1090,15 @@ func main() {
   gffFn := *g_gffFileName
   fastjFn := *g_fastjFileName
   chromFaFn := *g_chromFileName
-  outFastjFn := *g_outputFastjFileName
+  //outFastjFn := *g_outputFastjFileName
   gNoteLine := *g_notes
 
-  fastjWriter, err := bioenv.CreateWriter( *g_outputFastjFileName )
-  if err!=nil { panic( fmt.Sprintf("%s: %s", *g_outputFastjFileName, err) ) }
-  defer func() { fastjWriter.Flush(); fastjWriter.Close() }()
+  //fastjWriter, err := bioenv.CreateWriter( *g_outputFastjFileName )
+  //if err!=nil { panic( fmt.Sprintf("%s: %s", *g_outputFastjFileName, err) ) }
+  //defer func() { fastjWriter.Flush(); fastjWriter.Close() }()
 
-  gDebugString = fmt.Sprintf( "%s %s %s %s %s", gffFn, fastjFn, chromFaFn, outFastjFn, gNoteLine )
+  //gDebugString = fmt.Sprintf( "%s %s %s %s %s", gffFn, fastjFn, chromFaFn, outFastjFn, gNoteLine )
+  gDebugString = fmt.Sprintf( "%s %s %s %s %s", gffFn, fastjFn, chromFaFn, *g_outputFastjFileName, gNoteLine )
 
 
   //-----------------------------
@@ -1380,5 +1393,8 @@ func main() {
 
   gss0.AddTile( finalTileSet, referenceTileSet )
   gss1.AddTile( finalTileSet, referenceTileSet )
+
+  gBioEnvWriter.Flush()
+  gBioEnvWriter.Close()
 
 }
