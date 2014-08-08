@@ -145,6 +145,7 @@ class TileVarAnnotation(models.Model):
     HISTONE = 'HIST'
     CHROMATIN_INFORMATION = 'CHROMATIN'
     GROSS_PHENOTYPE = 'PHEN'
+    DATABASE = 'DATABASE'
     OTHER = 'OTHER'
     TYPE_CHOICES = (
         (SNP_OR_INDEL, 'SNP or Insert/Deletion Annotation'),
@@ -157,6 +158,7 @@ class TileVarAnnotation(models.Model):
         (HISTONE, 'Histone modification Annotation'),
         (CHROMATIN_INFORMATION, 'Chromatin Annotation'),
         (GROSS_PHENOTYPE, 'Phenotype Annotation'),
+        (DATABASE, 'Database Annotation'),
         (OTHER, 'Other Type of Annotation'),
     )
     tile_variant = models.ForeignKey(TileVariant, related_name='annotations')
@@ -167,7 +169,7 @@ class TileVarAnnotation(models.Model):
     last_modified = models.DateField(auto_now=True)
     def __unicode__(self):
         typeIndex = [i for i,j in self.TYPE_CHOICES]
-        humanReadable = self.TYPE_CHOICES[typeIndex.index(self.annotationType)][1]
+        humanReadable = self.TYPE_CHOICES[typeIndex.index(self.annotation_type)][1]
         return humanReadable + ' for ' +  self.tile_variant.getString()
 
 class locusAnnotation(models.Model):
