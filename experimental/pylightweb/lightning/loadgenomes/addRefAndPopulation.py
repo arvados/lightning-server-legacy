@@ -49,7 +49,7 @@ def manipulateList(inpList):
 now = datetime.date.today()
 today = str(now.year) + "-" + str(now.month) + "-" + str(now.day)
 
-input_file = 'chr10_band0_s0_e3000000.fj'
+input_file = 'entire.fj'
 
 CHR_CHOICES = {
     'chr1': 1,
@@ -79,6 +79,7 @@ CHR_CHOICES = {
     'chrM': 25,
 }
 curr_tilevars = {}
+tiles_to_write = []
 tilevars_to_write = []
 loci_to_write = []
 annotations_to_write = []
@@ -92,13 +93,18 @@ with open(input_file, 'r') as f:
         if (line[:2] == '>{' or line[:3] == '> {') and i > 0:
             #Append csv statements
             # NOTE: The population_size is going to be twice the number of humans
+            # for loadgenomes_tile: tilename, start_tag, end_tag, visualization, created
             # for loadgenomes_tilevariant: tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag
             # for loadgenomes_varlocusannotation: tilevar_id, assembly, chromosome, begin_int, end_int, chromosome_name
             # for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, trusted, annotation_text
             write_new = True
+            is_ref = False
             tile = toSaveData['tilename']
+            #If we are still processing the reference genome, not all tilenames will be loaded yet
             if tile not in curr_tilevars:
                 curr_tilevars[tile] = [len(tilevars_to_write)]
+                is_ref = True
+            #At least one tile with that tilename exists. Check if we already have it
             else:
                 poss_tile_indices = curr_tilevars[tile]
                 for index in poss_tile_indices:
@@ -113,8 +119,10 @@ with open(input_file, 'r') as f:
                 tilevarname = int(tile+varname, 16)
                 tile = int(tile, 16)
                 annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, today)
+                if is_ref:
+                    tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], "", today])
                 tilevars_to_write.append([tilevarname, tile, toSaveData['length'], population_incr, toSaveData['md5sum'], today, toSaveData['sequence'],
-                                          toSaveData['start_tag'], toSaveData['end_tag']])
+                                          toSaveData['start_seq'], toSaveData['end_seq']])
                 loci_to_write.append([tilevarname, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
                                       toSaveData['locus_end'], toSaveData['chrom_name']])
                 annotations_to_write.extend(annotations)
@@ -128,14 +136,16 @@ with open(input_file, 'r') as f:
             band, path, tile, variant = tilename.split('.')
             tile = tile.zfill(4)
             toSaveData['tilename'] = band+path+tile
-            toSaveData['start_tag'] = ""
-            toSaveData['end_tag'] = ""
+            toSaveData['start_tag'] = str(loadedData[u'startTag'])
+            toSaveData['end_tag'] = str(loadedData[u'endTag'])
+            toSaveData['start_seq'] = ""
+            toSaveData['end_seq'] = ""
             #Will only need to add 'start_tag' and 'end_tag' when using non-reference data which has SNPs on tags
             if u'startSeq' in loadedData:
                 if str(loadedData[u'startTag']).lower() != str(loadedData[u'startSeq']).lower():
-                    toSaveData['start_tag'] = str(loadedData[u'startSeq'])
+                    toSaveData['start_seq'] = str(loadedData[u'startSeq'])
                 if str(loadedData[u'endTag']).lower() != str(loadedData[u'endSeq']).lower():
-                    toSaveData['end_tag'] = str(loadedData[u'endSeq'])
+                    toSaveData['end_seq'] = str(loadedData[u'endSeq'])
             toSaveData['length'] = loadedData[u'n']
             toSaveData['sequence'] = ''
             toSaveData['md5sum'] = str(loadedData[u'md5sum'])
@@ -162,8 +172,8 @@ with open(input_file, 'r') as f:
                 toSaveData['sequence'] += " ERROR: READ IS TOO LONG TO REASONABLY STORE IN MEMORY "
 
 
-##with open('hide/tile.csv', 'wb') as f:
-##    f.writelines(tiles_to_write)
+with open('hide/tile.csv', 'wb') as f:
+    f.writelines(manipulateList(tiles_to_write))
 with open('hide/tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write))
 with open('hide/varlocusannotation.csv', 'w') as f:

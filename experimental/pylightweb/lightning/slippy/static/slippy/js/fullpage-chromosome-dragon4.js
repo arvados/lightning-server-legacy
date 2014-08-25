@@ -41,8 +41,10 @@ function getOffsets() {
 
 function beginDragon(datafile1) {
     d3.csv(datafile1, function (error, data) {
-        tilePixelSize = 15 * 2;
-        borderPixelSize = 2;
+		tilePixelSize = 16;
+		borderPixelSize = 0;        
+		//tilePixelSize = 15 * 2;
+        //borderPixelSize = 2;
 
         var offsets = getOffsets();
 //        console.log(offsets)

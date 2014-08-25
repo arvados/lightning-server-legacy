@@ -15,4 +15,6 @@ lightning/loadgenomes/testfiles/*
 lightning/loadgenomes/sql
 lightning/src/*
 lightning/src
+lightning/loadgenes/hide/*
+lightning/loadgenes/hide
 

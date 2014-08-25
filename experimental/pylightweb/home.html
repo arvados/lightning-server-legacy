@@ -61,26 +61,25 @@ jQuery("#searchForm").submit(function(event){
 	});
 	console.log(offsets[755]);
 
-	var beginsupertile = 742*(tilePixelSize+borderPixelSize) - borderPixelSize;
-	var endsupertile = 756*(tilePixelSize+borderPixelSize) - borderPixelSize;
-	var tile = parseInt(offsets[755])*(tilePixelSize+borderPixelSize) - borderPixelSize;
+	var begintile = 742*(tilePixelSize+borderPixelSize) - borderPixelSize;
+	var endtile = 756*(tilePixelSize+borderPixelSize) - borderPixelSize;
+	var supertile = (parseInt(offsets[755])+2)*(tilePixelSize+borderPixelSize) - borderPixelSize;
 
 	//Write mouseover text object
-	jQuery('#overlaytexts').append('<div id="TextAPOE" style="display:none;width:250px;background-color:#fff;"><p>ApoE Gene. The third from last tile contains ApoE4 - C130R variant, which increases the risk of Alzheimers. This variant is found in 20-25% of people.</p></div>');
+	jQuery('#overlaytexts').append('<div id="TextAPOE" style="display:none;width:250px;background-color:#fff;"><p>Testing... ApoE Gene. The third from last tile contains ApoE4 - C130R variant, which increases the risk of Alzheimers. This variant is found in 20-25% of people.</p></div>');
 
 	viewer.addOverlay({
 		id: "APOE",
-		px: beginsupertile,
-		py: tile,
-		width: endsupertile-beginsupertile,
+		px: begintile,
+		py: supertile,
+		width: endtile-begintile,
 		height: tilePixelSize,
 		className: 'highlight'
 	});
 	setTimeout(function() {
 		bindOneToolTip("#TextAPOE", "#APOE");
 	}, 2000);
-	// var genePos = new OpenSeadragon.Point(tile + borderPixelSize, beginsupertile+borderPixelSize);
-	var genePos = new OpenSeadragon.Point(beginsupertile + (756 - 742) * (tilePixelSize+borderPixelSize) / 2, tile);
+	var genePos = new OpenSeadragon.Point(begintile + (756 - 742) * (tilePixelSize+borderPixelSize) / 2, supertile);
 	genePos = imagingHelper.dataToLogicalPoint(genePos);
 	imagingHelper.centerAboutLogicalPoint(genePos);
 });
