@@ -45,7 +45,7 @@ class Tile(models.Model):
     
     def getTileString(self):
         """Displays hex indexing for tile """
-        strTilename = hex(self.tilename)[2:-1]
+        strTilename = hex(self.tilename)[2:-1] #-1 removes the L (from Long Integer)
         strTilename = strTilename.zfill(9)
         supertile = strTilename[:3]
         path = strTilename[3:5]
@@ -97,7 +97,7 @@ class TileVariant(models.Model):
     
     def getString(self):
         """Displays hex indexing for tile variant"""
-        strTilename = hex(self.tile_variant_name)[2:-1]
+        strTilename = hex(self.tile_variant_name)[2:-1] #-1 removes the L (from Long Integer)
         strTilename = strTilename.zfill(12)
         supertile = strTilename[:3]
         path = strTilename[3:5]
@@ -106,7 +106,7 @@ class TileVariant(models.Model):
         return string.join([supertile, path, tile, var], ".")
     getString.short_description='Variant Name'
     def isReference(self):
-        strTilename = hex(self.tile_variant_name)[2:-1]
+        strTilename = hex(self.tile_variant_name)[2:-1] #-1 removes the L (from Long Integer)
         strTilename = strTilename.zfill(12)
         var = strTilename[10:]
         return var == '000'
@@ -254,7 +254,7 @@ class locusAnnotation(models.Model):
     class Meta:
         abstract = True
 
-
+#YAY! These aren't necessary. We only need to add one locus annotation per tile position (not one per variant)
 class varLocusAnnotation(locusAnnotation):
     """Model of translations for a TileVariant
     locus_annotations is the related name for these types of annotations

@@ -6,13 +6,13 @@ from loadgenomes.models import Tile, TileVariant, TileVarAnnotation, varLocusAnn
 
 class AnnotationInLine(NestedTabularInline):
     model = TileVarAnnotation
-    extra = 2
-    can_delete=False
-
-class LocusInLine(NestedTabularInline):
-    model = varLocusAnnotation
     extra = 0
     can_delete=False
+
+##class LocusInLine(NestedTabularInline):
+##    model = varLocusAnnotation
+##    extra = 0
+##    can_delete=False
     
 class UpperLocusInLine(NestedTabularInline):
     model = tileLocusAnnotation
@@ -27,13 +27,14 @@ class TileVarInLine(NestedTabularInline):
         (None, {'fields':['length', 'population_size', 'md5sum', 'sequence']}),
         ('Tags', {'fields':['start_tag', 'end_tag'], 'classes': ['collapse']}),
     ]
-    inlines = [LocusInLine, AnnotationInLine,]
+    #inlines = [LocusInLine, AnnotationInLine,]
+    inlines = [AnnotationInLine,]
     can_delete=False
 
 class TileAdmin(NestedModelAdmin):
     list_display = ('getTileString', 'created')
     #search_fields = ['tilename']
-    inlines = [TileVarInLine,UpperLocusInLine,]
+    inlines = [UpperLocusInLine,TileVarInLine,]
     can_delete=False
     
 admin.site.register(Tile, TileAdmin)

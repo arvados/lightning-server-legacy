@@ -80,8 +80,8 @@ CHR_CHOICES = {
 }
 curr_tilevars = {}
 tiles_to_write = []
-tilevars_to_write = []
 loci_to_write = []
+tilevars_to_write = []
 annotations_to_write = []
 
 #Currently need to assume that ALL tiles in this band
@@ -121,10 +121,10 @@ with open(input_file, 'r') as f:
                 annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, today)
                 if is_ref:
                     tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], "", today])
+                    loci_to_write.append([tile, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
+                                          toSaveData['locus_end'], toSaveData['chrom_name']])
                 tilevars_to_write.append([tilevarname, tile, toSaveData['length'], population_incr, toSaveData['md5sum'], today, toSaveData['sequence'],
                                           toSaveData['start_seq'], toSaveData['end_seq']])
-                loci_to_write.append([tilevarname, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
-                                      toSaveData['locus_end'], toSaveData['chrom_name']])
                 annotations_to_write.extend(annotations)
         if (line[:2] == '>{' or line[:3] == '> {'):
             j = 0
@@ -176,7 +176,7 @@ with open('hide/tile.csv', 'wb') as f:
     f.writelines(manipulateList(tiles_to_write))
 with open('hide/tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write))
-with open('hide/varlocusannotation.csv', 'w') as f:
+with open('hide/tilelocusannotation.csv', 'w') as f:
     f.writelines(manipulateList(loci_to_write))
 with open('hide/tilevarannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
