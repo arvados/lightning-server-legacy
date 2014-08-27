@@ -41,6 +41,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'loadgenomes',
     'slippy',
+    'loadgenes',
 )
 
 MIDDLEWARE_CLASSES = (
