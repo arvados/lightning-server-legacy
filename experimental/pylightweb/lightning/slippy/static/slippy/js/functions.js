@@ -108,18 +108,18 @@ function addGeneAnnoation(gene, spath, sstep, epath, estep, tilePixelSize, borde
 		endoffset = Math.floor(estep/8000),
 		startpath = parseInt(offsets[spath]),
 		endpath = parseInt(offsets[epath]);
-	console.log(beginstep);
-	console.log(beginoffset);
-	console.log(endstep);
-	console.log(endoffset);
-	console.log(startpath);
-	console.log(endpath);
 	if (beginoffset == endoffset && startpath == endpath) {
+		console.log(beginstep);
+		console.log(endstep);
+		console.log(startpath);
 		beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
 		endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		pathcoor = (parseInt(offsets[startpath])+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
+		pathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
+		console.log(pathcoor);		
+		console.log(beginstepcoor);
+		console.log(endstepcoor);
 		//Write mouseover text object
-		var textToAppend = '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;"><p>{{ gene }} Gene.</p></div>');
+		var textToAppend = '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene.</p></div>');
 		jQuery('#overlaytexts').append(textToAppend);
 		viewer.addOverlay({
 			id: gene,
