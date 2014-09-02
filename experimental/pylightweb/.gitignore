@@ -6,6 +6,7 @@
 
 #Folders
 lightning/slippy/static/slippy/pngs/*
+lightning/slippy/static/slippy/pngs
 lightning/loadgenomes/hidefixtures/*
 lightning/loadgenomes/hidefixtures
 lightning/loadgenomes/hide/*
@@ -13,6 +14,8 @@ lightning/loadgenomes/hide
 lightning/loadgenomes/testfiles
 lightning/loadgenomes/testfiles/*
 lightning/loadgenomes/sql
+lightning/loadgenomes/csvhide/*
+lightning/loadgenomes/csvhide
 lightning/src/*
 lightning/src
 lightning/loadgenes/hide/*
