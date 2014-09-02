@@ -5,8 +5,9 @@ with open('offsets.txt', 'r') as f:
         toappend = ''
         nums = line.split(',')
         for i in nums:
-            s += int(i)
             toappend += str(s) + ','
+            s += int(i)
+        toappend += str(s)
         lines.append(toappend)
 
 with open('iter.txt', 'w') as f:

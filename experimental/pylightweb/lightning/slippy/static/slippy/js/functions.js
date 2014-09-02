@@ -34,7 +34,7 @@ function getOffsets(urlString) {
 	return offsets;
 }
 
-function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcString, prefixString) {
+function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcString, prefixString, offsetIterURL) {
     d3.csv(datafile1, function (error, data) {
         var offsets = getOffsets(offsetURL);
         var annotations = [];
@@ -79,7 +79,25 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
             {tracker: 'viewer', handler: 'clickHandler', hookHandler: onViewerClick}
         ]});
         function onViewerClick(event) {
-            //	event.preventDefaultAction = true;
+            event.preventDefaultAction = true;
+			var offsets = getOffsets(offsetIterURL);
+			var viewportPoint = viewer.viewport.pointFromPixel(event.position);
+  			var imagePoint = viewer.viewport.viewportToImageCoordinates(viewportPoint.x, viewportPoint.y);
+			var step = Math.floor((imagePoint.x + borderPixelSize)/(tilePixelSize+borderPixelSize));
+			var y = Math.floor((imagePoint.y + borderPixelSize)/(tilePixelSize+borderPixelSize));
+			if (step >= 0 && y >= 0){
+				var path = 0;
+				var path_y = offsets[path];
+				while (path_y < y){
+					path ++;
+					path_y = offsets[path];
+				}
+				if (path_y != y){
+					path --;
+					step += 8000*(y - offsets[path]);
+				}
+				console.log(step, path);
+			}
         }
         jQuery(function () {
             //Tooltips
@@ -99,8 +117,8 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
     });
 }
 
-function addGeneAnnoation(gene, spath, sstep, epath, estep, tilePixelSize, borderPixelSize, offsetStr) {
-	console.log(gene);
+function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, borderPixelSize, offsetStr) {
+	//console.log(gene);
 	var offsets = getOffsets(offsetStr),
 		beginstep = sstep % 8000,
 		beginoffset = Math.floor(sstep/8000),
@@ -109,15 +127,15 @@ function addGeneAnnoation(gene, spath, sstep, epath, estep, tilePixelSize, borde
 		startpath = parseInt(offsets[spath]),
 		endpath = parseInt(offsets[epath]);
 	if (beginoffset == endoffset && startpath == endpath) {
-		console.log(beginstep);
-		console.log(endstep);
-		console.log(startpath);
+		//console.log(beginstep);
+		//console.log(endstep);
+		//console.log(spath);
+		//console.log(beginoffset);
+
 		beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
 		endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
 		pathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		console.log(pathcoor);		
-		console.log(beginstepcoor);
-		console.log(endstepcoor);
+
 		//Write mouseover text object
 		var textToAppend = '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene.</p></div>');
 		jQuery('#overlaytexts').append(textToAppend);
@@ -138,3 +156,57 @@ function addGeneAnnoation(gene, spath, sstep, epath, estep, tilePixelSize, borde
 	}
 }
 
+function addAllGenes(geneArray, tilePixelSize, borderPixelSize, offsetStr){
+	var lpad = function(value, padding) {
+    	var zeroes = "0";
+    	for (var i = 0; i < padding; i++) { zeroes += "0"; }
+    	return (zeroes + value).slice(padding * -1);
+	};
+	var getTileCoor = function(CGF) {
+		strTilename = CGF.toString(16);
+		strTilename = lpad(strTilename, 9);
+		path = parseInt(strTilename.slice(0,3), 16);
+		version = parseInt(strTilename.slice(3,5), 16);
+		step = parseInt(strTilename.slice(5), 16)
+		return [path, version, step];
+	};
+	var annotations = [];
+	var textToAppend = '';
+	geneArray.forEach(function (g) {
+		console.log(g);
+		var	startCoor = getTileCoor(g.startCGF),
+			endCoor = getTileCoor(g.endCGF),
+			offsets = getOffsets(offsetStr),
+			beginstep = parseInt(startCoor[2]) % 8000,
+			beginoffset = Math.floor(parseInt(startCoor[2])/8000),
+			endstep = parseInt(endCoor[2]) % 8000,
+			endoffset = Math.floor(parseInt(endCoor[2])/8000),
+			startpath = parseInt(offsets[startCoor[0]]),
+			endpath = parseInt(offsets[endCoor[0]]),
+			gene = g.geneName;
+		if (beginoffset == endoffset && startpath == endpath) {
+			beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
+			endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
+			pathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
+			annotations.push(gene);
+			textToAppend += '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene.</p></div>');
+			viewer.addOverlay({
+				id: gene,
+				px: beginstepcoor,
+				py: pathcoor,
+				width: endstepcoor-beginstepcoor,
+				height: tilePixelSize,
+				className: 'highlight'
+			});
+		}
+	});
+	jQuery('#overlaytexts').append(textToAppend);
+	jQuery(function () {
+		setTimeout(bindtooltip, 2000);
+	});
+	function bindtooltip() {
+		annotations.forEach(function (gene) {
+			bindOneToolTip("#Text".concat(gene), "#".concat(gene));
+		});
+	}
+}

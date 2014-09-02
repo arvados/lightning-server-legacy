@@ -6,7 +6,7 @@ from django.template import RequestContext, loader
 from loadgenes.models import Gene
 
 def index(request):
-    return render(request, 'index.html', {})
+    return render(request, 'index.html', {'genes':Gene.objects.all()})
 
 def simplesearch(request):
     error_msg = "No GET data sent."
@@ -20,6 +20,8 @@ def simplesearch(request):
             context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep}
             return render(request, 'search.html', context)
         else:
-            error_msg = "No genes containing %s were found." % geneName
+            error_msg = 'No genes containing "%s" were found.' % geneName
     return HttpResponseServerError(error_msg)
 
+
+    
