@@ -23,15 +23,24 @@
 		opacity: 0.7;
 		background-color: transparent;
 	}
+	form {
+		display: inline;
+	}
 </style>
 
 <div id="toolbarDiv" class="toolbar">
 	<span style='float:right'>
-		<form id="searchForm" method="get"> Search Gene
+		<!--|
+		<form id="allGenes" method="get">
+			<input type="button" value="Load All Genes">
+		</form> 
+		-->
+		|
+		<form id="searchForm" method="get"> Search for Gene:
 			<input type="text" name="geneName" id="geneName">
 			<input type="submit" value="Search">
 		</form>
-	<span>
+	</span>
 </div>
 <div id="contentDiv" class="slippymap"></div>
 <div id="overlaytexts"></div>
@@ -55,9 +64,21 @@
     	content.css("height", 900); //hardcode 120px to accomidate toolbar and navbar
     	beginDragon("{% static 'slippy/TileNumSupertiles.csv' %}", tilePixelSize, borderPixelSize,
 					"{% static 'slippy/offsets.txt' %}", "{% static 'slippy/pngs/entire.dzi' %}",
-					"{% static 'slippy/js/openseadragon-images/' %}");
+					"{% static 'slippy/js/openseadragon-images/' %}", "{% static 'slippy/iter.txt' %}");
 		
 	});
+	/*var getAllGenes = function(){
+		var keepGoing = confirm("Loading all Genes takes time. Continue?");
+		if (keepGoing){
+			var geneArray = [
+//Note to self: need to add % for parser to recognize
+				{ for gene in genes }
+					{geneName:"{{ gene.gene_name }}",startCGF:{{ gene.startCGF }},endCGF:{{ gene.endCGF }}},
+				{ endfor }
+			];
+			addAllGenes(geneArray, tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}");
+		}
+	};*/
 	var searchGene = function(){
 		var geneName = jQuery("#geneName").val();
 		if (geneName != ""){
@@ -66,20 +87,21 @@
 			jQuery.ajax(args);
 		}
 		else {
-			//why did it fail?
+			alert("Enter a gene to search");
 		}
 		return false;
 	};
 	var done = function(res, status) {
 		if (status == "success") {
 			var param = res.responseText.replace(/\s/g, '').split(';');
-			addGeneAnnoation(param[0], parseInt(param[1]), parseInt(param[2]), parseInt(param[3]), parseInt(param[4]), tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}");
+			addGeneAnnotation(param[0], parseInt(param[1]), parseInt(param[2]), parseInt(param[3]), parseInt(param[4]), tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}");
 		}
 		else {
-			//why did it fail?
+			alert(res.responseText);
 		}
 	}
 	jQuery("#searchForm").submit(searchGene);
+	//jQuery("#allGenes").click(getAllGenes);
 </script>
 
 
