@@ -18,6 +18,7 @@ lightning/loadgenomes/csvhide/*
 lightning/loadgenomes/csvhide
 lightning/src/*
 lightning/src
+lightning/src/
 lightning/loadgenes/hide/*
 lightning/loadgenes/hide
 
