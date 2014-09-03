@@ -66,17 +66,18 @@
 					"{% static 'slippy/js/openseadragon-images/' %}", "{% static 'slippy/iter.txt' %}");
 		
 	});
-	var getAllGenes = function(){
+	/*var getAllGenes = function(){
 		var keepGoing = confirm("Loading all Genes takes time. Continue?");
 		if (keepGoing){
 			var geneArray = [
-				{% for gene in genes %}
+//Note to self: need to add % for parser to recognize
+				{ for gene in genes }
 					{geneName:"{{ gene.gene_name }}",startCGF:{{ gene.startCGF }},endCGF:{{ gene.endCGF }}},
-				{% endfor %}
+				{ endfor }
 			];
 			addAllGenes(geneArray, tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}");
 		}
-	};
+	};*/
 	var searchGene = function(){
 		var geneName = jQuery("#geneName").val();
 		if (geneName != ""){
@@ -99,7 +100,7 @@
 		}
 	}
 	jQuery("#searchForm").submit(searchGene);
-	jQuery("#allGenes").click(getAllGenes);
+	//jQuery("#allGenes").click(getAllGenes);
 </script>
 
 
