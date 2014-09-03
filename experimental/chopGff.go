@@ -48,13 +48,13 @@ func init() {
   benv.ProcessFlag()
 
   if len(*g_gffFileName)==0 {
-    fmt.Fprintf( os.Stderr, "Provide input gff file" )
+    fmt.Fprintf( os.Stderr, "Provide input gff file\n" )
     flag.PrintDefaults()
     os.Exit(2)
   }
 
   if len(*g_outBaseDir)==0 {
-    fmt.Fprintf( os.Stderr, "Provide output directory" )
+    fmt.Fprintf( os.Stderr, "Provide output directory\n" )
     flag.PrintDefaults()
     os.Exit(2)
   }
