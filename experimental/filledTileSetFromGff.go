@@ -564,15 +564,6 @@ func (gss *GffScanState) AdvanceState() {
 
   gss.nextTagStart = gss.startPos[ gss.startPosIndex ]
 
-  /*
-  gss.gapStat.Advance()
-  gss.snpStat.Advance()
-  gss.subStat.Advance()
-  gss.insStat.Advance()
-  gss.delStat.Advance()
-  */
-
-
 }
 
 
@@ -598,7 +589,6 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
 
     gapNote = fmt.Sprintf("gapOnTag %s %s %d %d GAP - %d", gRefGenome, gss.curChrom, gss.refStart+gss.refLen, refStartPos-1, gapLen)
 
-    //gss.gapStat.AddBody( gapLen )
   }
 
 
@@ -773,16 +763,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
           gss.carryOverNotes = append( gss.carryOverNotes, subNote )
         }
 
-        /*
-        if subType == "SNP" {
-          gss.snpStat.AddRight( gss.TagLen )
-          gss.snpStat.AddBody( refLenRemain - gss.TagLen )
-        } else if subType == "SUB"  {
-          gss.subStat.AddRight( gss.TagLen )
-          gss.subStat.AddBody( refLenRemain - gss.TagLen )
-        }
-        */
-
       } else {
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[ 0 : refLenRemain ]... )
 
@@ -792,15 +772,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
             subType, subvar[0:refLenRemain], gss.refLen, len(subvar[0:refLenRemain]))
           gss.carryOverNotes = append( gss.carryOverNotes, subNote )
         }
-
-        /*
-        if subType == "SNP" {
-          gss.snpStat.AddRight( refLenRemain )
-        } else if subType == "SUB"  {
-          gss.subStat.AddRight( refLenRemain )
-        }
-        */
-
 
       }
 
@@ -861,19 +832,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
         subType, subvar, t, dn)
       gss.carryOverNotes = append( gss.carryOverNotes, subNote )
     }
-
-
-
-    /*
-    if subType == "SNP" {
-      gss.snpStat.AddRight( gss.TagLen )
-      //gss.snpStat.AddBody( refLenRemain - gss.TagLen )
-    } else if subType == "SUB"  {
-      gss.subStat.AddRight( gss.TagLen )
-      //gss.subStat.AddBody( refLenRemain - gss.TagLen )
-    }
-    */
-
 
   }
 
@@ -1178,9 +1136,6 @@ func main() {
 
   line_no := -1
 
-
-  // STILL NEED TO PROCESS LAST TILE
-  //
 
   for gffReader.Scanner.Scan() {
     l := gffReader.Scanner.Text()
