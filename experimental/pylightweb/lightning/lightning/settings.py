@@ -17,20 +17,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-with open('/etc/lightning_key2.txt') as f:
-    SECRET_KEY = f.read().strip()
+SECRET_KEY = 'k_cj+a4ta2^j%jrhx6tjfs9u^6x!7-!0cq7f*c$-9s71qy9nxw'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-TEMPLATE_DEBUG = False
+TEMPLATE_DEBUG = True
 
 TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'templates')]
 
-ALLOWED_HOSTS = [
-    '.lightning-dev3.curoverse.com',
-    '.lightning-dev3.curoverse.com.',
-    ]
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -65,8 +61,7 @@ WSGI_APPLICATION = 'lightning.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
-with open('/etc/lightning_key.txt') as f:
-    DBPW = f.read().strip()
+DBPW = 'mypassword'
 
 DATABASES = {
     'default': {

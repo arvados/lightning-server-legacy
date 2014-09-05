@@ -4,13 +4,6 @@
 	.slippymap {
 		border: 3px solid black;
 	}
-	.navigator .highlight{
-		opacity: 0.4;
-		filter: alpha(opacity=40);
-		border: 2px solid #900;
-		outline: none;
-		background-color: #900;
-	}
 	.highlight{
 		opacity: 0.4;
 		filter: alpha(opacity=40);
@@ -18,67 +11,90 @@
 		outline: 10px auto #0A7EbE;
 		background-color: white;
 	}
+	.highlight.broken{
+		border: 1px solid #be4a0a;
+		outline: 10px auto #be4a0a;
+	}
 	.highlight:hover, .highlight:focus{
 		filter: alpha(opacity=70);
 		opacity: 0.7;
 		background-color: transparent;
 	}
-	form {
+	.navigator .highlight{
+		opacity: 0.4;
+		filter: alpha(opacity=40);
+		border: 2px solid #900;
+		outline: none;
+		background-color: #900;
+	}
+	.toolbarform {
 		display: inline;
+	}
+	#progressbar {
+		margin-top: 20px;
+	}
+	.progress-label {
+		font-weight: bold;
+		text-shadow: 1px 1px 0 #fff;
+	}
+	.ui-dialog-titlebar-close {
+		display: none;
+	}
+	 label {
+		display: block;
+	}
+	select {
+		width: 200px;
+	}
+	.overflow {
+		height: 200px;
 	}
 </style>
 
-<div id="toolbarDiv" class="toolbar">
-	<span style='float:right'>
-		<!--|
-		<form id="allGenes" method="get">
-			<input type="button" value="Load All Genes">
-		</form> 
-		-->
-		|
-		<form id="searchForm" method="get"> Search for Gene:
-			<input type="text" name="geneName" id="geneName">
-			<input type="submit" value="Search">
-		</form>
-	</span>
-</div>
-<div id="contentDiv" class="slippymap"></div>
-<div id="overlaytexts"></div>
+<link href="{% static 'slippy/js/jquery-ui-1.11.1.custom/jquery-ui.min.css' %}" rel="stylesheet" type="text/css">
+<link href="{% static 'slippy/js/jquery-ui-1.11.1.custom/jquery-ui.structure.min.css' %}" rel="stylesheet" type="text/css">
+<link href="{% static 'slippy/js/jquery-ui-1.11.1.custom/jquery-ui.theme.min.css' %}" rel="stylesheet" type="text/css">
 
 <script src="{% static 'slippy/js/openseadragon.min.js' %}"></script>
 <script src="{% static 'slippy/js/openseadragon-viewerinputhook.js' %}"></script>
 <script src="{% static 'slippy/js/openseadragon-imaginghelper.min.js' %}"></script>
 <script src="{% static 'slippy/js/jquery-1.10.1.min.js' %}"></script>
+<script src="{% static 'slippy/js/jquery-ui-1.11.1.custom/jquery-ui.min.js' %}"></script>
 <script src="{% static 'slippy/js/d3.min.js' %}"></script>
 <script src="{% static 'slippy/js/functions.js' %}"></script>
+<script src="{% static 'slippy/js/loading-genes-select.js' %}"></script>
+
+<div id="toolbarDiv" class="toolbar">
+	<span style='float:right'>
+	<form id="allGenes" class="toolbarform" method="get">
+		<select name="filter" id="filter">
+			<option value="" selected="selected">Select a group of genes to view:</option>
+			<option value="clinical">Clinically important genes</option>
+			{% for option in filters %}
+				<option value="{{option}}">{{option}}</option>
+			{% endfor %}
+		</select>
+	</form> 
+	<form id="searchForm" class="toolbarform" method="get">
+		<input type="text" name="geneName" id="geneName">
+		<input type="submit" value="Search for Gene">
+	</form>
+	</span>
+</div>
+<div id="contentDiv" class="slippymap"></div>
+<div id="overlaytexts"></div>
+<div id="dialog-form" style="display:none;overflow:auto"></div>
+<div id="gene-load-dialog" title="Load Genes">
+	<div class="progress-label">Finding Genes...</div>
+	<div id="progressbar"></div>
+</div>
+
+
 
 <script>
-	//side effect: defines the variables "viewer," "tilePixelSize," "borderPixelSize"
+	//Defines global variables "tilePixelSize" and "borderPixelSize"
 	tilePixelSize = 15*2;
 	borderPixelSize = 2;
-	jQuery(document).ready(function () {
-    	var tools = jQuery("#toolbarDiv"),
-        	content = jQuery("#contentDiv"),
-        	h = jQuery(window).height();
-    	tools.css("height", 35);
-    	content.css("height", 900); //hardcode 120px to accomidate toolbar and navbar
-    	beginDragon("{% static 'slippy/TileNumSupertiles.csv' %}", tilePixelSize, borderPixelSize,
-					"{% static 'slippy/offsets.txt' %}", "{% static 'slippy/pngs/entire.dzi' %}",
-					"{% static 'slippy/js/openseadragon-images/' %}", "{% static 'slippy/iter.txt' %}");
-		
-	});
-	/*var getAllGenes = function(){
-		var keepGoing = confirm("Loading all Genes takes time. Continue?");
-		if (keepGoing){
-			var geneArray = [
-//Note to self: need to add % for parser to recognize
-				{ for gene in genes }
-					{geneName:"{{ gene.gene_name }}",startCGF:{{ gene.startCGF }},endCGF:{{ gene.endCGF }}},
-				{ endfor }
-			];
-			addAllGenes(geneArray, tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}");
-		}
-	};*/
 	var searchGene = function(){
 		var geneName = jQuery("#geneName").val();
 		if (geneName != ""){
@@ -94,14 +110,65 @@
 	var done = function(res, status) {
 		if (status == "success") {
 			var param = res.responseText.replace(/\s/g, '').split(';');
-			addGeneAnnotation(param[0], parseInt(param[1]), parseInt(param[2]), parseInt(param[3]), parseInt(param[4]), tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}");
+			if (param[0] == "single"){
+				addGeneAnnotation(param[1], parseInt(param[2]), parseInt(param[3]), parseInt(param[4]), parseInt(param[5]), tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}", true);
+			} else {
+
+				var buttons = [];
+				param.forEach(function(geneName) {
+					if (geneName != "multiple" && geneName != ""){
+						buttons.push({
+							text: geneName, 
+							click: function() {
+								var data = {geneName:geneName};
+								var args = { type:"GET", url:"{%url 'slippy:specificsearch' %}", data:data, complete:done };
+								jQuery.ajax(args);
+								jQuery(this).dialog("close");
+							},
+						});
+					}
+				});
+				jQuery("#dialog-form").dialog({
+					autoOpen: true,
+					buttons: buttons,
+					dialogClass: true,
+					maxHeight: 800,
+					width: 800,
+					title: "Multiple genes were found. Choose one from the following options:"
+				});
+			}
 		}
 		else {
 			alert(res.responseText);
 		}
-	}
-	jQuery("#searchForm").submit(searchGene);
-	//jQuery("#allGenes").click(getAllGenes);
+	};
+	jQuery(document).ready(function () {
+		jQuery("#searchForm").button();
+		jQuery("#searchForm").position({
+			my: "right top",
+			at: "right top",
+			of: "#toolbarDiv"
+		});
+		jQuery("#filter").position({
+			my: "left bottom",
+			at: "right bottom",
+			of: "#searchForm"
+		});
+		loadGenesWithProgress("{% static 'slippy/iter.txt' %}", "{%url 'slippy:loadall' %}")
+    	var tools = jQuery("#toolbarDiv"),
+        	content = jQuery("#contentDiv"),
+        	h = jQuery(window).height();
+    	tools.css("height", 50);
+    	content.css("height", 900); //hardcode 120px to accomidate toolbar and navbar
+    	beginDragon("{% static 'slippy/TileNumSupertiles.csv' %}", tilePixelSize, borderPixelSize,
+					"{% static 'slippy/offsets.txt' %}", "{% static 'slippy/pngs/entire.dzi' %}",
+					"{% static 'slippy/js/openseadragon-images/' %}", "{% static 'slippy/iter.txt' %}");
+		
+		jQuery("#searchForm").submit(searchGene);
+	});
+
+	
+	
 </script>
 
 

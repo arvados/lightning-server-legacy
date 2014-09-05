@@ -8,14 +8,24 @@ def printProgress(i, total):
     sys.stdout.flush()
     
 def getStartTile(chrom, chr_start, loci):
-    for start, end, tile in loci[chrom]:
+    for i, thing in enumerate(loci[chrom]):
+        start, end, tile = thing
         if start <= chr_start and end > chr_start:
             return tile
+        elif start > chr_start:
+            print chrom, start, end, chr_start
+            print loci[chrom][i-1]
+            print "getStartTile, Reached the end of loci without returning tile"
+            return None
 
 def getEndTile(chrom, chr_end, loci):
     for start, end, tile in loci[chrom]:
         if end >= chr_end and start < chr_end:
             return tile
+        elif start > chr_end:
+            print chrom, start, end, chr_end
+            print "getEndTile Reached the end of loci without returning tile"
+            return None
 
 def manipulateList(inpList):
     retlist = []
@@ -26,6 +36,20 @@ def manipulateList(inpList):
         thingsToJoin[-1] += '\n'
         retlist.append(string.join(thingsToJoin, sep=','))
     return retlist
+
+known_genes_file = 'hide/GeneReview/NBKid_shortname_genesymbol.txt'
+genes = {}
+with open(known_genes_file, 'r') as f:
+    for line in f:
+        if line[0] != '#':
+            NBKid, shortname, geneName = line.split('\t')
+            geneName = geneName.split('\n')[0]
+            if geneName != 'Not applicable':
+                if geneName in genes:
+                    genes[geneName] += ';http://www.ncbi.nlm.nih.gov/books/' + NBKid
+                else:
+                    genes[geneName] = 'http://www.ncbi.nlm.nih.gov/books/' + NBKid
+
 
 supported_chr = {str(i+1):i+1 for i in range(22)}
 supported_chr['X'] = 23
@@ -61,25 +85,27 @@ with open(fname, 'rb') as csvfile:
         # line organization:
         #   seqname, source, feature, startCGF, endCGF, score, strand, frame
         if line[0][0] != '#':
-            # seqname, source, feature, startCGF, endCGF, strand,
-            #   score, frame,
-            #poss_sources.add(line[2])
+            #towriteline: seqname, source, feature, startCGF, endCGF, score, strand, frame, ...
+            #             gene_id, gene_source, gene_name, gene_biotype, transcript_id, ...
+            #             transcript_source, transcript_biotype, transcript_name, exon_id, ...
+            #             exon_number, protein_id, genereview, genereviewURLs
             towriteline = []
+            #Currently only parsing genes in supported chromosomes.
+            #Though the indexing currently supports alternate chromosomes, tiles don't exist for them yet
+            #   -> chrom = 25
             if line[0] in supported_chr and line[2] == "gene":
                 chrom = supported_chr[line[0]] - 1
-                towriteline.append(chrom+1)
-            #Though the indexing currently supports alternate chromosomes, tiles don't exist for them yet
-            #else:
-            #    chrom = 25
-            #    towriteline.append(chrom+1)
+                towriteline.append(chrom+1) #append seqname
                 towriteline.append(line[1]) #append source
                 towriteline.append(line[2]) #append feature
+                #Get CGF coordinates for start position
                 chr_start = int(line[3])
                 CGF_start = getStartTile(chrom, chr_start, loci)
-                towriteline.append(CGF_start)
+                towriteline.append(CGF_start) #append CGF_start
+                #Get CGF coordinates for end position
                 chr_end = int(line[4])
                 CGF_end = getEndTile(chrom, chr_end, loci)
-                towriteline.append(CGF_end)
+                towriteline.append(CGF_end) #append CGF_start
                 #append strand
                 if line[6] == '+':
                     towriteline.append('t')
@@ -98,10 +124,10 @@ with open(fname, 'rb') as csvfile:
                     towriteline.append(line[7])
                 else:
                     towriteline.append('')
+                #Parse the optional attribute line
                 attributes = line[8].split(';')
+                #Preset the attributes to null ('')
                 parsed_attr = ['' for i in range(11)]
-                # gene_id, gene_source, gene_name, gene_biotype, transcript_id, transcript_source, transcript_biotype
-                #   transcript_name, exon_id, exon_number, protein_id
                 parser = {'gene_id':0, 'gene_source':1, 'gene_name':2, 'gene_biotype':3, 'transcript_id':4,
                           'transcript_source':5, 'transcript_biotype':6, 'transcript_name':7, 'exon_id':8,
                           'exon_number':9, 'protein_id':10}
@@ -111,12 +137,19 @@ with open(fname, 'rb') as csvfile:
                         attribute = attribute.strip('"')
                         if attr_key in parser:
                             parsed_attr[parser[attr_key]] = attribute
+                #Append all attributes to line
+                
                 towriteline.extend(parsed_attr)
+                geneName = towriteline[10]
+                if geneName in genes:
+                    towriteline.extend(['t', genes[geneName]])
+                else:
+                    towriteline.extend(['f', ''])
                 towrite.append(towriteline)
+
 print ""
 print len(towrite)
 with open('hide/gene.csv', 'w') as f:
     f.writelines(manipulateList(towrite))
 
-#for thing in poss_sources:
-#    print thing
+
