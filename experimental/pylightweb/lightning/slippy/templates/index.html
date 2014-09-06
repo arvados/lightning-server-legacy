@@ -83,12 +83,12 @@
 </div>
 <div id="contentDiv" class="slippymap"></div>
 <div id="overlaytexts"></div>
-<div id="dialog-form" style="display:none;overflow:auto"></div>
+<div id="dialog-form" style="display:none;overflow:none"></div>
 <div id="gene-load-dialog" title="Load Genes">
 	<div class="progress-label">Finding Genes...</div>
 	<div id="progressbar"></div>
 </div>
-
+<div id="hi"></div>
 
 
 <script>
@@ -111,7 +111,7 @@
 		if (status == "success") {
 			var param = res.responseText.replace(/\s/g, '').split(';');
 			if (param[0] == "single"){
-				addGeneAnnotation(param[1], parseInt(param[2]), parseInt(param[3]), parseInt(param[4]), parseInt(param[5]), tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}", true);
+				addGeneAnnotation(param[1], parseInt(param[2]), parseInt(param[3]), parseInt(param[4]), parseInt(param[5]), tilePixelSize, borderPixelSize, "{% static 'slippy/iter.txt' %}", true, param.slice(6));
 			} else {
 
 				var buttons = [];

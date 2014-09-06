@@ -80,6 +80,16 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
         ]});
         function onViewerClick(event) {
             event.preventDefaultAction = true;
+			var poss_overlays = jQuery('.annotation');
+			for (var i = 0; i < poss_overlays.length; i++){
+				id = poss_overlays[i].id;
+				if (jQuery('#'+id+':hover').length > 0){
+					links = jQuery('#Text'+id).find('a');
+					for (var j = 0; j < links.length; j++){
+						links[j].click();
+					}
+				}
+			}
 			var offsets = getOffsets(offsetIterURL);
 			var viewportPoint = viewer.viewport.pointFromPixel(event.position);
   			var imagePoint = viewer.viewport.viewportToImageCoordinates(viewportPoint.x, viewportPoint.y);
@@ -117,7 +127,7 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
     });
 }
 
-function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, borderPixelSize, offsetStr, panTo) {
+function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, borderPixelSize, offsetStr, panTo, urlArray) {	
 	//console.log(gene, spath, sstep, epath, estep, tilePixelSize, borderPixelSize, offsetStr, panTo);
 	var offsets = getOffsets(offsetStr),
 		beginstep = sstep % 8000,
@@ -125,14 +135,29 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 		endstep = estep % 8000,
 		endoffset = Math.floor(estep/8000),
 		startpath = parseInt(offsets[spath]),
-		endpath = parseInt(offsets[epath]);
+		endpath = parseInt(offsets[epath]),
+		links;
+		href = '';
+	if (urlArray[0] != ""){
+		if (urlArray.length > 1){
+			links = ' has GeneReview articles associated with it. Click to visit.\n'
+		} else {
+			links = ' has a GeneReview article associated with it. Click to visit.\n'
+		}
+		for (var i = 0; i < urlArray.length; i++) {
+			var article_num = i+1;
+			href += '<a href="' + urlArray[i] + '" target="_blank"></a>';
+		}
+	} else {
+		links = '';	
+	}
 	if (beginoffset == endoffset && startpath == endpath) {
 		beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
 		endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
 		pathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
 
 		//Write mouseover text object
-		var textToAppend = '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene.</p></div>');
+		var textToAppend = '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, links, '</p></div>');
 		jQuery('#overlaytexts').append(textToAppend);
 		viewer.addOverlay({
 			id: gene,
@@ -140,11 +165,11 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 			py: pathcoor,
 			width: endstepcoor+tilePixelSize-beginstepcoor,
 			height: tilePixelSize,
-			className: 'highlight'
+			className: 'highlight annotation'
 		});
 		setTimeout(function() {
 			bindOneToolTip("#Text".concat(gene), "#".concat(gene));
-		}, 80);
+		}, 200);
 		if (panTo) {
 			var genePos = new OpenSeadragon.Point(beginstepcoor + (endstep - beginstep) * (tilePixelSize+borderPixelSize) / 2, pathcoor);
 			genePos = imagingHelper.dataToLogicalPoint(genePos);
@@ -156,7 +181,7 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 		endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
 		beginpathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
 		endpathcoor = (endpath+endoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		var textToAppend = '<div id="Text'.concat(gene, 'part1" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene, part 1.</p></div><div id="Text', gene, 'part2" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene, part 2.</p></div>');
+		var textToAppend = '<div id="Text'.concat(gene, 'part1" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, ' (part 1)', links, '</p></div><div id="Text', gene, 'part2" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, ' (part 2)', links, '</p></div>');
 		jQuery('#overlaytexts').append(textToAppend);
 		viewer.addOverlay({
 			id: gene.concat("part1"),
@@ -164,7 +189,7 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 			py: beginpathcoor,
 			width: (7999*(tilePixelSize+borderPixelSize) - borderPixelSize) +tilePixelSize-beginstepcoor,
 			height: tilePixelSize,
-			className: 'highlight broken'
+			className: 'highlight broken annotation'
 		});
 		viewer.addOverlay({
 			id: gene.concat("part2"),
@@ -172,12 +197,12 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 			py: endpathcoor,
 			width: endstepcoor+tilePixelSize,
 			height: tilePixelSize,
-			className: 'highlight broken'
+			className: 'highlight broken annotation'
 		});
 		setTimeout(function() {
 			bindOneToolTip('#Text'.concat(gene, 'part1'), '#'.concat(gene, 'part1'));
 			bindOneToolTip('#Text'.concat(gene, 'part2'), '#'.concat(gene, 'part2'));
-		}, 80);	
+		}, 200);	
 		if (panTo) {
 			var genePos = new OpenSeadragon.Point(0, endpathcoor);
 			genePos = imagingHelper.dataToLogicalPoint(genePos);
@@ -185,7 +210,6 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 		}
 	}
 }
-
 lpad = function(value, padding) {
     var zeroes = "0";
     for (var i = 0; i < padding; i++) { zeroes += "0"; }
@@ -199,70 +223,3 @@ getTileCoor = function(CGF) {
 	step = parseInt(strTilename.slice(5), 16)
 	return [path, version, step];
 };
-
-function addAllGenes(geneArray, tilePixelSize, borderPixelSize, offsetStr){
-	var annotations = [];
-	var textToAppend = '';
-	geneArray.forEach(function (g) {
-		var	startCoor = getTileCoor(g.startCGF),
-			endCoor = getTileCoor(g.endCGF),
-			offsets = getOffsets(offsetStr),
-			beginstep = parseInt(startCoor[2]) % 8000,
-			beginoffset = Math.floor(parseInt(startCoor[2])/8000),
-			endstep = parseInt(endCoor[2]) % 8000,
-			endoffset = Math.floor(parseInt(endCoor[2])/8000),
-			startpath = parseInt(offsets[startCoor[0]]),
-			endpath = parseInt(offsets[endCoor[0]]),
-			gene = g.geneName;
-		if (beginoffset == endoffset && startpath == endpath) {
-			beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-			endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-			pathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
-			annotations.push(gene);
-			textToAppend += '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene.</p></div>');
-			viewer.addOverlay({
-				id: gene,
-				px: beginstepcoor,
-				py: pathcoor,
-				width: endstepcoor+tilePixelSize-beginstepcoor,
-				height: tilePixelSize,
-				className: 'highlight'
-			});
-		} else {
-			//This assumes nothing crosses more than one cutoff
-			beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-			endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-			beginpathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
-			endpathcoor = (endpath+endoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
-			annotations.push(gene.concat("part1"));
-			annotations.push(gene.concat("part2"));
-			textToAppend += '<div id="Text'.concat(gene, 'part1" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene, part 1.</p></div>');
-			textToAppend += '<div id="Text'.concat(gene, 'part2" style="display:none;width:250px;background-color:#fff;"><p>', gene, ' Gene, part 1.</p></div>');
-			viewer.addOverlay({
-				id: gene.concat("part1"),
-				px: beginstepcoor,
-				py: beginpathcoor,
-				width: (7999*(tilePixelSize+borderPixelSize) - borderPixelSize) +tilePixelSize-beginstepcoor,
-				height: tilePixelSize,
-				className: 'highlight broken'
-			});
-			viewer.addOverlay({
-				id: gene.concat("part2"),
-				px: 0,
-				py: endpathcoor,
-				width: endstepcoor+tilePixelSize,
-				height: tilePixelSize,
-				className: 'highlight broken'
-			});
-		}
-	});
-	jQuery('#overlaytexts').append(textToAppend);
-	jQuery(function () {
-		setTimeout(bindtooltip, 2000);
-	});
-	function bindtooltip() {
-		annotations.forEach(function (gene) {
-			bindOneToolTip("#Text".concat(gene), "#".concat(gene));
-		});
-	}
-}
