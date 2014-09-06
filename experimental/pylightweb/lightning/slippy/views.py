@@ -17,7 +17,11 @@ def simplesearch(request):
             gene = matching[0]
             spath, sversion, sstep = gene.getTileCoord(gene.startCGF)
             epath, eversion, estep = gene.getTileCoord(gene.endCGF)
-            context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep}
+            if gene.genereviewURLs == None:
+                ptr = ''
+            else:
+                ptr = gene.genereviewURLs
+            context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep, 'urlpointer':ptr}
             return render(request, 'search.html', context)
         elif len(matching) > 1:
             return render(request, 'multmatches.html', {'matching': matching})
@@ -48,7 +52,11 @@ def specificsearch(request):
             gene = matching[0]
             spath, sversion, sstep = gene.getTileCoord(gene.startCGF)
             epath, eversion, estep = gene.getTileCoord(gene.endCGF)
-            context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep}
+            if gene.genereviewURLs == None:
+                ptr = ''
+            else:
+                ptr = gene.genereviewURLs
+            context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep, 'urlpointer':ptr}
             return render(request, 'search.html', context)
         elif len(matching) > 1:
             error_msg = 'Multiple genes matched "%s" exactly.' % geneName

@@ -29,13 +29,17 @@ function loadGenesWithProgress(iterTextString, loadAllURL){
 		}
 		function displayOneGene() { 
 			if (genesToDisplay.length != 0) {
+				var urlArray = [""];
 				gene = genesToDisplay.pop();
 				i ++;
 				if (gene != ""){
 					prop = gene.split(',');
+					if (prop[3] != "None"){
+						urlArray = prop[3].split(';');
+					}
 					startcoor = getTileCoor(parseInt(prop[1]));
 					endcoor = getTileCoor(parseInt(prop[2]));	
-					addGeneAnnotation(prop[0],startcoor[0],startcoor[2],endcoor[0],endcoor[2],tilePixelSize, borderPixelSize, iterTextString, false);
+					addGeneAnnotation(prop[0],startcoor[0],startcoor[2],endcoor[0],endcoor[2],tilePixelSize, borderPixelSize, iterTextString, false, urlArray);
 				}
 				if (keepAddingOverlays){
 					progressbar.progressbar( "value", Math.ceil((i/max_val)*100) );
@@ -46,7 +50,7 @@ function loadGenesWithProgress(iterTextString, loadAllURL){
 		function startDisplayingGenes(res, status) {
 			progressbar.progressbar( "value", 0);
 			if (status == "success"){
-				genesToDisplay = res.responseText.replace(/\s/g, '').split(';');
+				genesToDisplay = res.responseText.replace(/\s/g, '').split('|');
 				max_val = genesToDisplay.length;
 				keepAddingOverlays = true;
 				i = 0;
