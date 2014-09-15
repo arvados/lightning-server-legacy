@@ -4,7 +4,20 @@ import datetime
 import string
 
 def addAnnotations(annotations, tile_variant_id, today):
-    # for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, trusted, annotation_text, created, last_modified
+    """
+    annotations: list of annotations read in from FASTJ format
+    tile_variant_id: the primary key for the tile_variant to add the annotations to
+    today: the date
+
+    Requires Phase to be in annotation: determines whether reference or human!
+
+    if SNP, SUB, or INDEL in an annotation, it is marked as SNP_INDEL
+    if db_xref in an annotation, it is marked as DATABASE
+    if none of the above, and 'alleles' is not in the annotation, it is marked as OTHER (only for debugging purposes)
+
+    no phenotypic data is known to be passed from the FASTJ file
+    """
+    # for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
     lists_to_extend = []
     for annotation in annotations:
         add = True
@@ -20,17 +33,17 @@ def addAnnotations(annotations, tile_variant_id, today):
                 pop_size_increment = 1
         elif 'SNP' in annotation or 'SUB' in annotation or 'INDEL' in annotation:
             t='SNP_INDEL'
-        elif 'dbsnp' in annotation:
+        elif 'db_xref' in annotation:
             t='DATABASE'
             annotation = annotation.replace(',', ' ')
         elif 'alleles' in annotation:
-            #This is not a database annotation and is unhelpful
+            #Cannot be a database annotation; is identical to SNP annotation; is unhelpful.
             add=False
         else:
             t='OTHER'
         if add:
-            lists_to_extend.append([tile_variant_id, t, 't', annotation, today, today])
-    #This will currently error if a Phase annotaiton is not in the json input
+            lists_to_extend.append([tile_variant_id, t, 'library_generation', annotation, '', today, today])
+
     return lists_to_extend, pop_size_increment
 
 def manipulateList(inpList):
@@ -50,7 +63,7 @@ now = datetime.date.today()
 today = str(now.year) + "-" + str(now.month) + "-" + str(now.day)
 
 input_file = 'huA05317.fj'
-curr_data_file = '2014-09-11-data.csv'
+curr_data_file = '2014-09-15-data.csv'
 
 CHR_CHOICES = {
     'chr1': 1,
@@ -84,6 +97,7 @@ curr_tilevars = {}
 tilevars_to_write = []
 annotations_to_write = []
 
+#\copy loadgenomes_tilevariant(tile_variant_name, tile_id, population_size, md5sum) to '2014-09-15-data.csv'
 with open(curr_data_file, 'r') as f:
     for line in f:
         tile_variant_name, tile_id, popul, md5sum = line.strip().split(',')
@@ -104,7 +118,7 @@ with open(input_file, 'r') as f:
             # things to add:
             #   for loadgenomes_tilevariant: tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag
             #       start_tag and end_tag only if they differ from the reference (from tags[tile_id])
-            #   for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, trusted, annotation_text
+            #   for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
             # things to modify using tile_variant_name:
             #   for loadgenomes_tilevariant: population_size
 
@@ -187,7 +201,7 @@ with open(input_file, 'r') as f:
 
 with open('hide/tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write))
-with open('hide/tilevarannotation.csv', 'w') as f:
+with open('hide/varannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
 
 with open('hide/update.sql', 'w') as f:
@@ -198,3 +212,27 @@ with open('hide/update.sql', 'w') as f:
                 f.write("UPDATE loadgenomes_tilevariant SET population_size = " + str(variant[2]) + " WHERE tile_variant_name = " + variant[0] + ";\n")
     f.write("COMMIT;\n")
 
+with open('hide/Library.csv', 'w') as f:
+    #tilevarname, popul, md5sum
+    #Need to write out the ones already in the database and the ones we updated
+    for tiles in popul_tilevars:
+        for variant in popul_tilevars[tiles]:
+            tile_variant_name, md5sum, popul, updated = variant
+            tile_var_hex = hex(int(tile_variant_name))[2:]
+            tile_var_hex = tile_var_hex.zfill(12)
+            path = tile_var_hex[:3]
+            version = tile_var_hex[3:5]
+            step = tile_var_hex[5:9]
+            var = tile_var_hex[9:]
+            tile_var_period_sep = string.join([path, version, step, var], '.') 
+            f.write(string.join([tile_var_period_sep, str(popul), md5sum+'\n'], sep=','))
+    for l in tilevars_to_write:
+        tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag = l
+        tile_var_hex = hex(tile_variant_name)[2:]
+        tile_var_hex = tile_var_hex.zfill(12)
+        path = tile_var_hex[:3]
+        version = tile_var_hex[3:5]
+        step = tile_var_hex[5:9]
+        var = tile_var_hex[9:]
+        tile_var_period_sep = string.join([path, version, step, var], '.') 
+        f.write(string.join([tile_var_period_sep, str(population_size), md5sum+'\n'], sep=','))
