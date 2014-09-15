@@ -1,6 +1,24 @@
 from django.db import models
 
-# Create your models here.
+#Annotations that span tiles (taken from loadgenomes):
+#    PROMOTER = 'PRO'
+#    EXON_OR_INTRON = 'EXON'
+#    RNA = 'RNA'
+#    GENE_PROTEIN = 'GENE'
+#    HISTONE = 'HIST'
+#    CHROMATIN_INFORMATION = 'CHROMATIN'
+#    PHENOTYPES will also want a presence in loadgenes
+#    DNA_MODIFICATION = 'DNA_MOD'
+#    BINDING_SITE = 'BIND'
+#    OTHER => want to force this to a wider scope and not allow
+##        (DNA_MODIFICATION, 'DNA Modification Annotation'),
+##        (BINDING_SITE, 'Protein Binding Site Annotation'),
+##        (PROMOTER, 'Promoter region Annotation'),
+##        (EXON_OR_INTRON, 'Exon or Intron Annotation'),
+##        (RNA, 'RNA (including smRNA and mRNA) Annotation'),
+##        (GENE_PROTEIN, 'Gene and Protein-related Annotation'),
+##        (HISTONE, 'Histone modification Annotation'),
+##        (CHROMATIN_INFORMATION, 'Chromatin Annotation'),
 
 class Gene(models.Model):
     CHR_1 = 1

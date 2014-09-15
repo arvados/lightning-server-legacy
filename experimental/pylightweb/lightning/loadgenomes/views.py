@@ -2,11 +2,11 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.http import Http404
 
-from loadgenomes.models import TileVarAnnotation
+from loadgenomes.models import VarAnnotation
 
 def index(request):
-    trusted_annotation_list = TileVarAnnotation.objects.filter(trusted=True)
-    non_trusted_annotation_list = TileVarAnnotation.objects.filter(trusted=False)
+    trusted_annotation_list = VarAnnotation.objects.filter(source="library_generation")
+    non_trusted_annotation_list = TileVarAnnotation.objects.filter(source="person")
     context = {
         'trusted_list': trusted_annotation_list,
         'uncertain_list': non_trusted_annotation_list,
