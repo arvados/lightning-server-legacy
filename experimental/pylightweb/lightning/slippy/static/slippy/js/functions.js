@@ -13,7 +13,7 @@ function bindOneToolTip(textIDString, overlayIDString) {
 		if (tipVisY < 20) { //If tooltip exceeds the Y coordinate of viewport
 			mousey = e.pageY - tipHeight - 20;
 		}
-		tip.css({top: mousey, left: mousex, position: 'absolute'});
+		tip.css({top: mousey, left: mousex, position: 'absolute', 'z-index': 1});
 		tip.show().css({opacity: 0.8}); //Show tooltip
 	}, function () {
 		tip.hide(); //Hide tooltip
@@ -33,31 +33,9 @@ function getOffsets(urlString) {
 	});
 	return offsets;
 }
-
+//TODO: don't need offsetURL anymore
 function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcString, prefixString, offsetIterURL) {
     d3.csv(datafile1, function (error, data) {
-        var offsets = getOffsets(offsetURL);
-        var annotations = [];
-        var yposition = 0;
-        var idx = 0;
-        data.forEach(function (d) {
-            var idname = d.name.replace(/\./g, '');
-            var longtext = '<div id="Text'.concat(idname, '" style="display:none;width:250px;background-color:#fff;"><p>Path ', d.name, ' has ', d.num, ' steps</p></div>');
-            jQuery("#overlaytexts").append(longtext);
-            //console.log(yposition);
-            annotations.push({
-                id: idname,
-                px: 0,
-                py: yposition,
-                width: tilePixelSize,
-                height: tilePixelSize,
-                className: 'highlight'
-            });
-            yposition += (tilePixelSize + borderPixelSize) * parseInt(offsets[idx]);
-            idx++;
-        });
-        //console.log(yposition);
-        //var chr = $("#chrPicker").val();
         viewer = OpenSeadragon({
             id: "contentDiv",
             prefixUrl: prefixString,
@@ -68,8 +46,8 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
             navigatorHeight: 400,
             navigatorWidth: 80,
             //debugMode: true,
-            toolbar: "toolbarDiv",
-            overlays: annotations
+            //toolbar: "toolbarDiv",
+            //overlays: annotations
         });
         //Begins an OpenSeadragon.Viewer
         //Adding url hyperlinks would be useful
@@ -109,105 +87,100 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
 				console.log(step, path);
 			}
         }
-        jQuery(function () {
+        /*jQuery(function () {
             //Tooltips
-            /*setTimeout(function panAndZoomToOrigin() {
+            setTimeout(function panAndZoomToOrigin() {
                 viewer.viewport.zoomTo(viewer.viewport.getMaxZoom());
                 //console.log(imagingHelper.imgWidth);
                 //console.log(imagingHelper.imgHeight);
                 viewer.viewport.panTo(new OpenSeadragon.Point(0, 0));
-            }, 1000);*/
-            setTimeout(bindtooltip, 2000);
-        });
-        function bindtooltip() {
-            annotations.forEach(function (entry) {
-                bindOneToolTip("#Text" + entry.id, "#" + entry.id);
-            });
-        }
+            }, 1000);
+        });*/
     });
 }
 
+//TODO: add zoom option
 function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, borderPixelSize, offsetStr, panTo, urlArray) {	
 	//console.log(gene, spath, sstep, epath, estep, tilePixelSize, borderPixelSize, offsetStr, panTo);
 	var offsets = getOffsets(offsetStr),
+		overlayid = '#'.concat(gene),
+		overlayidpartial = '#'.concat(gene, 'part1'),
 		beginstep = sstep % 8000,
 		beginoffset = Math.floor(sstep/8000),
 		endstep = estep % 8000,
 		endoffset = Math.floor(estep/8000),
 		startpath = parseInt(offsets[spath]),
 		endpath = parseInt(offsets[epath]),
-		links;
-		href = '';
-	if (urlArray[0] != ""){
-		if (urlArray.length > 1){
-			links = ' has GeneReview articles associated with it. Click to visit.\n'
+		beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize,
+		endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize,
+		beginpathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize,
+		endpathcoor = (endpath+endoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize,
+		genePos;
+	//Only add the annotation if it's not already there
+	if (jQuery(overlayid).length == 0 && jQuery(overlayidpartial).length == 0) {
+		var links,
+			href = '';
+		if (urlArray[0] != ""){
+			if (urlArray.length > 1){
+				links = ' has GeneReview articles associated with it. Click to visit all of them.'
+			} else {
+				links = ' has a GeneReview article associated with it. Click to visit.'
+			}
+			for (var i = 0; i < urlArray.length; i++) {
+				var article_num = i+1;
+				href += '<a href="' + urlArray[i] + '" target="_blank"></a>';
+			}
 		} else {
-			links = ' has a GeneReview article associated with it. Click to visit.\n'
+			links = '';	
 		}
-		for (var i = 0; i < urlArray.length; i++) {
-			var article_num = i+1;
-			href += '<a href="' + urlArray[i] + '" target="_blank"></a>';
+		if (beginoffset == endoffset && startpath == endpath) {
+			genePos = new OpenSeadragon.Point(beginstepcoor + (endstep - beginstep) * (tilePixelSize+borderPixelSize) / 2, endpathcoor);
+			//Write mouseover text object
+			var textToAppend = '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, links, '</p></div>');
+			jQuery('#overlaytexts').append(textToAppend);
+			viewer.addOverlay({
+				id: gene,
+				px: beginstepcoor,
+				py: beginpathcoor,
+				width: endstepcoor+tilePixelSize-beginstepcoor,
+				height: tilePixelSize,
+				className: 'highlight annotation'
+			});
+			setTimeout(function() {
+				bindOneToolTip("#Text".concat(gene), "#".concat(gene));
+			}, 200);
+		} else {
+			genePos = new OpenSeadragon.Point(0, endpathcoor);
+			//This assumes nothing crosses more than one cutoff
+			var textToAppend = '<div id="Text'.concat(gene, 'part1" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, ' (part 1)', links, '</p></div><div id="Text', gene, 'part2" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, ' (part 2)', links, '</p></div>');
+			jQuery('#overlaytexts').append(textToAppend);
+			viewer.addOverlay({
+				id: gene.concat("part1"),
+				px: beginstepcoor,
+				py: beginpathcoor,
+				width: (7999*(tilePixelSize+borderPixelSize) - borderPixelSize) +tilePixelSize-beginstepcoor,
+				height: tilePixelSize,
+				className: 'highlight broken annotation'
+			});
+			viewer.addOverlay({
+				id: gene.concat("part2"),
+				px: 0,
+				py: endpathcoor,
+				width: endstepcoor+tilePixelSize,
+				height: tilePixelSize,
+				className: 'highlight broken annotation'
+			});
+			setTimeout(function() {
+				bindOneToolTip('#Text'.concat(gene, 'part1'), '#'.concat(gene, 'part1'));
+				bindOneToolTip('#Text'.concat(gene, 'part2'), '#'.concat(gene, 'part2'));
+			}, 200);	
 		}
 	} else {
-		links = '';	
+		console.log("Found a copy", overlayid, overlayidpartial);
 	}
-	if (beginoffset == endoffset && startpath == endpath) {
-		beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		pathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
-
-		//Write mouseover text object
-		var textToAppend = '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, links, '</p></div>');
-		jQuery('#overlaytexts').append(textToAppend);
-		viewer.addOverlay({
-			id: gene,
-			px: beginstepcoor,
-			py: pathcoor,
-			width: endstepcoor+tilePixelSize-beginstepcoor,
-			height: tilePixelSize,
-			className: 'highlight annotation'
-		});
-		setTimeout(function() {
-			bindOneToolTip("#Text".concat(gene), "#".concat(gene));
-		}, 200);
-		if (panTo) {
-			var genePos = new OpenSeadragon.Point(beginstepcoor + (endstep - beginstep) * (tilePixelSize+borderPixelSize) / 2, pathcoor);
-			genePos = imagingHelper.dataToLogicalPoint(genePos);
-			imagingHelper.centerAboutLogicalPoint(genePos);
-		}
-	} else {
-		//This assumes nothing crosses more than one cutoff
-		beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		endstepcoor = endstep*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		beginpathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		endpathcoor = (endpath+endoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize;
-		var textToAppend = '<div id="Text'.concat(gene, 'part1" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, ' (part 1)', links, '</p></div><div id="Text', gene, 'part2" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, ' (part 2)', links, '</p></div>');
-		jQuery('#overlaytexts').append(textToAppend);
-		viewer.addOverlay({
-			id: gene.concat("part1"),
-			px: beginstepcoor,
-			py: beginpathcoor,
-			width: (7999*(tilePixelSize+borderPixelSize) - borderPixelSize) +tilePixelSize-beginstepcoor,
-			height: tilePixelSize,
-			className: 'highlight broken annotation'
-		});
-		viewer.addOverlay({
-			id: gene.concat("part2"),
-			px: 0,
-			py: endpathcoor,
-			width: endstepcoor+tilePixelSize,
-			height: tilePixelSize,
-			className: 'highlight broken annotation'
-		});
-		setTimeout(function() {
-			bindOneToolTip('#Text'.concat(gene, 'part1'), '#'.concat(gene, 'part1'));
-			bindOneToolTip('#Text'.concat(gene, 'part2'), '#'.concat(gene, 'part2'));
-		}, 200);	
-		if (panTo) {
-			var genePos = new OpenSeadragon.Point(0, endpathcoor);
-			genePos = imagingHelper.dataToLogicalPoint(genePos);
-			imagingHelper.centerAboutLogicalPoint(genePos);
-		}
+	if (panTo) {
+		genePos = imagingHelper.dataToLogicalPoint(genePos);
+		imagingHelper.centerAboutLogicalPoint(genePos);
 	}
 }
 lpad = function(value, padding) {
