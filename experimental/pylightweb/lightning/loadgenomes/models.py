@@ -4,62 +4,65 @@ import string
 #TODO: Possibly want to Add a model for Annotations that span tiles. I could also see this working as a function
 #TODO: Add lift-over information/function for Tile?
 #TODO: Consider adding pointer to png for Tile
-#TODO: Possibly add color variant is associated with for TileVariant
+#TODO: Possibly add color the variant is associated with for TileVariant
+#TODO: Check that all tilevariants for each tile have the same loci
 
 class TileManage(models.Manager):
+    """
+    TileManage ensures correct ordering by the admin site
+    """
     def get_by_natural_key(self, name):
         return self.get(tilename=name)
 
 class Tile(models.Model):
-    """This implementation might benefit from verbose_name field additions
-    
-    Implements a Tile object. The tilename given must be unique and
-    in integer format (not hex)
-
-    tilename: integer of the 9 digit hexidecimal identifier for the tile
-        First 3 digits of the hexidecimal identifier indicate the band
-        Next 2 digits indicate the path
-        Next 4 digits indicate the tile
-
-    This representation guarantees that the supertile, path, and tile ID
-    will be present in any tile
-
-    start_tag: start Tag (24 character limit)
-    end_tag: end Tag (24 character limit)
-
-    visualization: CommaSeparatedIntegerField, currently allowed to be blank
-        because visualization indices can vary without the tile information varying.
-        (A,B,C,D): A is x position (which tile in the band), B is y position (which band),
-            C is number of pixels along the x-axis the tile covers, D is the number of pixels
-            along the y-axis the tile covers
-
-    created: When the tile was generated
-
-    TODO: possible pointer to png
     """
-    tilename = models.BigIntegerField(primary_key=True) 
+    Implements a Tile object - the meta-data associated with a tile position.
+        Includes the tile position, the start-tag, end-tag, and when it was generated
+        This representation of a tile library guarantees that every tile instance will
+            have a path, path version, and step
+        Theoretically, this will never be regenerated or modified. Modifications would
+            result in a new path version and therefore a new Tile. All modifications happen
+            to TileVariant's associated with a Tile.
+
+    Values in database:
+        tilename (bigint, primary key): _integer_ of the 9 digit hexidecimal identifier for the tile position
+            First 3 digits of the hexidecimal identifier indicate the path
+            Next 2 digits indicate the path version
+            Next 4 digits indicate the step
+        start_tag(charfield(24)): start Tag 
+        end_tag(charfield(24)): end Tag
+        created(datefield): The day the tile was generated
+
+    Functions:
+        getTileString(): returns string: human readable tile variant name
+    
+    """
+    tilename = models.BigIntegerField(primary_key=True, editable=False) 
     start_tag = models.CharField(max_length=24)
     end_tag = models.CharField(max_length=24)
-    visualization = models.CommaSeparatedIntegerField(max_length=4, blank=True)
     created = models.DateField(auto_now_add=True)
     
     def getTileString(self):
         """Displays hex indexing for tile """
         strTilename = hex(self.tilename)[2:-1] #-1 removes the L (from Long Integer)
         strTilename = strTilename.zfill(9)
-        supertile = strTilename[:3]
-        path = strTilename[3:5]
-        tile = strTilename[5:]
-        return string.join([supertile, path, tile, "xxx"], ".")
+        path = strTilename[:3]
+        version = strTilename[3:5]
+        step = strTilename[5:]
+        return string.join([path, version, step, "xxx"], ".")
     getTileString.short_description='Tile Name'
     def __unicode__(self):
         return self.getTileString()
     class Meta:
+        #Ensures ordering by tilename
         ordering = ['tilename']
 
 class TileVariant(models.Model):
     """
-    Implements a TileVariant. Each Tile can have many TileVariants. A reference tile is also a TileVariant
+    Implements a TileVariant. Each Tile can have many TileVariants (one-to-many relation).
+        The reference tile is also a TileVariant with an instance value of 000.
+        Note that a tile can be reference and not the default and vice versa,
+        since the default is determined by the size of the population containing a tile variant.
 
     Values in database:
         tile_variant_name (bigint; primary key):Includes the parent tile name to ensure uniqueness.
@@ -67,12 +70,13 @@ class TileVariant(models.Model):
             The reference tile has a TileVariant value equal to 000.
         tile (bigint; foreignkey): The parent tile
         length (int; positive): Length of the TileVariant in bases
-        population_size (bigint): Number of people in the saved population who have this TileVariant
+        population_size (bigint): Number of people in the saved population who have this TileVariant. Each
+            person counts for 2 (one for each haplotype)
         md5sum (charfield(40)): The hash for the TileVariant sequence
         last_modified(datefield): The last day the TileVariant was modified
         sequence (textfield): The sequence of the TileVariant
-        start_tag (textfield): the start tag of the TileVariant if the start tag varies from tile.start_tag
-        end_tag (textfield): the end tag of the TileVariant if the end tag varies from tile.end_tag
+        start_tag (textfield): the start tag of the TileVariant iff the start tag varies from tile.start_tag
+        end_tag (textfield): the end tag of the TileVariant iff the end tag varies from tile.end_tag
 
     Functions:
         getString(): returns string: human readable tile variant name
@@ -82,10 +86,10 @@ class TileVariant(models.Model):
             self.tile (sorted by population_size)
         isDefault(): returns boolean: True if the variant is the default for the population.
             Depends on population_size comparison with other TileVariants
-        TODO: color of visualization
+    
     """
     
-    tile_variant_name = models.BigIntegerField(primary_key=True)
+    tile_variant_name = models.BigIntegerField(primary_key=True, editable=False)
     tile = models.ForeignKey(Tile, related_name='variants')
     length = models.PositiveIntegerField()
     population_size = models.BigIntegerField()
@@ -99,11 +103,11 @@ class TileVariant(models.Model):
         """Displays hex indexing for tile variant"""
         strTilename = hex(self.tile_variant_name)[2:-1] #-1 removes the L (from Long Integer)
         strTilename = strTilename.zfill(12)
-        supertile = strTilename[:3]
-        path = strTilename[3:5]
-        tile = strTilename[5:9]
+        path = strTilename[:3]
+        version = strTilename[3:5]
+        step = strTilename[5:9]
         var = strTilename[9:]
-        return string.join([supertile, path, tile, var], ".")
+        return string.join([path, version, step, var], ".")
     getString.short_description='Variant Name'
     def isReference(self):
         strTilename = hex(self.tile_variant_name)[2:-1] #-1 removes the L (from Long Integer)
@@ -119,52 +123,42 @@ class TileVariant(models.Model):
     def __unicode__(self):
         return self.getString()
 
-class TileVarAnnotation(models.Model):
-    """Model of Annotations on TileVariants
-    Currently one-to-many relation with TileVariant
+class VarAnnotation(models.Model):
+    """
+    Implements an annotation for a TileVariant. Meant for annotations about the sequence, connect to
+        other databases, or describe phenotypes that _do_not_ span Tile positions
+    One-to-many relation with TileVariant. Currently not many-to-many to conserve memory in the postgres server.
+    Note that some annotations apply to multiple tiles. They are currently represented by duplicate
+        annotation_text's
 
-    tile_variant
-    annotation_type indicates what the annotation describes; TYPE_CHOICES is ordered
-        by proximity to the DNA sequence
-    trusted indicates whether the annotation was generated by a user or the code.
-        Could change trusted to a Field that supports choices to have a wider range
-        of possible sources: the code that generated it vs people, etc
-    annotation_text is the text field of the annotation. Currently, it is completely
-        unorganized, which will slow queries down
-    created
-    last_modified
+    OTHER only used for debugging purposes
+    
+    Values in database:
+        tile_variant (foreignkey): the tile_variant this annotation applies to
+        annotation_type (charfield(10)): what the annotation describes; TYPE_CHOICES indicates valid choices
+        source (charfield(100)):  indicates what generated the annotation (Human or code name)
+        annotation_text(textfield): the text field of the annotation. Currently, no special parsing
+            is applied during creation. Though this slows queries down, it speeds up tile generation
+        phenotype(textfield): any phenotypes associated with this annotation
+        created(datefield): date when the annotation was created
+        last_modified(datefield): date when the annotation was last modified
 
     """
     SNP_OR_INDEL = 'SNP_INDEL'
-    DNA_MODIFICATION = 'DNA_MOD'
-    BINDING_SITE = 'BIND'
-    PROMOTER = 'PRO'
-    EXON_OR_INTRON = 'EXON'
-    RNA = 'RNA'
-    GENE_PROTEIN = 'GENE'
-    HISTONE = 'HIST'
-    CHROMATIN_INFORMATION = 'CHROMATIN'
-    GROSS_PHENOTYPE = 'PHEN'
     DATABASE = 'DATABASE'
+    LOST_PHENOTYPE = 'PHEN'
     OTHER = 'OTHER'
     TYPE_CHOICES = (
         (SNP_OR_INDEL, 'SNP or Insert/Deletion Annotation'),
-        (DNA_MODIFICATION, 'DNA Modification Annotation'),
-        (BINDING_SITE, 'Protein Binding Site Annotation'),
-        (PROMOTER, 'Promoter region Annotation'),
-        (EXON_OR_INTRON, 'Exon or Intron Annotation'),
-        (RNA, 'RNA (including smRNA and mRNA) Annotation'),
-        (GENE_PROTEIN, 'Gene and Protein-related Annotation'),
-        (HISTONE, 'Histone modification Annotation'),
-        (CHROMATIN_INFORMATION, 'Chromatin Annotation'),
-        (GROSS_PHENOTYPE, 'Phenotype Annotation'),
         (DATABASE, 'Database Annotation'),
-        (OTHER, 'Other Type of Annotation'),
+        (LOST_PHENOTYPE, 'Phenotype Annotation not associated with a SNP or INDEL or database annotation'),
+        (OTHER, 'Other type of Annotation'),
     )
     tile_variant = models.ForeignKey(TileVariant, related_name='annotations')
     annotation_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
-    trusted = models.BooleanField()
+    source = models.CharField(max_length=100)
     annotation_text = models.TextField()
+    phenotype = models.TextField(blank=True, null=True)
     created = models.DateField(auto_now_add=True)
     last_modified = models.DateField(auto_now=True)
     def __unicode__(self):
@@ -172,13 +166,20 @@ class TileVarAnnotation(models.Model):
         humanReadable = self.TYPE_CHOICES[typeIndex.index(self.annotation_type)][1]
         return humanReadable + ' for ' +  self.tile_variant.getString()
 
-class locusAnnotation(models.Model):
-    """Abstract Model of translations between assembly and tiles
-    assembly is the integer mapping to the name of the assembly
-    chromosome is the integer mapping to the name of the chromosome the tile is associated with
-    begin_int is the integer for the beginning
-    end_int is the integer for the ending
-    chromosome_name is the text for the name of the chromosome if chromosome=26 (OTHER)
+class LocusAnnotation(models.Model):
+    """
+    Abstract Model of translations between assembly loci and tile id.
+    Implemented by VarLocusAnnotation and TileLocusAnnotation
+
+    Values in database:
+        assembly(positive small integer): the integer mapping to the name of the assembly;
+            Choices given by SUPPORTED_ASSEMBLY_CHOICES
+        chromosome(positive small integer): the integer mapping to the chromosome the tile
+            is on; Choices given by CHR_CHOICES
+        begin_int(positive int): the beginning base
+        end_int(positive int): the ending base
+        chromosome_name(charfield(100)): the name of the chromosome if chromosome=26 (OTHER)
+    
     """
     ASSEMBLY_16 = 16
     ASSEMBLY_17 = 17
@@ -254,17 +255,25 @@ class locusAnnotation(models.Model):
     class Meta:
         abstract = True
 
-#YAY! These aren't necessary. We only need to add one locus annotation per tile position (not one per variant)
-class varLocusAnnotation(locusAnnotation):
-    """Model of translations for a TileVariant
-    locus_annotations is the related name for these types of annotations
+##This class does not appear necessary. We only need to add one locus annotation per tile position (not one per variant)
+##class VarLocusAnnotation(LocusAnnotation):
+##    """
+##    Implement Tile Variant to Locus mapping
+##
+##    tilevar(foreignkey): the tile variant associated with this locus annotation
+##        locus_annotations: the related name for these annotations
+##    
+##    """
+##    tilevar = models.ForeignKey(TileVariant, related_name="locus_annotations")
+
+
+class TileLocusAnnotation(LocusAnnotation):
     """
-    tilevar = models.ForeignKey(TileVariant, related_name="locus_annotations")
+    Implement Tile to Locus mapping
 
-
-class tileLocusAnnotation(locusAnnotation):
-    """Model of translations for a Tile
-    tile_locus_annotations is the related name for these types of annotations
+    tile(foreignkey): the tile associated with this locus annotation
+        tile_locus_annotations: the related name for these annotations
+    
     """
     tile = models.ForeignKey(Tile, related_name="tile_locus_annotations")
 

@@ -2,11 +2,15 @@ from django.contrib import admin
 from nested_inlines.admin import NestedModelAdmin, NestedTabularInline
 
 # We only want the annotations to be modifiable by the admin, not the tiles
-from loadgenomes.models import Tile, TileVariant, TileVarAnnotation, varLocusAnnotation, tileLocusAnnotation
+from loadgenomes.models import Tile, TileVariant, VarAnnotation, TileLocusAnnotation
 
 class AnnotationInLine(NestedTabularInline):
-    model = TileVarAnnotation
+    model = VarAnnotation
     extra = 0
+    fieldsets = [
+        (None, {'fields':['annotation_type', 'source', 'annotation_text', 'phenotype']}),
+        #('Time Data', {'fields':['created', 'last_modified'], 'classes': ['collapse']}),
+    ]
     can_delete=False
 
 ##class LocusInLine(NestedTabularInline):
@@ -15,7 +19,7 @@ class AnnotationInLine(NestedTabularInline):
 ##    can_delete=False
     
 class UpperLocusInLine(NestedTabularInline):
-    model = tileLocusAnnotation
+    model = TileLocusAnnotation
     extra = 0
     can_delete=False
     

@@ -1,10 +1,23 @@
-#Add person
+#Add reference genome and however many people are attached to it
 import json
 import datetime
 import string
 
 def addAnnotations(annotations, tile_variant_id, today):
-    # for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, trusted, annotation_text, created, last_modified
+    """
+    annotations: list of annotations read in from FASTJ format
+    tile_variant_id: the primary key for the tile_variant to add the annotations to
+    today: the date
+
+    Requires Phase to be in annotation: determines whether reference or human!
+
+    if SNP, SUB, or INDEL in an annotation, it is marked as SNP_INDEL
+    if db_xref in an annotation, it is marked as DATABASE
+    if none of the above, and 'alleles' is not in the annotation, it is marked as OTHER (only for debugging purposes)
+
+    no phenotypic data is known to be passed from the FASTJ file
+    """
+    # for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
     lists_to_extend = []
     for annotation in annotations:
         add = True
@@ -20,17 +33,17 @@ def addAnnotations(annotations, tile_variant_id, today):
                 pop_size_increment = 1
         elif 'SNP' in annotation or 'SUB' in annotation or 'INDEL' in annotation:
             t='SNP_INDEL'
-        elif 'dbsnp' in annotation:
+        elif 'db_xref' in annotation:
             t='DATABASE'
             annotation = annotation.replace(',', ' ')
         elif 'alleles' in annotation:
-            #This is not a database annotation and is unhelpful
+            #Cannot be a database annotation; is identical to SNP annotation; is unhelpful.
             add=False
         else:
             t='OTHER'
         if add:
-            lists_to_extend.append([tile_variant_id, t, 't', annotation, today, today])
-    #This will currently error if a Phase annotaiton is not in the json input
+            lists_to_extend.append([tile_variant_id, t, 'library_generation', annotation, '', today, today])
+
     return lists_to_extend, pop_size_increment
 
 def manipulateList(inpList):
@@ -93,10 +106,10 @@ with open(input_file, 'r') as f:
         if (line[:2] == '>{' or line[:3] == '> {') and i > 0:
             #Append csv statements
             # NOTE: The population_size is going to be twice the number of humans
-            # for loadgenomes_tile: tilename, start_tag, end_tag, visualization, created
+            # for loadgenomes_tile: tilename, start_tag, end_tag, created
             # for loadgenomes_tilevariant: tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag
-            # for loadgenomes_varlocusannotation: tilevar_id, assembly, chromosome, begin_int, end_int, chromosome_name
-            # for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, trusted, annotation_text
+            # for loadgenomes_tilelocusannotation: tilevar_id, assembly, chromosome, begin_int, end_int, chromosome_name
+            # for loadgenomes_varannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
             write_new = True
             is_ref = False
             tile = toSaveData['tilename']
@@ -120,7 +133,7 @@ with open(input_file, 'r') as f:
                 tile = int(tile, 16)
                 annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, today)
                 if is_ref:
-                    tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], "", today])
+                    tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], today])
                     loci_to_write.append([tile, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
                                           toSaveData['locus_end'], toSaveData['chrom_name']])
                 tilevars_to_write.append([tilevarname, tile, toSaveData['length'], population_incr, toSaveData['md5sum'], today, toSaveData['sequence'],
@@ -172,13 +185,25 @@ with open(input_file, 'r') as f:
                 toSaveData['sequence'] += " ERROR: READ IS TOO LONG TO REASONABLY STORE IN MEMORY "
 
 
-with open('hide/tile.csv', 'wb') as f:
+with open('hide/firstTiles/tile.csv', 'wb') as f:
     f.writelines(manipulateList(tiles_to_write))
-with open('hide/tilevariant.csv', 'w') as f:
+with open('hide/firstTiles/tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write))
-with open('hide/tilelocusannotation.csv', 'w') as f:
+with open('hide/firstTiles/tilelocusannotation.csv', 'w') as f:
     f.writelines(manipulateList(loci_to_write))
-with open('hide/tilevarannotation.csv', 'w') as f:
+with open('hide/firstTiles/varannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
+with open('hide/firstTiles/Library.csv', 'w') as f:
+    for l in tilevars_to_write:
+        tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag = l
+        #tilevarname, popul, md5sum
+        tile_var_hex = hex(tile_variant_name)[2:]
+        tile_var_hex = tile_var_hex.zfill(12)
+        path = tile_var_hex[:3]
+        version = tile_var_hex[3:5]
+        step = tile_var_hex[5:9]
+        var = tile_var_hex[9:]
+        tile_var_period_sep = string.join([path, version, step, var], '.') 
+        f.write(string.join([tile_var_period_sep, str(population_size), md5sum+'\n'], sep=','))
 
 
