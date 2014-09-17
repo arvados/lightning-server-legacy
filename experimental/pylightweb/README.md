@@ -7,7 +7,7 @@ Folders
 ## lightning/
 	contains the prototype website and models used to run lightning
 
-How to Set-up a local lightning cluster (after git-cloning the development pylightweb code):
+How to Set-up a local lightning cluster:
 =======================
 ## Notes: 
 * We are aware this is a cumbersome installation. We are working to smooth the procedure out. 
@@ -23,20 +23,17 @@ How to Set-up a local lightning cluster (after git-cloning the development pylig
 		$ python -c "import django; print(django.get_version())"
 		1.6.5
 		```
-
   * If this is wrong, run:
 
 		```
 		$ sudo pip install django==1.6.5
 		```
-
   * For further instructions on proper installation of django, see <https://docs.djangoproject.com/en/1.6/topics/install/>
-
 
 3.	Ensure checkout of the development branch (code that runs on a localhost): 
 
 		```
-		git checkout --track -b development origin/development
+		$ git checkout --track -b development origin/development
 		```
 
 4.	Install postgresql and the dependencies necessary to interact with django:
@@ -48,21 +45,25 @@ How to Set-up a local lightning cluster (after git-cloning the development pylig
 		```
 
 5.	Create users and database:
+
 		```
 		$ sudo -u postgres createuser -P $USER
 		mypassword
 		$ sudo -u createdb lightningdatabase
 		```
+
 6.	Edit lighting/experimental/pylightweb/lightning/lightning/settings.py
   * set: DBPW = "mypassword" (the password entered for createuser above)
   * set: 'USER': '$USER'
 
 7.	Install nested-inlines:
+
 		```
 		$ sudo pip install -e git+git://github.com/Soaa-/django-nested-inlines.git#egg=django-nested-inlines
 		```
 
 8.	Create the needed tables:
+
 		```
 		lighting/experimental/pylightweb/lightning$ python manage.py syncdb
 		```
