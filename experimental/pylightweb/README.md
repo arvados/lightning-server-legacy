@@ -19,11 +19,15 @@ How to Set-up a local lightning cluster:
 2.	Install/update django
   * To check django installation:
 
+		```
 		$ python -c "import django; print(django.get_version())"
 		1.6.5
+		```
   * If this is wrong, run:
 
+		```
 		$ sudo pip install django==1.6.5
+		```
   * For further instructions on proper installation of django, see <https://docs.djangoproject.com/en/1.6/topics/install/>
 
 3.	Ensure checkout of the development branch (code that runs on a localhost): 
