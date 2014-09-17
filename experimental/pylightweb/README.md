@@ -38,7 +38,7 @@ How to Set-up a local lightning cluster:
 
 		$ sudo -u postgres createuser -P $USER
 		mypassword
-		$ sudo -u createdb lightningdatabase
+		$ sudo -u postgres createdb lightningdatabase
 6.	Edit lighting/experimental/pylightweb/lightning/lightning/settings.py
   * set: DBPW = "mypassword" (the password entered for createuser above)
   * set: 'USER': '$USER'
