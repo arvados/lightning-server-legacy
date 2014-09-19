@@ -71,7 +71,7 @@ func runGen(ctx *cli.Context) {
 }
 
 func calInitImgX(opt base.Option, boxNum, border int) int {
-	cols := opt.EndPosIdx % (opt.MaxColIdx + 1)
+	cols := opt.MaxColIdx + 1
 	return (cols+1)*boxNum*opt.SlotPixel + border*cols
 }
 
@@ -329,9 +329,11 @@ func generateFullSizeImg(opt base.Option, names []string) {
 		bandRows[i] = base.ToStr(maxRows[i])
 	}
 
+	// FS_<abv band>(<image band>)_<abv col>(<image col>)
 	dirName := fmt.Sprintf("%s/FS_%d(%d)_%d(%d)",
 		opt.ImgDir, opt.EndBandIdx+1, totalRows,
-		opt.EndPosIdx+1, opt.EndPosIdx%(opt.MaxColIdx+1)+1)
+		opt.EndPosIdx+1, opt.MaxColIdx+1)
+	log.Debug("DirName: %s", dirName)
 	os.MkdirAll(dirName, os.ModePerm)
 
 	if err := ioutil.WriteFile(path.Join(dirName, "offsets.txt"),
