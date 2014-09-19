@@ -21,4 +21,5 @@ lightning/src
 lightning/src/
 lightning/loadgenes/hide/*
 lightning/loadgenes/hide
+data/*
 

@@ -5,12 +5,12 @@ from django.template import RequestContext, loader
 
 from loadgenes.models import Gene
 
-def index(request):
+def slippymap(request):
     #filters = Gene.objects.order_by().values_list('source').distinct()
     #filters = [f[0] for f in filters]
     #filters = sorted(filters)
     #return render(request, 'index.html', {'filters':filters})
-    return render(request, 'index.html', {})
+    return render(request, 'slippymap.html', {})
 
 def simplesearch(request):
     def dealWithMatching(matching):

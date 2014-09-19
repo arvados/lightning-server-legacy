@@ -101,6 +101,7 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
     except ValueError:
         msg['msg'] = 'Error: Search coordinate must be an integer'
         return flashmsg, msg 
+<<<<<<< HEAD
     try:
         int(search_chrom)
         iswonky = False

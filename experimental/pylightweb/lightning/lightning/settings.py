@@ -26,6 +26,10 @@ TEMPLATE_DEBUG = True
 
 TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'templates')]
 
+STATICFILES_DIRS = (
+    BASE_DIR + '/static/',
+    )
+
 ALLOWED_HOSTS = []
 
 
@@ -39,9 +43,11 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'home',
     'loadgenomes',
     'slippy',
     'loadgenes',
+    'humans',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -94,3 +100,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 STATIC_ROOT = "/var/www/pylightweb/static"
+
+MEDIA_URL = '/media/'
+
+MEDIA_ROOT = "/home/sguthrie/pylightweb/data"
