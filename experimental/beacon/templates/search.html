@@ -60,10 +60,15 @@
       </table>
     </form>
 
-    {% if result is defined %} <!--if we searched for something-->
-      <h2>Results</h2>
-      Result: <b>{{ result }} </b><br/>
-      <pre> {{ msg }} </pre><br/><br/>
+    {% if flashmsg is defined %} <!--if we searched for something-->
+      <h3>Results</h3>
+      Result: <b>{{ flashmsg }} </b>
+      <h3>Info</h3>{{ msg.msg }}
+      {% if msg.debug %}
+      <h3>Debug</h3><pre>{{msg.debug}}</pre>
+      {% endif %}
+      
+      
       {#
       {% for entry in result %}
         <div class = helptext> {{ entry.helptext|safe }} </div>
@@ -76,8 +81,11 @@
   <h2>Notes</h2>
   <b>Query Parameters</b><br/>
   Coordinate: 1-based position assumed<br/>
-  Allele: any string of nucleotides A,C,T,G or &lt;DEL&gt; for deletion<br/>
+  Allele: any string of nucleotides A,C,T,G or D for deletion or I for insertion. Case-insensitive.<br/>
   <br/>
+  <b>Population</b><br/>
+  The following human genomes from the Personal Genome Project are searched:
+  <pre>{{people}}</pre>
   <b>Contact</b><br/>
   For questions or feedback, please contact nancy@curoverse.com
 

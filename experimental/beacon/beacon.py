@@ -28,6 +28,7 @@ db = sqla(app)
 #hardcoded lists of population, genome, chromosome for now
 populations = ['Personal Genome Project']
 abvfnames = [s[:-4] for s in os.listdir('./abv') if s.endswith('.abv')]
+people = "\n".join(map(lambda x: str(x), abvfnames))
 genomes = ['hg19']
 chromosomes = ['chr9']
 
@@ -67,6 +68,58 @@ def findallele(tile_id, tilevar, coordinate, begin_int):
     index = coordinate - begin_int + 1
     return seq[index]
 
+def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
+    flashmsg = None
+    msg = {}
+    #msg['debug'] = False 
+
+    valid_chars = set('actgdi')
+    if not search_allele or not search_coord:
+        msg['msg'] = 'Error: You must fill out both the "Coordinate" and "Allele" fields.'
+        return flashmsg, msg 
+    if not set(search_allele.lower()).issubset(valid_chars):
+        msg['msg'] = 'Error: Allele must consist only of the characters A,C,T,G,D, or I (case-insensitive). You searched for: ' + search_allele
+        return flashmsg, msg 
+    try:
+        search_coord = int(search_coord)
+    except ValueError:
+        msg['msg'] = 'Error: Search coordinate must be an integer'
+        return flashmsg, msg 
+    cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s > begin_int AND %s < end_int LIMIT 1', [search_coord, search_coord])
+    row = cursor.fetchone()
+    if row == None:
+        msg['msg'] = 'Error: No allele found at the coordinate ' + str(search_coord) + ' for at least one of the genomes in this population.'
+        return flashmsg, msg 
+    tile_id = format(row['tile_id'], 'x') #1c4000002
+    begin_int = row['begin_int']
+
+    path = tile_id[:3] #first three digits
+    step = tile_id[-2:] #last two digits
+
+    count = 0
+    debugmsg = []
+    for abv in abvfnames:
+        tilevar = findtilevar(abv, path, step)
+        allele = findallele(tile_id, tilevar, search_coord, begin_int)
+        debuginfo = [abv, path, step, tilevar, allele]
+        debugmsg.append(debuginfo)
+        if (allele.lower() == search_allele.lower()):
+            count += 1
+
+    if count != 0:
+        flashmsg = True 
+    else:
+        flashmsg = False 
+    #msg = tile_id, ' ', path, ' ', step, ' ', tilevar, ' ', allele, ' ', flashmsg
+    msg['msg'] = 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
+            '" (in ' + search_chrom + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
+    if DEBUG:
+        debugmsg = "\n".join(map(lambda x: str(x), debugmsg))
+        msg['debug'] = debugmsg
+    return flashmsg, msg
+
+
+
 def connect_db():
     return db.engine.connect()
 
@@ -86,54 +139,24 @@ def teardown_request(exception):
 
 @app.route('/')
 def show_search():
-  return render_template('search.html', populations=populations, genomes=genomes, chromosomes=chromosomes)
+  return render_template('search.html', populations=populations, genomes=genomes, chromosomes=chromosomes, people=people)
 
 @app.route('/search', methods=['POST'])
 def search_entries():
     ## TODO: check for valid entries e.g. coordinate is an int :)
-    search_pop, search_gen, search_chrom, search_coord, search_allele = \
-            str(request.form['search_pop']), request.form['search_gen'], request.form['search_chrom'], int(request.form['search_coord']), request.form['search_allele'], 
+    search_pop, search_gen, search_chrom = \
+            request.form['search_pop'], request.form['search_gen'], request.form['search_chrom']
+    search_coord = request.form['search_coord']
+    search_allele = request.form['search_allele']
+    flashmsg, msg = search(search_pop, search_gen, search_chrom, search_coord, search_allele)
 
-    cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s > begin_int AND %s < end_int LIMIT 1', [search_coord, search_coord])
-    row = cursor.fetchone()
-    tile_id = format(row['tile_id'], 'x') #1c4000002
-    begin_int = row['begin_int']
-
-    path = tile_id[:3] #first three digits
-    step = tile_id[-2:] #last two digits
-
-    result = None
-    count = 0
-    foundabvs, foundpaths, foundsteps, foundvars, foundalleles = [],[],[],[],[]
-    #debuglists = [foundabvs, foundpaths, foundsteps, foundvars, foundalleles] 
-    debugmsg = []
-    for abv in abvfnames:
-        tilevar = findtilevar(abv, path, step)
-        allele = findallele(tile_id, tilevar, search_coord, begin_int)
-        debuginfo = [abv, path, step, tilevar, allele]
-        debugmsg.append(debuginfo)
-        if (allele == search_allele):
-            count += 1
-
-    if count != 0:
-        result = True 
+    if flashmsg == None:
+        flash(msg['msg'])
     else:
-        result = False 
+        flash(flashmsg)
 
-    #msg = tile_id, ' ', path, ' ', step, ' ', tilevar, ' ', allele, ' ', result
-    if result == None:
-        flash('No results found, try again.')
-    else:
-        flash(result)
-    msg = 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
-            '" (in ' + search_chrom + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
-    if DEBUG:
-        msg += 'DEBUG: \n'
-        debugmsg = "\n".join(map(lambda x: str(x), debugmsg))
-        msg += debugmsg
-
-    return render_template('search.html', msg=msg, result=result, populations=populations, genomes=genomes, prev_pop=search_pop, \
-            prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = search_chrom, coordinate=search_coord, allele = search_allele)
+    return render_template('search.html', msg=msg, flashmsg=flashmsg, populations=populations, genomes=genomes, prev_pop=search_pop, \
+            prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = search_chrom, coordinate=search_coord, allele = search_allele, people=people)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
