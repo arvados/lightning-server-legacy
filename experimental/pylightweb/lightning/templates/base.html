@@ -1,0 +1,94 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+    	<title>{% block title %}Lightning: Fast Interaction with Personal Genome Project Data{% endblock %}</title>
+		<!-- Bootstrap CSS -->
+		<link href="{% static 'js/bootstrap-3.2.0-dist/css/bootstrap.min.css' %}" rel="stylesheet" type="text/css">
+		<!-- CSS theme -->
+		<link href="{% static 'js/bootstrap-3.2.0-dist/css/bootstrap-theme.min.css' %}" rel="stylesheet" type="text/css">
+
+		<style>
+			label {
+				display: block;
+			}
+			select {
+				width: 200px;
+			}
+			.overflow {
+				height: 200px;
+			}
+			body {
+				padding-top:50px; /* padding necessary for having the navbar and bootstrap there */
+				margin-bottom: 60px; /* Margin bottom by footer height */
+			}
+			html {
+  				position: relative;
+  				min-height: 100%;
+			}
+			.navbar{
+				background-color: #f5f5f5;
+			}
+			.breadcrumb{
+				background-color:#ffffff;
+			}
+			.footer {
+				position: absolute;
+				bottom: 0;
+				width: 100%;
+				/* Set the fixed height of the footer here */
+				height: 30px;
+				background-color: #f5f5f5;
+				text-align: center;
+			}	
+			{% block style_extender %}{% endblock %}
+		</style>
+	</head>
+	<body>
+		<script src="{% static 'js/jquery-1.10.1.min.js' %}"></script>
+		<!-- Bootstrap JavaScript -->
+		<script src="{% static 'js/bootstrap-3.2.0-dist/js/bootstrap.min.js' %}"></script>
+		{% block additional_scripts %}{% endblock %}
+		<div class="navbar navbar-fixed-top" role="navigation">
+			<div class="container-fluid">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
+            			<span class="sr-only">Toggle navigation</span>
+            			<span class="icon-bar"></span>
+            			<span class="icon-bar"></span>
+            			<span class="icon-bar"></span>
+          			</button>
+					<a class="navbar-brand" href="{% url 'home:index' %}">{% block shorttitle %}Lightning{% endblock %}</a>
+				</div>
+				<div class="collapse navbar-collapse">
+					<ul class="nav navbar-nav">
+						<li><a href="{% url 'home:index' %}">Home</a></li>
+						<li><a href="{% url 'slippy:slippymap' %}">Population</a></li>
+						<li><a href="{% url 'humans:individuals' %}">Individuals</a></li>
+					</ul>
+					{% block navbar %}{% endblock %}
+				</div><!--/.nav-collapse -->
+			</div>
+		</div>
+		{% block additional_divs %}{% endblock %}
+		<div class="container-fluid">
+			<ol class="breadcrumb">
+				{% block breadcrumbs %}
+				<li><a href="#">Home</a></li>
+				{% endblock %}
+			</ol>
+		</div>
+		{% block content %}{% endblock %}
+
+		<div class="footer">
+			{% block footer %}
+			<div class="container">
+				<p class="text-muted">If you would like to be involved with the development of Lightning, visit <a href="http://www.arvados.org">arvados.org</a> and <a href="https://arvados.org/projects/arvados/wiki/IRC_and_Mailing_lists">join</a> the open-source project.</p>
+			</div>
+			{% endblock %}
+		</div>
+	</body>
+</html>
