@@ -85,7 +85,9 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
     except ValueError:
         msg['msg'] = 'Error: Search coordinate must be an integer'
         return flashmsg, msg 
-    cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s > begin_int AND %s < end_int LIMIT 1', [search_coord, search_coord])
+    
+    cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s > begin_int AND %s < end_int AND chromosome = %s LIMIT 1', \
+            [search_coord, search_coord, search_chrom[3:]])
     row = cursor.fetchone()
     if row == None:
         msg['msg'] = 'Error: No allele found at the coordinate ' + str(search_coord) + ' for at least one of the genomes in this population.'
