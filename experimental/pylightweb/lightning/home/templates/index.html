@@ -16,15 +16,18 @@
 	<p>Our goals include enabling fast analysis of population genetic data. We currently use whole genome sequence data obtained from the Personal Genome Project. These sequences have been converted losslessly to Compressed Genome Format, a developmental format enabling simple lift-over, annotation, visualization, and fast analysis of human genomes. </p>
 	<ul>
 		<li>To view the population of 154 humans, search for genes, and view genes with Gene Review articles, visit the <a href="{% url 'slippy:slippymap' %}">Population</a> tab (an explanation of the process of visualization will be coming soon). </li>
-		<div class="alert alert-danger alert-dismissible" role="alert">
-			<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-			The genome visualization shown in <a href="{% url 'slippy:slippymap' %}">Population</a> is not complete, only the first 625000-or-so bases are shown.
-		</div>
-		<!--<li>To view individual human data, visit the <a href="humans">Individuals</a> Tab.</li>-->
+
+		<li>To view individual human data, visit the <a href="humans">Individuals</a> Tab.</li>
+
+<!-- Not needed alerts
 		<div class="alert alert-success alert-dismissible" role="alert">
 			<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 			All the <strong>individual</strong> human data are complete and shown in <a href="{% url 'humans:individuals' %}">Individuals</a>.
 		</div>
+		<div class="alert alert-danger alert-dismissible" role="alert">
+			<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+			The genome visualization shown in <a href="{% url 'slippy:slippymap' %}">Population</a> is not complete, only the first 625000-or-so bases are shown.
+		</div> -->
 	</ul>
 </div>
 {% endblock %}

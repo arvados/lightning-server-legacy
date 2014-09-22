@@ -40,7 +40,7 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
             id: "contentDiv",
             prefixUrl: prefixString,
             tileSources: srcString,
-            visibilityRatio: 0,
+            visibilityRatio: 0.8,
             showNavigator: true,
             navigatorPosition: 'BOTTOM_LEFT',
             navigatorHeight: 400,
@@ -82,7 +82,7 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
 				}
 				if (path_y != y){
 					path --;
-					step += 8000*(y - offsets[path]);
+					step += map_width*(y - offsets[path]);
 				}
 				console.log(step, path);
 			}
@@ -105,10 +105,10 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 	var offsets = getOffsets(offsetStr),
 		overlayid = '#'.concat(gene),
 		overlayidpartial = '#'.concat(gene, 'part1'),
-		beginstep = sstep % 8000,
-		beginoffset = Math.floor(sstep/8000),
-		endstep = estep % 8000,
-		endoffset = Math.floor(estep/8000),
+		beginstep = sstep % map_width,
+		beginoffset = Math.floor(sstep/map_width),
+		endstep = estep % map_width,
+		endoffset = Math.floor(estep/map_width),
 		startpath = parseInt(offsets[spath]),
 		endpath = parseInt(offsets[epath]),
 		beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize,
@@ -162,7 +162,7 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 				id: gene.concat("part1"),
 				px: beginstepcoor,
 				py: beginpathcoor,
-				width: (7999*(tilePixelSize+borderPixelSize) - borderPixelSize) +tilePixelSize-beginstepcoor,
+				width: ((map_width-1)*(tilePixelSize+borderPixelSize) - borderPixelSize) +tilePixelSize-beginstepcoor,
 				height: tilePixelSize,
 				className: 'highlight broken annotation'
 			});
