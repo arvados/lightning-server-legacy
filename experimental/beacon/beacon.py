@@ -30,7 +30,23 @@ populations = ['Personal Genome Project']
 abvfnames = [s[:-4] for s in os.listdir('./abv') if s.endswith('.abv')]
 people = "\n".join(map(lambda x: str(x), abvfnames))
 genomes = ['hg19']
-chromosomes = ['chr9']
+wonkychrom = 10 
+
+def listchromosomes():
+    chromosomes = []
+    cursor = g.db.execute('SELECT DISTINCT chromosome FROM loadgenomes_tilelocusannotation')
+    row = cursor.fetchall()
+    for i in range(len(row)):
+        chromosomes.append(row[i][0])
+    if wonkychrom in chromosomes:
+        #get out the chromsomenames
+        cursor = g.db.execute('SELECT DISTINCT chromosome_name FROM loadgenomes_tilelocusannotation')
+        row = cursor.fetchall()
+        for i in range(len(row)):
+            chromosomes.append(row[i][0])
+        chromosomes = filter(None, chromosomes)
+        chromosomes.remove(wonkychrom)
+    return chromosomes
 
 #this is really dumb. there has to be a python library for b64 that does this already
 def a2base64index(foochar):
@@ -65,7 +81,7 @@ def findallele(tile_id, tilevar, coordinate, begin_int):
     cursor = g.db.execute('SELECT * FROM loadgenomes_tilevariant WHERE %s = tile_variant_name', tilevarname)
     row = cursor.fetchone()
     seq = row['sequence']
-    index = coordinate - begin_int + 1
+    index = coordinate - begin_int
     return seq[index]
 
 def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
@@ -85,12 +101,22 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
     except ValueError:
         msg['msg'] = 'Error: Search coordinate must be an integer'
         return flashmsg, msg 
-    
-    cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s > begin_int AND %s < end_int AND chromosome = %s LIMIT 1', \
-            [search_coord, search_coord, search_chrom[3:]])
-    row = cursor.fetchone()
+<<<<<<< HEAD
+    try:
+        int(search_chrom)
+        iswonky = False
+    except ValueError:
+        iswonky = True
+    if iswonky:
+        cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s >= begin_int AND %s <= end_int AND chromosome = %s AND chromosome_name = %s LIMIT 1', [search_coord, search_coord, wonkychrom, search_chrom])
+        row = cursor.fetchone()
+    else:
+        search_chrom_name = ''
+        cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s >= begin_int AND %s <= end_int AND chromosome = %s LIMIT 1', [search_coord, search_coord, search_chrom])
+        row = cursor.fetchone()
     if row == None:
-        msg['msg'] = 'Error: No allele found at the coordinate ' + str(search_coord) + ' for at least one of the genomes in this population.'
+        msg['msg'] = 'Error: Is your coordinate valid? No allele(s) found at the coordinate ' + str(search_coord) + ' on chromosome ' + \
+            str(search_chrom) + ' with reference genome ' + search_gen + ' for at least one of the genomes in this population.'
         return flashmsg, msg 
     tile_id = format(row['tile_id'], 'x') #1c4000002
     begin_int = row['begin_int']
@@ -103,7 +129,7 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
     for abv in abvfnames:
         tilevar = findtilevar(abv, path, step)
         allele = findallele(tile_id, tilevar, search_coord, begin_int)
-        debuginfo = [abv, path, step, tilevar, allele]
+        debuginfo = [abv, path, step, tilevar, allele, tile_id, begin_int]
         debugmsg.append(debuginfo)
         if (allele.lower() == search_allele.lower()):
             count += 1
@@ -114,7 +140,7 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
         flashmsg = False 
     #msg = tile_id, ' ', path, ' ', step, ' ', tilevar, ' ', allele, ' ', flashmsg
     msg['msg'] = 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
-            '" (in ' + search_chrom + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
+            '" (in ' + str(search_chrom) + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
     if DEBUG:
         debugmsg = "\n".join(map(lambda x: str(x), debugmsg))
         msg['debug'] = debugmsg
@@ -141,7 +167,8 @@ def teardown_request(exception):
 
 @app.route('/')
 def show_search():
-  return render_template('search.html', populations=populations, genomes=genomes, chromosomes=chromosomes, people=people)
+    chromosomes = listchromosomes()
+    return render_template('search.html', populations=populations, genomes=genomes, chromosomes=chromosomes, people=people)
 
 @app.route('/search', methods=['POST'])
 def search_entries():
@@ -157,8 +184,9 @@ def search_entries():
     else:
         flash(flashmsg)
 
+    chromosomes = listchromosomes()
     return render_template('search.html', msg=msg, flashmsg=flashmsg, populations=populations, genomes=genomes, prev_pop=search_pop, \
-            prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = search_chrom, coordinate=search_coord, allele = search_allele, people=people)
+    prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = search_chrom, coordinate=search_coord, allele = search_allele, people=people)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
