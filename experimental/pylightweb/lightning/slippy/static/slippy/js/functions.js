@@ -56,7 +56,6 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
         viewerInputHook = viewer.addViewerInputHook({hooks: [
             {tracker: 'viewer', handler: 'clickHandler', hookHandler: onViewerClick}
         ]});
-		console.log(getOffsets(offsetIterURL));
         function onViewerClick(event) {
             event.preventDefaultAction = true;
 			var poss_overlays = jQuery('.annotation');
