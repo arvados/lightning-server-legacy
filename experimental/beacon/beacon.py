@@ -65,7 +65,7 @@ def findtilevar(genome, path, step):
         var = tile[int(step)]
         return var
 
-def findallele(tile_id, tilevar, coordinate, begin_int):
+def findallele(tile_id, tilevar, coordinate, begin_int, lenalleles):
     if tilevar == '-':
         return 'No call'
     elif tilevar == '#':
@@ -82,26 +82,9 @@ def findallele(tile_id, tilevar, coordinate, begin_int):
     row = cursor.fetchone()
     seq = row['sequence']
     index = coordinate - begin_int
-    return seq[index]
+    return seq[index:index+lenalleles]
 
-def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
-    flashmsg = None
-    msg = {}
-    #msg['debug'] = False 
-
-    valid_chars = set('actgdi')
-    if not search_allele or not search_coord:
-        msg['msg'] = 'Error: You must fill out both the "Coordinate" and "Allele" fields.'
-        return flashmsg, msg 
-    if not set(search_allele.lower()).issubset(valid_chars):
-        msg['msg'] = 'Error: Allele must consist only of the characters A,C,T,G,D, or I (case-insensitive). You searched for: ' + search_allele
-        return flashmsg, msg 
-    try:
-        search_coord = int(search_coord)
-    except ValueError:
-        msg['msg'] = 'Error: Search coordinate must be an integer'
-        return flashmsg, msg 
-<<<<<<< HEAD
+def findtileid(search_coord, search_chrom):
     try:
         int(search_chrom)
         iswonky = False
@@ -114,6 +97,29 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
         search_chrom_name = ''
         cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s >= begin_int AND %s <= end_int AND chromosome = %s LIMIT 1', [search_coord, search_coord, search_chrom])
         row = cursor.fetchone()
+    return row
+
+def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
+    flashmsg = None
+    msg = {}
+    #msg['debug'] = False 
+
+    #Form Validation
+    valid_chars = set('actgdi')
+    if not search_allele or not search_coord:
+        msg['msg'] = 'Error: You must fill out both the "Coordinate" and "Allele" fields.'
+        return flashmsg, msg 
+    if not set(search_allele.lower()).issubset(valid_chars):
+        msg['msg'] = 'Error: Allele must consist only of the characters A,C,T,G,D, or I (case-insensitive). You searched for: ' + search_allele
+        return flashmsg, msg 
+    try:
+        search_coord = int(search_coord)
+    except ValueError:
+        msg['msg'] = 'Error: Search coordinate must be an integer'
+        return flashmsg, msg 
+
+    #Begin Search
+    row = findtileid(search_coord, search_chrom)
     if row == None:
         msg['msg'] = 'Error: Is your coordinate valid? No allele(s) found at the coordinate ' + str(search_coord) + ' on chromosome ' + \
             str(search_chrom) + ' with reference genome ' + search_gen + ' for at least one of the genomes in this population.'
@@ -126,12 +132,13 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
 
     count = 0
     debugmsg = []
+    lenalleles = len(search_allele)
     for abv in abvfnames:
         tilevar = findtilevar(abv, path, step)
-        allele = findallele(tile_id, tilevar, search_coord, begin_int)
-        debuginfo = [abv, path, step, tilevar, allele, tile_id, begin_int]
+        alleles = findallele(tile_id, tilevar, search_coord, begin_int, lenalleles)
+        debuginfo = [abv, path, step, tilevar, alleles, tile_id, begin_int]
         debugmsg.append(debuginfo)
-        if (allele.lower() == search_allele.lower()):
+        if (alleles.lower() == search_allele.lower()):
             count += 1
 
     if count != 0:
