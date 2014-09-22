@@ -185,7 +185,7 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
         flashmsg = False 
     #msg = tile_id, ' ', path, ' ', step, ' ', tilevar, ' ', allele, ' ', flashmsg
     msg['msg'] = 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
-            '" (in ' + str(search_chrom) + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
+            '" (in chr ' + str(search_chrom) + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
     if DEBUG:
         debugmsg = listvars + "\n".join(map(lambda x: str(x), debugmsg))
         msg['debug'] = debugmsg
@@ -229,6 +229,10 @@ def search_entries():
     chromosomes = listchromosomes()
     return render_template('search.html', msg=msg, flashmsg=flashmsg, populations=populations, genomes=genomes, prev_pop=search_pop, \
     prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = search_chrom, coordinate=search_coord, allele = search_allele, people=people)
+
+@app.route('/people')
+def show_people():
+    return render_template('people.html', people=people)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

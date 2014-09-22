@@ -207,5 +207,41 @@ Okay, so now to deal with multiple allele searches, then to deal with insertions
 also fix -- should search across whole genome.
 
 
+virtualenv venv --distribute
+
+
+========================
+
+
+OKAY. Let's support mulitple alleles, ACTG only, assuming only one tile. Then support it across tiles.
+Then support single base cases of insertions / deletions. Then support it across tiles.
+
+
+UPDATE loadgenomes_tilelocusannotation SET chromosome=10 WHERE id=1;
+UPDATE loadgenomes_tilelocusannotation SET chromosome=10 WHERE id=2;
+ UPDATE loadgenomes_tilelocusannotation SET chromosome_name='wonky' WHERE id=2;
+git show HEAD~2:./beacon.py
+
+========================
+http://localhost:8000/admin/loadgenomes/tile/7583301669/
+135909752
+TTTGAG
+
+cool, now we support multiple alleles.
+now across tiles...
+
+original search path:
+
+for each abv file, 
+use databse: lookup tile path and step
+determine tile code, which tells you which variant
+db call to lookup sequence
+at given coordinate in sequence, find alleles
+
+
+
+eww, but the tiles overlap. hmm.
+135909752
+TTTGAGCTTGTTCGTATCTGCACGgggtaagaacaagtgtcgaactgaagggtcaagggatggttagcctgagtcacattgatgacaagatgaccttatgttggaaagaaaaggaaaaatagacaagtgattattaagccctttttagggttagtttggtaggggtgggtcccggggtgacagcccatttttccctgtctgtggacattactcctttcacctggcGTGTAGTGTGCCCATCCCTTTTCA
 
 
