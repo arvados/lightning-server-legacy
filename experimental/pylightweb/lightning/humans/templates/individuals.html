@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block title %}Lightning: 154 PGP Genomes{% endblock %}
+
+{% block additional_scripts %}
+	<script>
+		function ToggleChecked(){
+			var chk = jQuery("input[name='toLoad']");
+			console.log(jQuery("input[name='check_all']").is(":checked"));
+			if (jQuery("input[name='check_all']").is(":checked")){
+				for (var i=0; i<chk.length;i++){
+					chk[i].checked = true;
+				}
+			} else {
+				for (var i=0; i<chk.length;i++){
+					chk[i].checked = false;
+				}
+			}
+		}
+	</script>	
+{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li class="active"><a href="#">Individual Genomes</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Currently Available: {{ all_humans|length }} Genomes</h1>
+		<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<!--<th><input type="checkbox" name="check_all" value="check_all" onClick="ToggleChecked()"></th>-->
+					<th>PGP ID</th>
+					<th>Gender</th>
+					<th>Chromosomal Sex</th>
+					<th>Age</th>
+					<th>Identified Ethnicity</th>
+					<th>Last Updated</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for hu in all_humans %}
+				<tr>
+					<!--<td><input type="checkbox" name="toLoad" value="{{ human.pycompr_abv }}"></td>-->
+					<td><a href="https://my.pgp-hms.org/profile/{{ hu.name }}">{{ hu.name }}</a></td>
+					<td>{{ hu.human_readable_gender }}</td>
+					<td>{{ hu.human_readable_sex }}</td>
+					<td>{{ hu.human_readable_age_range }}</td>
+					<td>{% for ethn in hu.human_readable_ethnicity_terse %}
+							{{ethn}}<br>
+						{% endfor %}
+					</td>
+					<td>{{ hu.updated }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		</div>
+	</div>
+</div>
+{% endblock %}
+<!--{# Good for checkboxes, but I don't like the way it looks
+						{% for ethn in hu.human_readable_ethnicity_for_checkboxes %}
+							{% if ethn.name == "Unknown" %}
+								{{ethn.name}}<br>
+							{% elif ethn.value %}
+								<span class="glyphicon glyphicon-check"></span> {{ ethn.name }}<br>
+							{% else %}
+								<span class="glyphicon glyphicon-unchecked"></span> {{ ethn.name }}<br>
+							{% endif %}
+						{% endfor %}
+#} -->

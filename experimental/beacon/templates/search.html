@@ -1,0 +1,94 @@
+{# population, genome, chromosome, coordinate, and allelle are the inputs 
+#}
+{% extends "layout.html" %}
+{% block body %}
+  <h2>Search</h2>
+    <form action="{{ url_for('search_entries') }}" method=post class=search-entries>
+      <table>
+        <tr>
+          <td>Population</td>
+          <td> <select name=search_pop width="300px">
+          {% for p in populations %} 
+            {% if p == prev_chrom %}
+              <option name={{ p }} selected="selected">{{ p }}</option>
+            {% else %} 
+              <option name={{ p }}>{{ p }}</option>
+            {% endif %}
+          {% endfor %}
+          </select> </td>
+        </tr>
+         
+        <tr>
+          <td>Genome</td>
+          <td> <select name=search_gen width="300px">
+          {% for g in genomes %}</option>
+            {% if g == prev_gen %}
+              <option name={{ g }} selected="selected">{{ g }}</option>
+            {% else %} 
+              <option name={{ g }}>{{ g }}</option>
+            {% endif %}
+          {% endfor %}
+          </select> </td>
+        </tr>
+
+        <tr>
+          <td>Chromosome</td>
+          <td> <select name=search_chrom width="300px">
+          {% for c in chromosomes %} </option> 
+            {% if c == prev_chrom %}
+              <option name={{ c }} selected="selected">{{ c }}</option>
+            {% else %} 
+              <option name={{ c }}>{{ c }}</option>
+            {% endif %}
+          {% endfor %}
+          </select> </td>
+        </tr>
+        
+        <tr>
+          <td>Coordinate</td>
+          <td><input type=text name=search_coord value={{ coordinate }}></td>
+        </tr>
+
+        <tr>
+          <td>Allele</td>
+          <td><input type=text name=search_allele value={{ allele }}></td>
+        </tr>
+
+        <tr>
+          <td> <input type="submit" value="Submit"> </td>
+        </tr>
+      </table>
+    </form>
+
+    {% if flashmsg is defined %} <!--if we searched for something-->
+      <h3>Results</h3>
+      Result: <b>{{ flashmsg }} </b>
+      <h3>Info</h3>{{ msg.msg }}
+      {% if msg.debug %}
+      <h3>Debug</h3><pre>{{msg.debug}}</pre>
+      {% endif %}
+      
+      
+      {#
+      {% for entry in result %}
+        <div class = helptext> {{ entry.helptext|safe }} </div>
+        {% else %} <!--no results-->
+        <b><em>No results found. </em></b><br/>
+      {% endfor %}
+      #}
+    {% endif %}
+
+  <h2>Notes</h2>
+  <b>Query Parameters</b><br/>
+  Coordinate: 1-based position assumed<br/>
+  Allele: any string of nucleotides A,C,T,G or D for deletion or I for insertion. Case-insensitive.<br/>
+  <br/>
+  <b>Population</b><br/>
+  The following human genomes from the Personal Genome Project are searched:
+  <pre>{{people}}</pre>
+  <b>Contact</b><br/>
+  For questions or feedback, please contact nancy@curoverse.com
+
+  <marquee behavior="scroll" direction="right"><img src="/static/nyancat.gif" width="100" height="100"/></marquee>
+
+{% endblock %}

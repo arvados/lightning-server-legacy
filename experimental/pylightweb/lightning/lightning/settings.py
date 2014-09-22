@@ -32,6 +32,10 @@ ALLOWED_HOSTS = [
     '.lightning-dev3.curoverse.com.',
     ]
 
+STATICFILES_DIRS = (
+    BASE_DIR + '/static/',
+    )
+
 
 # Application definition
 
@@ -43,9 +47,11 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'home',
     'loadgenomes',
     'slippy',
     'loadgenes',
+    'humans',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -99,3 +105,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 STATIC_ROOT = "/var/www/pylightweb/static"
+
+MEDIA_URL = '/media/'
+
+MEDIA_ROOT = "/home/sguthrie/pylightweb/data"

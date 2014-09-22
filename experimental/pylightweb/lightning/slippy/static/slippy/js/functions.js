@@ -40,7 +40,7 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
             id: "contentDiv",
             prefixUrl: prefixString,
             tileSources: srcString,
-            visibilityRatio: 0,
+            visibilityRatio: 0.8,
             showNavigator: true,
             navigatorPosition: 'BOTTOM_LEFT',
             navigatorHeight: 400,
@@ -56,6 +56,7 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
         viewerInputHook = viewer.addViewerInputHook({hooks: [
             {tracker: 'viewer', handler: 'clickHandler', hookHandler: onViewerClick}
         ]});
+		console.log(getOffsets(offsetIterURL));
         function onViewerClick(event) {
             event.preventDefaultAction = true;
 			var poss_overlays = jQuery('.annotation');
@@ -82,7 +83,7 @@ function beginDragon(datafile1, tilePixelSize, borderPixelSize, offsetURL, srcSt
 				}
 				if (path_y != y){
 					path --;
-					step += 8000*(y - offsets[path]);
+					step += map_width*(y - offsets[path]);
 				}
 				console.log(step, path);
 			}
@@ -105,10 +106,10 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 	var offsets = getOffsets(offsetStr),
 		overlayid = '#'.concat(gene),
 		overlayidpartial = '#'.concat(gene, 'part1'),
-		beginstep = sstep % 8000,
-		beginoffset = Math.floor(sstep/8000),
-		endstep = estep % 8000,
-		endoffset = Math.floor(estep/8000),
+		beginstep = sstep % map_width,
+		beginoffset = Math.floor(sstep/map_width),
+		endstep = estep % map_width,
+		endoffset = Math.floor(estep/map_width),
 		startpath = parseInt(offsets[spath]),
 		endpath = parseInt(offsets[epath]),
 		beginstepcoor = beginstep*(tilePixelSize+borderPixelSize) - borderPixelSize,
@@ -116,6 +117,12 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 		beginpathcoor = (startpath+beginoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize,
 		endpathcoor = (endpath+endoffset)*(tilePixelSize+borderPixelSize) - borderPixelSize,
 		genePos;
+
+	if (beginoffset == endoffset && startpath == endpath) {
+		genePos = new OpenSeadragon.Point(beginstepcoor + (endstep - beginstep) * (tilePixelSize+borderPixelSize) / 2, endpathcoor);
+	} else {
+		genePos = new OpenSeadragon.Point(0, endpathcoor);
+	}
 	//Only add the annotation if it's not already there
 	if (jQuery(overlayid).length == 0 && jQuery(overlayidpartial).length == 0) {
 		var links,
@@ -134,7 +141,6 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 			links = '';	
 		}
 		if (beginoffset == endoffset && startpath == endpath) {
-			genePos = new OpenSeadragon.Point(beginstepcoor + (endstep - beginstep) * (tilePixelSize+borderPixelSize) / 2, endpathcoor);
 			//Write mouseover text object
 			var textToAppend = '<div id="Text'.concat(gene, '" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, links, '</p></div>');
 			jQuery('#overlaytexts').append(textToAppend);
@@ -150,7 +156,6 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 				bindOneToolTip("#Text".concat(gene), "#".concat(gene));
 			}, 200);
 		} else {
-			genePos = new OpenSeadragon.Point(0, endpathcoor);
 			//This assumes nothing crosses more than one cutoff
 			var textToAppend = '<div id="Text'.concat(gene, 'part1" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, ' (part 1)', links, '</p></div><div id="Text', gene, 'part2" style="display:none;width:250px;background-color:#fff;">', href, '<p>', gene, ' (part 2)', links, '</p></div>');
 			jQuery('#overlaytexts').append(textToAppend);
@@ -158,7 +163,7 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 				id: gene.concat("part1"),
 				px: beginstepcoor,
 				py: beginpathcoor,
-				width: (7999*(tilePixelSize+borderPixelSize) - borderPixelSize) +tilePixelSize-beginstepcoor,
+				width: ((map_width-1)*(tilePixelSize+borderPixelSize) - borderPixelSize) +tilePixelSize-beginstepcoor,
 				height: tilePixelSize,
 				className: 'highlight broken annotation'
 			});
@@ -181,6 +186,7 @@ function addGeneAnnotation(gene, spath, sstep, epath, estep, tilePixelSize, bord
 	if (panTo) {
 		genePos = imagingHelper.dataToLogicalPoint(genePos);
 		imagingHelper.centerAboutLogicalPoint(genePos);
+		viewer.viewport.zoomTo(viewer.viewport.getMaxZoom());
 	}
 }
 lpad = function(value, padding) {
