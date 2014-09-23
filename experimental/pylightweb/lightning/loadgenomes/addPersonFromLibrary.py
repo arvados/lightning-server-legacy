@@ -2,8 +2,9 @@
 import json
 import datetime
 import string
+import numpy as np
 
-def addAnnotations(annotations, tile_variant_id, today):
+def readNotes(annotations, tile_variant_id, today):
     """
     annotations: list of annotations read in from FASTJ format
     tile_variant_id: the primary key for the tile_variant to add the annotations to
@@ -19,18 +20,23 @@ def addAnnotations(annotations, tile_variant_id, today):
     """
     # for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
     lists_to_extend = []
+    wellSequenced = True
     for annotation in annotations:
         add = True
-        if annotation.startswith('hu') or ('GAP' in annotation):
+        if annotation.startswith('hu'):
             #These are population specific tags and should not be documented in the tile library
+            add = False
+        elif 'GAP' in annotation:
+            #Population specific tags; should not be in the tile library; should be in the abv/npy file
+            wellSequenced = False
             add = False
         elif 'Phase' in annotation:
             #This is another population-sepecific tag
             add = False
-            if 'REF' in annotation:
-                pop_size_increment = 0
+            if ' A' in annotation:
+                isPhaseA = True
             else:
-                pop_size_increment = 1
+                isPhaseA = False
         elif 'SNP' in annotation or 'SUB' in annotation or 'INDEL' in annotation:
             t='SNP_INDEL'
         elif 'db_xref' in annotation:
@@ -44,7 +50,26 @@ def addAnnotations(annotations, tile_variant_id, today):
         if add:
             lists_to_extend.append([tile_variant_id, t, 'library_generation', annotation, '', today, today])
 
-    return lists_to_extend, pop_size_increment
+    return lists_to_extend, wellSequenced, isPhaseA
+
+def readNotesEfficiently(annotations):
+    """
+    annotations: list of annotations read in from FASTJ format
+
+    Requires Phase to be in annotation to find which phase to add to
+
+    If "GAP" in the annotations, ignore the tile. Otherwise, add it to the correct phase list
+    """
+    wellSequenced = True
+    for annotation in annotations:
+        if 'GAP' in annotation:
+            wellSequenced = False
+        elif 'Phase' in annotation:
+            if ' A' in annotation:
+                isPhaseA = True
+            else:
+                isPhaseA = False
+    return wellSequenced, isPhaseA
 
 def manipulateList(inpList):
     retlist = []
@@ -58,12 +83,68 @@ def manipulateList(inpList):
         thingsToJoin[-1] += '\n'
         retlist.append(string.join(thingsToJoin, sep=','))
     return retlist
-            
+
+
+def writeTile(notes, toSaveData, popul_tilevars, curr_tilevars, tilevars_to_write, annotations_to_write, human_sequence_phaseA, human_sequence_phaseB):
+    #Append csv statements
+    # NOTE: The population_size is going to be twice the number of humans
+    # things to add:
+    #   for loadgenomes_tilevariant: tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag
+    #       start_tag and end_tag only if they differ from the reference (from tags[tile_id])
+    #   for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
+    # things to modify using tile_variant_name:
+    #   for loadgenomes_tilevariant: population_size
+
+    #Modify if tilevariant is present in popul_tilevars
+    #Add otherwise
+    def writeHuman(isPhaseA, isWellSequenced, int_to_write):
+        if not isWellSequenced:
+            int_to_write = -1
+        if isPhaseA:
+            human_sequence_phaseA.append(int_to_write)
+        else:
+            human_sequence_phaseB.append(int_to_write)
+    write_new = True
+    tile_hex = toSaveData['tilename']
+    tile_int = int(tile_hex, 16)
+    #Check if we have the tile_variant in current database
+    tilevars_in_database = popul_tilevars[tile_int]
+    for index, variant in enumerate(tilevars_in_database):
+        if toSaveData['md5sum'] == variant[1]:
+            popul_tilevars[tile_int][index][2] += 1 #Add 1 to the population
+            popul_tilevars[tile_int][index][3] = True #Indicate we will need to update the tilevariant
+            wellSequenced, isPhaseA = readNotesEfficiently(notes)
+            writeHuman(isPhaseA, wellSequenced, int(hex(int(variant[0]))[11:],16)) #Write person variant; Add 2 to compensate for the 0x
+            return 
+
+    #Modify current files
+    if tile_hex not in curr_tilevars:
+        curr_tilevars[tile_hex] = [len(tilevars_to_write)]
+    else:
+        poss_tile_indices = curr_tilevars[tile_hex]
+        for index in poss_tile_indices:
+            if toSaveData['md5sum'] == tilevars_to_write[index][4]:
+                write_new = False
+                tilevars_to_write[index][3] += 1
+                wellSequenced, isPhaseA = readNotesEfficiently(notes)
+                writeHuman(isPhaseA, wellSequenced, int(hex(int(tilevars_to_write[index][0]))[11:],16)) #Write person variant; Add 2 to compensate for the 0x
+                return 
+        curr_tilevars[tile_hex].append(len(tilevars_to_write))
+
+    varname = hex(len(popul_tilevars[tile_int]) + len(curr_tilevars[tile_hex]) -1)[2:].zfill(3)
+    tilevarname = int(tile_hex+varname, 16)
+    annotations, wellSequenced, isPhaseA = readNotes(loadedData[u'notes'], tilevarname, today)
+    tilevars_to_write.append([tilevarname, tile_int, toSaveData['length'], 1, toSaveData['md5sum'], today, toSaveData['sequence'],
+                              toSaveData['start_seq'], toSaveData['end_seq']])
+    annotations_to_write.extend(annotations)
+    writeHuman(isPhaseA, wellSequenced, int(varname,16)) #Write person variant
+    return
+
 now = datetime.date.today()
 today = str(now.year) + "-" + str(now.month) + "-" + str(now.day)
 
 input_file = 'huA05317.fj'
-curr_data_file = '2014-09-15-data.csv'
+library_file = 'hide/ref/Library.csv'
 
 CHR_CHOICES = {
     'chr1': 1,
@@ -96,63 +177,24 @@ popul_tilevars = {}
 curr_tilevars = {}
 tilevars_to_write = []
 annotations_to_write = []
+human_sequence_phaseA = []
+human_sequence_phaseB = []
 
-#\copy loadgenomes_tilevariant(tile_variant_name, tile_id, population_size, md5sum) to '2014-09-15-data.csv'
-with open(curr_data_file, 'r') as f:
+with open(library_file, 'r') as f:
     for line in f:
-        tile_variant_name, tile_id, popul, md5sum = line.strip().split(',')
+        human_readable_name, tile_variant_name, tile_id, popul, md5sum = line.strip().split(',')
         tile_id = int(tile_id)
         if tile_id not in popul_tilevars:
             popul_tilevars[tile_id] = [[tile_variant_name, md5sum, int(popul), False]]
         else:
             popul_tilevars[tile_id].append([tile_variant_name, md5sum, int(popul), False])
-            
 
 with open(input_file, 'r') as f:   
     i = 0
     j = 0
     for line in f:
         if (line[:2] == '>{' or line[:3] == '> {') and i > 0:
-            #Append csv statements
-            # NOTE: The population_size is going to be twice the number of humans
-            # things to add:
-            #   for loadgenomes_tilevariant: tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag
-            #       start_tag and end_tag only if they differ from the reference (from tags[tile_id])
-            #   for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
-            # things to modify using tile_variant_name:
-            #   for loadgenomes_tilevariant: population_size
-
-            #Modify if tilevariant is present in popul_tilevars
-            #Add otherwise
-            write_new = True
-            tile_hex = toSaveData['tilename']
-            tile_int = int(tile_hex, 16)
-            #Check if we have the tile_variant in current database
-            tilevars_in_database = popul_tilevars[tile_int]
-            for index, variant in enumerate(tilevars_in_database):
-                if toSaveData['md5sum'] == variant[1]:
-                    write_new = False
-                    popul_tilevars[tile_int][index][2] += 1 #Add 1 to the population
-                    popul_tilevars[tile_int][index][3] = True #Indicate we will need to update the tilevariant
-            #Modify current files
-            if write_new:
-                if tile_hex not in curr_tilevars:
-                    curr_tilevars[tile_hex] = [len(tilevars_to_write)]
-                else:
-                    poss_tile_indices = curr_tilevars[tile_hex]
-                    for index in poss_tile_indices:
-                        if toSaveData['md5sum'] == tilevars_to_write[index][4]:
-                            write_new = False
-                            tilevars_to_write[index][3] += 1
-                    if write_new:
-                        curr_tilevars[tile_hex].append(len(tilevars_to_write))
-            if write_new:
-                varname = hex(len(popul_tilevars[tile_int]) + len(curr_tilevars[tile_hex]) -1)[2:].zfill(3)
-                tilevarname = int(tile_hex+varname, 16)
-                annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, today)
-                tilevars_to_write.append([tilevarname, tile_int, toSaveData['length'], population_incr, toSaveData['md5sum'], today, toSaveData['sequence'],
-                                          toSaveData['start_seq'], toSaveData['end_seq']])
-                annotations_to_write.extend(annotations)
+            writeTile(loadedData[u'notes'], toSaveData, popul_tilevars, curr_tilevars, tilevars_to_write, annotations_to_write, human_sequence_phaseA, human_sequence_phaseB)
         if (line[:2] == '>{' or line[:3] == '> {'):
             j = 0
             i += 1
@@ -196,14 +238,24 @@ with open(input_file, 'r') as f:
             elif j == 20000:
                 print "Tile was too long to reasonably store in memory"
                 toSaveData['sequence'] += " ERROR: READ IS TOO LONG TO REASONABLY STORE IN MEMORY "
+    #Write last tile            
+    writeTile(loadedData[u'notes'], toSaveData, popul_tilevars, curr_tilevars, tilevars_to_write, annotations_to_write, human_sequence_phaseA, human_sequence_phaseB)
 
 
-with open('hide/tilevariant.csv', 'w') as f:
+huname = 'hide/huA05317/huA05317phaseA'
+array = np.array(human_sequence_phaseA, dtype=np.int16)
+np.save(huname, array)
+
+huname = 'hide/huA05317/huA05317phaseB'
+array = np.array(human_sequence_phaseB, dtype=np.int16)
+np.save(huname, array)
+
+with open('hide/huA05317/tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write))
-with open('hide/varannotation.csv', 'w') as f:
+with open('hide/huA05317/varannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
 
-with open('hide/update.sql', 'w') as f:
+with open('hide/huA05317/update.sql', 'w') as f:
     f.write("BEGIN;\n")
     for tiles in popul_tilevars:
         for variant in popul_tilevars[tiles]:
@@ -211,7 +263,7 @@ with open('hide/update.sql', 'w') as f:
                 f.write("UPDATE loadgenomes_tilevariant SET population_size = " + str(variant[2]) + " WHERE tile_variant_name = " + variant[0] + ";\n")
     f.write("COMMIT;\n")
 
-with open('hide/Library.csv', 'w') as f:
+with open('hide/huA05317/Library.csv', 'w') as f:
     #tilevarname, popul, md5sum
     #Need to write out the ones already in the database and the ones we updated
     for tiles in popul_tilevars:
@@ -224,7 +276,7 @@ with open('hide/Library.csv', 'w') as f:
             step = tile_var_hex[5:9]
             var = tile_var_hex[9:]
             tile_var_period_sep = string.join([path, version, step, var], '.') 
-            f.write(string.join([tile_var_period_sep, str(popul), md5sum+'\n'], sep=','))
+            f.write(string.join([tile_var_period_sep, str(tile_variant_name), str(tile_id), str(popul), md5sum+'\n'], sep=','))
     for l in tilevars_to_write:
         tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag = l
         tile_var_hex = hex(tile_variant_name)[2:]
@@ -234,4 +286,5 @@ with open('hide/Library.csv', 'w') as f:
         step = tile_var_hex[5:9]
         var = tile_var_hex[9:]
         tile_var_period_sep = string.join([path, version, step, var], '.') 
-        f.write(string.join([tile_var_period_sep, str(population_size), md5sum+'\n'], sep=','))
+        f.write(string.join([tile_var_period_sep, str(tile_variant_name), str(tile_id), str(population_size), md5sum+'\n'], sep=','))
+
