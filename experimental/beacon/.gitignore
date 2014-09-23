@@ -4,3 +4,4 @@ databaseconfig.py
 bin
 lib
 include
+*.bkup
