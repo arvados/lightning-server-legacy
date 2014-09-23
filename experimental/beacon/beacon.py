@@ -27,7 +27,10 @@ db = sqla(app)
 
 #hardcoded lists of population, genome, chromosome for now
 populations = ['Personal Genome Project']
-abvfnames = [s[:-4] for s in os.listdir('./abv') if s.endswith('.abv')]
+foo = os.path.dirname(os.path.abspath(__file__)) + '/abv'
+bar = os.getcwd()
+if DEBUG: print foo, 'bar', bar
+abvfnames = [s[:-4] for s in os.listdir(foo) if s.endswith('.abv')]
 people = "\n".join(map(lambda x: str(x), abvfnames))
 genomes = ['hg19']
 wonkychrom = 10 
