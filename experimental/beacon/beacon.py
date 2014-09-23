@@ -175,7 +175,6 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
         debugmsg.append(debuginfo)
         if not foundallele:
             msg['msg'] = msg
-            break
         else:
             if (alleles.lower() == search_allele.lower()):
                 count += 1
