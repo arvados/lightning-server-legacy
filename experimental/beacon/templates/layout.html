@@ -6,9 +6,10 @@
 <div class=page>
   <h1>PGP Beacon</h1>
   <div class=metanav>
-    || <a href="{{ url_for('show_search') }}">home</a> || 
+    LIGHTNING || <a href="http://lightning-dev3.curoverse.com">Lightning Home</a> || <br/> 
+    BEACON || <a href="{{ url_for('show_search') }}">beacon search</a> || 
     <a href="{{ url_for('show_people') }}">population info</a> ||
-    <a href="http://ga4gh.org/#/beacon">beacon faq</a> ||
+    <a href="http://ga4gh.org/#/beacon">beacons faq</a> ||
   </div>
   {% for message in get_flashed_messages() %}
     <div class=flash>{{ message }}</div>
