@@ -199,8 +199,13 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
     else:
         flashmsg = False 
     #msg = tile_id, ' ', path, ' ', step, ' ', tilevar, ' ', allele, ' ', flashmsg
-    msg['msg'] += 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
+    info = 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
             '" (in chr ' + str(search_chrom) + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
+    if 'msg' in msg:
+        msg['msg'] += info
+    else:
+        msg['msg'] = info
+
     if DEBUG:
         debugmsg = listvars + "\n".join(map(lambda x: str(x), debugmsg))
         msg['debug'] = debugmsg
