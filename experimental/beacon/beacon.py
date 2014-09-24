@@ -46,7 +46,7 @@ def listchromosomes():
         cursor = g.db.execute('SELECT DISTINCT chromosome_name FROM loadgenomes_tilelocusannotation')
         row = cursor.fetchall()
         for i in range(len(row)):
-            chromosomes.append(row[i][0])
+            chromosomes.append(row[i][1])
         chromosomes = filter(None, chromosomes)
         chromosomes.remove(wonkychrom)
     return chromosomes
@@ -78,7 +78,7 @@ def findseq(tilevar, tile_id):
     #at some point, need to deal with "complex" cases
     else: #okay, so convert to base 64 key, and then subtract 2, then append to the tile_id as 3 digits (pad with zero)
         foo =  a2base64index(tilevar)-2
-        tilevarname = tile_id + foo.zfill(3)
+        tilevarname = tile_id + str(foo).zfill(3)
         tilevarname = int(tilevarname, 16)
     cursor = g.db.execute('SELECT * FROM loadgenomes_tilevariant WHERE %s = tile_variant_name', tilevarname)
     row = cursor.fetchone()
