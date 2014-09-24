@@ -114,7 +114,7 @@ def writeTile(notes, toSaveData, popul_tilevars, curr_tilevars, tilevars_to_writ
             popul_tilevars[tile_int][index][2] += 1 #Add 1 to the population
             popul_tilevars[tile_int][index][3] = True #Indicate we will need to update the tilevariant
             wellSequenced, isPhaseA = readNotesEfficiently(notes)
-            writeHuman(isPhaseA, wellSequenced, int(hex(int(variant[0]))[11:],16)) #Write person variant; Add 2 to compensate for the 0x
+            writeHuman(isPhaseA, wellSequenced, int(hex(int(variant[0]))[2:].zfill(12)[9:],16)) #Write person variant
             return 
 
     #Modify current files
@@ -127,7 +127,7 @@ def writeTile(notes, toSaveData, popul_tilevars, curr_tilevars, tilevars_to_writ
                 write_new = False
                 tilevars_to_write[index][3] += 1
                 wellSequenced, isPhaseA = readNotesEfficiently(notes)
-                writeHuman(isPhaseA, wellSequenced, int(hex(int(tilevars_to_write[index][0]))[11:],16)) #Write person variant; Add 2 to compensate for the 0x
+                writeHuman(isPhaseA, wellSequenced, int(hex(tilevars_to_write[index][0])[2:].zfill(12)[9:],16)) #Write person variant
                 return 
         curr_tilevars[tile_hex].append(len(tilevars_to_write))
 
@@ -143,8 +143,8 @@ def writeTile(notes, toSaveData, popul_tilevars, curr_tilevars, tilevars_to_writ
 now = datetime.date.today()
 today = str(now.year) + "-" + str(now.month) + "-" + str(now.day)
 
-input_file = 'huA05317.fj'
-library_file = 'hide/ref/Library.csv'
+input_file = 'huE9B698_chr1_band0.fj'
+library_file = '000_library.csv'
 
 CHR_CHOICES = {
     'chr1': 1,
@@ -242,20 +242,20 @@ with open(input_file, 'r') as f:
     writeTile(loadedData[u'notes'], toSaveData, popul_tilevars, curr_tilevars, tilevars_to_write, annotations_to_write, human_sequence_phaseA, human_sequence_phaseB)
 
 
-huname = 'hide/huA05317/huA05317phaseA'
+huname = 'hide/huE9B698_chr1/phaseA'
 array = np.array(human_sequence_phaseA, dtype=np.int16)
 np.save(huname, array)
 
-huname = 'hide/huA05317/huA05317phaseB'
+huname = 'hide/huE9B698_chr1/phaseB'
 array = np.array(human_sequence_phaseB, dtype=np.int16)
 np.save(huname, array)
 
-with open('hide/huA05317/tilevariant.csv', 'w') as f:
+with open('hide/huE9B698_chr1/tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write))
 with open('hide/huA05317/varannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
 
-with open('hide/huA05317/update.sql', 'w') as f:
+with open('hide/huE9B698_chr1/update.sql', 'w') as f:
     f.write("BEGIN;\n")
     for tiles in popul_tilevars:
         for variant in popul_tilevars[tiles]:
@@ -263,7 +263,7 @@ with open('hide/huA05317/update.sql', 'w') as f:
                 f.write("UPDATE loadgenomes_tilevariant SET population_size = " + str(variant[2]) + " WHERE tile_variant_name = " + variant[0] + ";\n")
     f.write("COMMIT;\n")
 
-with open('hide/huA05317/Library.csv', 'w') as f:
+with open('hide/huE9B698_chr1/Library.csv', 'w') as f:
     #tilevarname, popul, md5sum
     #Need to write out the ones already in the database and the ones we updated
     for tiles in popul_tilevars:

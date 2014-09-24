@@ -1,5 +1,6 @@
 from django.db import models
 import string
+import re
 
 #TODO: Possibly want to Add a model for Annotations that span tiles. I could also see this working as a function
 #TODO: Add lift-over information/function for Tile?
@@ -120,6 +121,16 @@ class TileVariant(models.Model):
     def isDefault(self):
         allVariants = sorted(self.tile.variants.all(), key=lambda var: var.population_size)
         return allVariants.index(self) == 0
+    def getSequence(self):
+        if re.match('[actgACTGnN\.]+', self.sequence):
+            return self.sequence
+        elif len(self.sequence) > 0 :
+            with open(self.sequence, 'r') as f:
+                for line in f:
+                    if int(line.split(',')[0]) == self.tile_variant_name:
+                        return line.split(',')[6]
+        else:
+            return None
     def __unicode__(self):
         return self.getString()
 
