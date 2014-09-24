@@ -28,7 +28,8 @@ class TileVarInLine(NestedTabularInline):
     extra = 0
     #Awesome thing would be to customize whether the tags are collapsed if the tags are actually different
     fieldsets = [
-        (None, {'fields':['length', 'population_size', 'md5sum', 'sequence']}),
+        (None, {'fields':['length', 'population_size', 'md5sum']}),
+        ('Sequence', {'fields':['sequence'], 'classes':['collapse']}),
         ('Tags', {'fields':['start_tag', 'end_tag'], 'classes': ['collapse']}),
     ]
     #inlines = [LocusInLine, AnnotationInLine,]

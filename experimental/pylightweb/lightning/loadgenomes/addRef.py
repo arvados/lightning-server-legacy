@@ -21,7 +21,7 @@ def manipulateList(inpList):
 now = datetime.date.today()
 today = str(now.year) + "-" + str(now.month) + "-" + str(now.day)
 
-input_file = 'ref.fj'
+input_file = 'ref_chr1_band0.fj'
 
 CHR_CHOICES = {
     'chr1': 1,
@@ -68,9 +68,11 @@ with open(input_file, 'r') as f:
             tile = toSaveData['tilename']
             #Only add the tile if it's new
             if tile not in curr_tilevars:
+                print tile
                 curr_tilevars[tile] = True
                 varname = hex(0)[2:].zfill(3)
                 tilevarname = int(tile+varname, 16)
+                print hex(tilevarname)[2:].zfill(12)
                 tile = int(tile, 16)
                 tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], today])
                 loci_to_write.append([tile, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
@@ -114,14 +116,14 @@ with open(input_file, 'r') as f:
                 toSaveData['sequence'] += " ERROR: READ IS TOO LONG TO REASONABLY STORE IN MEMORY "
 
 
-with open('hide/ref/tile.csv', 'wb') as f:
+with open('hide/ref/000_tile.csv', 'wb') as f:
     f.writelines(manipulateList(tiles_to_write))
-with open('hide/ref/tilevariant.csv', 'w') as f:
+with open('hide/ref/000_tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write))
-with open('hide/ref/tilelocusannotation.csv', 'w') as f:
+with open('hide/ref/000_tilelocusannotation.csv', 'w') as f:
     f.writelines(manipulateList(loci_to_write))
 
-with open('hide/ref/Library.csv', 'w') as f:
+with open('hide/ref/000_library.csv', 'w') as f:
     for l in tilevars_to_write:
         tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag = l
         tile_var_hex = hex(tile_variant_name)[2:]
