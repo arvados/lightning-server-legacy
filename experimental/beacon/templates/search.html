@@ -93,7 +93,11 @@
    Allele: any string of nucleotides A,C,T,G. Max length of string is 248.<br/> 
   <br/>
   <b>Example Queries</b><br/>
-  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135909291, Allele: gaggggaacactgggcctgatatt. Result should be True.
+  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135909291, Allele: gaggggaacactgggcctgatatg. Result should be True.
+  <br/><br/>
+  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135904749, Allele: gcc. Result should be True.
+  <br/><br/>
+  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135904749, Allele: ccc. Result should be Frue.
   <br/> <br/>
   <b>Population</b><br/>
   For a list of people in this population, see <a href="{{ url_for('show_people') }}">population info</a>.
