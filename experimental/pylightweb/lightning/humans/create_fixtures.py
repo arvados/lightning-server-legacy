@@ -92,7 +92,7 @@ for fileIndex, f in enumerate(fileNames):
     human_json = { "model": "humans.human",
                    "pk": fileIndex+1,
                    "fields":{
-                       "pycompr_abv":"numpy_abvs/"+humanName+".npy",
+                       "phaseA_npy":"numpy_abvs/"+humanName+".npy",
                        "index_in_big_file":fileIndex,
                        "name":humanName,
                        "chromosomal_sex":"UNKNOWN",
@@ -105,5 +105,5 @@ for fileIndex, f in enumerate(fileNames):
                  }
     human_fixtures.append(human_json)
 
-with open('../fixtures/initial_data.json', 'w') as f:
+with open('fixtures/initial_data.json', 'w') as f:
     json.dump(human_fixtures, f)

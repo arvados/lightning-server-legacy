@@ -94,7 +94,8 @@ class Human(models.Model):
     }
 
 
-    pycompr_abv = models.FileField(upload_to='numpy_abvs', verbose_name="Numpy-saved ABV file")
+    phaseA_npy = models.FileField(upload_to='numpy_abvs', verbose_name="Numpy-readable ABV file (Phase A or unphased)")
+    phaseB_npy = models.FileField(upload_to='numpy_abvs', verbose_name="Numpy-readable ABV file (Phase B)", blank=True, null=True)
     index_in_big_file = models.PositiveIntegerField()
     groups = models.ManyToManyField(IndividualGroup, related_name="groupIds", blank=True, null=True)
     name = models.CharField(max_length=8, verbose_name="PGP id", blank=True, null=True, editable=False)
