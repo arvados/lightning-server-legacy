@@ -46,7 +46,7 @@ def listchromosomes():
         cursor = g.db.execute('SELECT DISTINCT chromosome_name FROM loadgenomes_tilelocusannotation')
         row = cursor.fetchall()
         for i in range(len(row)):
-            chromosomes.append(row[i][0])
+            chromosomes.append(row[i][1])
         chromosomes = filter(None, chromosomes)
         chromosomes.remove(wonkychrom)
     return chromosomes
@@ -78,16 +78,21 @@ def findseq(tilevar, tile_id):
     #at some point, need to deal with "complex" cases
     else: #okay, so convert to base 64 key, and then subtract 2, then append to the tile_id as 3 digits (pad with zero)
         foo =  a2base64index(tilevar)-2
-        tilevarname = tile_id + foo.zfill(3)
+        tilevarname = tile_id + str(foo).zfill(3)
         tilevarname = int(tilevarname, 16)
     cursor = g.db.execute('SELECT * FROM loadgenomes_tilevariant WHERE %s = tile_variant_name', tilevarname)
     row = cursor.fetchone()
+    if row == None:
+        msg = 'Error: Could not parse genome in database at this location. Please email the maintener with your query parameters. '
+        return None, msg #this code needs to be refactored, in the meantime, 3rd possible state!
     seq = row['sequence']
     return True, seq
 
 def findallele(tile_id, tilevars, coordinate, begin_ints, lenalleles):
     foundseq, msg = findseq(tilevars[0], tile_id)
     if DEBUG: print 'foundseq, msg', foundseq, msg
+    if foundseq == None:
+        return None, msg
     if not foundseq:
         return False, msg
     else:
@@ -102,7 +107,9 @@ def findallele(tile_id, tilevars, coordinate, begin_ints, lenalleles):
             tile_id = format(int(tile_id, 16)+1, 'x')
             if DEBUG: print 'tile_id +1', tile_id
             foundseq, msg = findseq(tilevars[1], tile_id) #the next tile_id, one step up
-            if not foundseq:
+            if foundseq == None:
+                return None, msg
+            elif not foundseq:
                 return False, msg
             else:
                 #remove the parts that are overlapping, aka uppercase
@@ -176,17 +183,23 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
         listvars = 'abv, path, step, tilevars, alleles, tile_id, begin_ints, lenalleles\n'
         debuginfo = [abv, path, step, tilevars, alleles, tile_id, begin_ints, lenalleles]
         debugmsg.append(debuginfo)
-        if not foundallele:
+        if foundallele == None:
+            msg['msg'] = alleles 
+            count = None
+            #return flashmsg, msg
+        elif not foundallele:
             msg['msg'] = msg
         else:
             if (alleles.lower() == search_allele.lower()):
                 count += 1
-    if count != 0:
+    if count == None:
+        flashmsg = 'Error!'
+    elif count != 0:
         flashmsg = True 
     else:
         flashmsg = False 
     #msg = tile_id, ' ', path, ' ', step, ' ', tilevar, ' ', allele, ' ', flashmsg
-    msg['msg'] = 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
+    msg['msg'] += 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
             '" (in chr ' + str(search_chrom) + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
     if DEBUG:
         debugmsg = listvars + "\n".join(map(lambda x: str(x), debugmsg))
