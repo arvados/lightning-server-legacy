@@ -31,3 +31,11 @@ table, th, td   { background-color: transparent; margin: 10px; padding: 6px; lin
 input[type=submit]        { cursor:pointer; background-color: #377ba8; border:1px solid #000; border-radius: 10px; padding:6px; color:#fff; }
 input[type=submit]:hover  { background-color: #2f6080; }
 input[type=submit]:focus  {background-color: #eee; }
+
+.rotate90 {
+    -webkit-transform: rotate(-90deg);
+    -moz-transform: rotate(-90deg);
+    -o-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+}
