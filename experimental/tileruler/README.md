@@ -181,9 +181,9 @@ OPTIONS:
 
 #### Examples
 
-	$ tileruler abv --fastj-path /data/fastjdir --lib-path /data/ref/tile_md5sum_hu154_sort.csv.gz huNAME
-	$ cd abvs
-	$ ls
-  huNAME_A.abv huNAME_B.abv
+    $ tileruler abv --fastj-path /data/fastjdir --lib-path /data/ref/tile_md5sum_hu154_sort.csv.gz huNAME
+    $ cd abvs
+    $ ls
+    huNAME_A.abv huNAME_B.abv
 
 
