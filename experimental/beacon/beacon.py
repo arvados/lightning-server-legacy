@@ -31,7 +31,8 @@ foo = os.path.dirname(os.path.abspath(__file__)) + '/abv'
 bar = os.getcwd()
 if DEBUG: print foo, 'bar', bar
 abvfnames = [s[:-4] for s in os.listdir(foo) if s.endswith('.abv')]
-people = "\n".join(map(lambda x: str(x), abvfnames))
+#people = "\n".join(map(lambda x: str(x), abvfnames))
+people = abvfnames
 genomes = ['hg19']
 wonkychrom = 10 
 

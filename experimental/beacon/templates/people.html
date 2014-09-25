@@ -1,7 +1,10 @@
 {% extends "layout.html" %}
 {% block body %}
   <h2>Population</h2>
-  The following human genomes from the Personal Genome Project are searched:
-  <pre>{{people}}</pre>
+  The following {{people|length}} human genomes from the Personal Genome Project are searched:<br/>
+  {% for p in people %}
+  <a href="https://my.pgp-hms.org/profile/{{p}}">{{p}}</a><br/>
+  {% endfor %}
+  
 
 {% endblock %}
