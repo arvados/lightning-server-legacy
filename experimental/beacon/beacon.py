@@ -162,6 +162,10 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
     except ValueError:
         msg['msg'] = 'Error: Search coordinate must be an integer'
         return flashmsg, msg 
+    lenalleles = len(search_allele)
+    if lenalleles > 248:
+        msg['msg'] = 'Error: Maximum search length is 248 alleles.'
+        return flashmsg, msg 
 
     #Begin Search
     tile_id, begin_ints = findtileid(search_coord, search_chrom)
@@ -175,7 +179,6 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
 
     count = 0
     debugmsg = []
-    lenalleles = len(search_allele)
     for abv in abvfnames:
         #hardcoded, we search across at most 2 tiles right now
         tilevars = findtilevar(abv, path, step)
