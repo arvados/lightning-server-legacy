@@ -1,87 +1,95 @@
 package base
 
 import (
-	"fmt"
-	"image"
-	"image/color"
-	"io/ioutil"
-	"strings"
+  "fmt"
+  "image"
+  "image/color"
+  "io/ioutil"
+  "strings"
 
-	"github.com/curoverse/lightning/experimental/tileruler/modules/cli"
-	"github.com/curoverse/lightning/experimental/tileruler/modules/log"
+  "github.com/curoverse/lightning/experimental/tileruler/modules/cli"
+  "github.com/curoverse/lightning/experimental/tileruler/modules/log"
 )
 
 type Mode int
 
 const (
-	SINGLE Mode = iota + 1
-	FULL_SIZE
-	TRANSPARENT
+  SINGLE Mode = iota + 1
+  FULL_SIZE
+  TRANSPARENT
 )
 
 type Range struct {
-	EndBandIdx int
-	EndPosIdx  int
+  EndBandIdx int
+  EndPosIdx  int
 }
 
 type Option struct {
-	ImgDir    string
-	Mode      Mode
-	AbvPath   string
-	ColorSpec string
-	*Range
-	MaxColIdx   int
-	BoxNum      int
-	SlotPixel   int
-	Border      int
-	Force       bool
-	CountOnly   bool
-	ReversePath string
-	WindowSize  int
-	HttpPort    string
-	Human       string
-	FastjPath   string
-	RefLibPath  string
-	CountGap    bool
+  ImgDir    string
+  Mode      Mode
+  AbvPath   string
+  ColorSpec string
+  *Range
+  MaxColIdx   int
+  BoxNum      int
+  SlotPixel   int
+  Border      int
+  Force       bool
+  CountOnly   bool
+  ReversePath string
+  WindowSize  int
+  HttpPort    string
+  Human       string
+  FastjPath   string
+  RefLibPath  string
+  CountGap    bool
+
+  Lz4         string
+  Bz2         string
+  Gz          string
 }
 
 // ParseOption parses command arguments into Option sutrct.
 func ParseOption(ctx *cli.Context) Option {
-	opt := Option{
-		Mode:      Mode(ctx.Int("mode")),
-		ImgDir:    ctx.String("img-dir"),
-		AbvPath:   ctx.String("abv-path"),
-		ColorSpec: ctx.String("color-spec"),
-		Range: &Range{
-			EndBandIdx: ctx.Int("max-band"),
-			EndPosIdx:  ctx.Int("max-pos"),
-		},
-		MaxColIdx:   ctx.Int("max-col"),
-		BoxNum:      ctx.Int("box-num"),
-		SlotPixel:   ctx.Int("slot-pixel"),
-		Border:      ctx.Int("border"),
-		Force:       ctx.Bool("force"),
-		CountOnly:   ctx.Bool("count-only"),
-		ReversePath: ctx.String("reverse-path"),
-		WindowSize:  ctx.Int("size"),
-		HttpPort:    ctx.String("http-port"),
-		Human:       ctx.String("human"),
-		FastjPath:   ctx.String("fastj-path"),
-		RefLibPath:  ctx.String("lib-path"),
-		CountGap:    ctx.Bool("count-gap"),
-	}
+  opt := Option{
+    Mode:      Mode(ctx.Int("mode")),
+    ImgDir:    ctx.String("img-dir"),
+    AbvPath:   ctx.String("abv-path"),
+    ColorSpec: ctx.String("color-spec"),
+    Range: &Range{
+      EndBandIdx: ctx.Int("max-band"),
+      EndPosIdx:  ctx.Int("max-pos"),
+    },
+    MaxColIdx:   ctx.Int("max-col"),
+    BoxNum:      ctx.Int("box-num"),
+    SlotPixel:   ctx.Int("slot-pixel"),
+    Border:      ctx.Int("border"),
+    Force:       ctx.Bool("force"),
+    CountOnly:   ctx.Bool("count-only"),
+    ReversePath: ctx.String("reverse-path"),
+    WindowSize:  ctx.Int("size"),
+    HttpPort:    ctx.String("http-port"),
+    Human:       ctx.String("human"),
+    FastjPath:   ctx.String("fastj-path"),
+    RefLibPath:  ctx.String("lib-path"),
+    CountGap:    ctx.Bool("count-gap"),
 
-	switch {
-	case ctx.Command.Name != "stat" &&
-		(opt.Mode == FULL_SIZE || opt.Mode == TRANSPARENT) && opt.BoxNum < 13:
-		log.Fatal("-box-num cannot be smaller than 13 in full size or transparent mode")
-	}
-	return opt
+    Lz4:         ctx.String("lz4-path"),
+    Gz:          ctx.String("gz-path"),
+    Bz2:         ctx.String("bz2-path"),
+  }
+
+  switch {
+  case ctx.Command.Name != "stat" &&
+    (opt.Mode == FULL_SIZE || opt.Mode == TRANSPARENT) && opt.BoxNum < 13:
+    log.Fatal("-box-num cannot be smaller than 13 in full size or transparent mode")
+  }
+  return opt
 }
 
 var (
-	Gray      = image.NewUniform(color.RGBA{230, 230, 230, 255})
-	PoundGray = image.NewUniform(color.RGBA{230, 230, 231, 255}) // #
+  Gray      = image.NewUniform(color.RGBA{230, 230, 230, 255})
+  PoundGray = image.NewUniform(color.RGBA{230, 230, 231, 255}) // #
 )
 
 // Make large enough to store and being able to convert back to abv file.
@@ -153,58 +161,58 @@ var VarColors = make([]color.Color, 0, 20)
 // GetVarColorIdx returns index of given variant color based on current color map.
 // It returns -1 when it's the background color, -2 when no match.
 func GetVarColorIdx(c color.Color) int {
-	r, g, b, a := c.RGBA()
-	var vr, vg, vb, va uint32 // Declare once to save cost.
+  r, g, b, a := c.RGBA()
+  var vr, vg, vb, va uint32 // Declare once to save cost.
 
-	// Compare to background color first.
-	vr, vg, vb, va = Gray.RGBA()
-	if r == vr && g == vg && b == vb && a == va {
-		return -1
-	}
+  // Compare to background color first.
+  vr, vg, vb, va = Gray.RGBA()
+  if r == vr && g == vg && b == vb && a == va {
+    return -1
+  }
 
-	// Try to match on color map.
-	for i, vc := range VarColors {
-		vr, vg, vb, va = vc.RGBA()
-		if r == vr && g == vg && b == vb && a == va {
-			return i
-		}
-	}
+  // Try to match on color map.
+  for i, vc := range VarColors {
+    vr, vg, vb, va = vc.RGBA()
+    if r == vr && g == vg && b == vb && a == va {
+      return i
+    }
+  }
 
-	// See if it's a pound gray.
-	vr, vg, vb, va = PoundGray.RGBA()
-	if r == vr && g == vg && b == vb && a == va {
-		return 99
-	}
+  // See if it's a pound gray.
+  vr, vg, vb, va = PoundGray.RGBA()
+  if r == vr && g == vg && b == vb && a == va {
+    return 99
+  }
 
-	return -2
+  return -2
 }
 
 func parseVarColors(str string) error {
-	lines := strings.Split(str, "\n")
-	for i, line := range lines {
-		infos := strings.Split(line, ",")
-		if len(infos) < 3 {
-			return fmt.Errorf("Not enough color assigned in line[%d]: %s", i, line)
-		}
-		VarColors = append(VarColors, color.RGBA{
-			StrTo(strings.TrimSpace(infos[0])).MustUint8(),
-			StrTo(strings.TrimSpace(infos[1])).MustUint8(),
-			StrTo(strings.TrimSpace(infos[2])).MustUint8(), 255})
-	}
-	return nil
+  lines := strings.Split(str, "\n")
+  for i, line := range lines {
+    infos := strings.Split(line, ",")
+    if len(infos) < 3 {
+      return fmt.Errorf("Not enough color assigned in line[%d]: %s", i, line)
+    }
+    VarColors = append(VarColors, color.RGBA{
+      StrTo(strings.TrimSpace(infos[0])).MustUint8(),
+      StrTo(strings.TrimSpace(infos[1])).MustUint8(),
+      StrTo(strings.TrimSpace(infos[2])).MustUint8(), 255})
+  }
+  return nil
 }
 
 // ParseColorSpec parses color map based on given file,
 // uses default color map if path is empty.
 func ParseColorSpec(specPath string) error {
-	if IsFile(specPath) {
-		spec, err := ioutil.ReadFile(specPath)
-		if err != nil {
-			return err
-		}
-		parseVarColors(string(spec))
-	} else {
-		parseVarColors(DefaultVarColors)
-	}
-	return nil
+  if IsFile(specPath) {
+    spec, err := ioutil.ReadFile(specPath)
+    if err != nil {
+      return err
+    }
+    parseVarColors(string(spec))
+  } else {
+    parseVarColors(DefaultVarColors)
+  }
+  return nil
 }
