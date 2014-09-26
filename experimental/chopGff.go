@@ -48,13 +48,13 @@ func init() {
   benv.ProcessFlag()
 
   if len(*g_gffFileName)==0 {
-    fmt.Fprintf( os.Stderr, "Provide input gff file\n" )
+    fmt.Fprintf( os.Stderr, "Provide input gff file" )
     flag.PrintDefaults()
     os.Exit(2)
   }
 
   if len(*g_outBaseDir)==0 {
-    fmt.Fprintf( os.Stderr, "Provide output directory\n" )
+    fmt.Fprintf( os.Stderr, "Provide output directory" )
     flag.PrintDefaults()
     os.Exit(2)
   }
@@ -118,12 +118,11 @@ func main() {
     } else if e > BAND_BOUNDS[curChrom][curBand][1] {
       var err error
 
-      if s < BAND_BOUNDS[curChrom][curBand][1] {
-        writer.Write( []byte(l) )
-        writer.Write( []byte("\n") )
+      // Just write out the current line as the last line of the previous band.
+      //
+      writer.Write( []byte(l) )
+      writer.Write( []byte("\n") )
 
-        if gDebugFlag { fmt.Println("WARNING: curChrom", curChrom,  "curBand", curBand, "s", s, "<", BAND_BOUNDS[curChrom][curBand][1], "< e", e ) }
-      }
 
       curBand ++
 

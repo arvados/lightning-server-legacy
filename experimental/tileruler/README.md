@@ -118,7 +118,7 @@ USAGE:
 #### Examples
 
 	tileruler compare human1.abv human2.abv
-	
+
 ### Command `stat`
 
 ```
@@ -152,3 +152,38 @@ OPTIONS:
 
 - For `-mode=1`, there might be Go `image/png.Encoder` bug for `-slot-pixel>1` and `-max-pos>20000`. To get correct PNG, make sure `-slot-pixel` is `1` or `-max-pos` is less than `20000`. 
 	- Execute `-slot-pixel=2 -max-pos=19999` will be fine.
+
+### Command `abv`
+
+```
+NAME:
+   abv - Create ABV file from FastJ files
+
+USAGE:
+   command stat [command options] [arguments...]
+
+USAGE:
+   command abv [command options] [arguments...]
+
+DESCRIPTION:
+
+
+OPTIONS:
+   --human                                              human name
+   --fastj-path 'fastj/hu011C57/fj.fill'                path to fastj file(s)
+   --lib-path 'fastj/tile_md5sum_hu154_sort.csv.gz'     path to fastj file(s)
+   --count-gap                                          count gaps as no-call
+   --lz4-path 'lz4'                                     path to lz4 executable
+   --gz-path 'gunzip'                                   path to gunzip executable
+   --bz2-path 'bunzip2'                                 path to bunzip2 executable
+
+```
+
+#### Examples
+
+    $ tileruler abv --fastj-path /data/fastjdir --lib-path /data/ref/tile_md5sum_hu154_sort.csv.gz huNAME
+    $ cd abvs
+    $ ls
+    huNAME_A.abv huNAME_B.abv
+
+
