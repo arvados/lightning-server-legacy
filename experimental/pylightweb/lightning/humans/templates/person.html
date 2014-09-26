@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block title %}Lightning: Human {{ person.name }} {% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li><a href="{% url 'humans:individuals">Individual Genomes</a></li>
+	<li class="active"><a href="#">Human {{ person.name }}</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Human {{ person.name }}'s genomic data is {{ phased }}</h1>
+	</div>
+	<div class="thumbnail">
+		<img data-src="{{ }}" alt="Statistics">
+		<div class="caption">
+			<h3>Statistics for Human {{ person.name }}</h3>
+		</div>
+	</div>
+</div>
+{% endblock %}
