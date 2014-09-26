@@ -31,7 +31,8 @@ foo = os.path.dirname(os.path.abspath(__file__)) + '/abv'
 bar = os.getcwd()
 if DEBUG: print foo, 'bar', bar
 abvfnames = [s[:-4] for s in os.listdir(foo) if s.endswith('.abv')]
-people = "\n".join(map(lambda x: str(x), abvfnames))
+#people = "\n".join(map(lambda x: str(x), abvfnames))
+people = abvfnames
 genomes = ['hg19']
 wonkychrom = 10 
 
@@ -162,6 +163,10 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
     except ValueError:
         msg['msg'] = 'Error: Search coordinate must be an integer'
         return flashmsg, msg 
+    lenalleles = len(search_allele)
+    if lenalleles > 248:
+        msg['msg'] = 'Error: Maximum search length is 248 alleles.'
+        return flashmsg, msg 
 
     #Begin Search
     tile_id, begin_ints = findtileid(search_coord, search_chrom)
@@ -175,7 +180,6 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
 
     count = 0
     debugmsg = []
-    lenalleles = len(search_allele)
     for abv in abvfnames:
         #hardcoded, we search across at most 2 tiles right now
         tilevars = findtilevar(abv, path, step)
@@ -188,7 +192,8 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
             count = None
             #return flashmsg, msg
         elif not foundallele:
-            msg['msg'] = msg
+            pass
+            #msg['msg'] = alleles 
         else:
             if (alleles.lower() == search_allele.lower()):
                 count += 1
@@ -199,8 +204,13 @@ def search(search_pop, search_gen, search_chrom, search_coord, search_allele):
     else:
         flashmsg = False 
     #msg = tile_id, ' ', path, ' ', step, ' ', tilevar, ' ', allele, ' ', flashmsg
-    msg['msg'] += 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
+    info = 'You searched for: allele "'+ search_allele + '" at coordinate "' + str(search_coord) + \
             '" (in chr ' + str(search_chrom) + ', ' + search_gen + ', ' + search_pop + '). \n\n' 
+    if 'msg' in msg:
+        msg['msg'] += info
+    else:
+        msg['msg'] = info
+
     if DEBUG:
         debugmsg = listvars + "\n".join(map(lambda x: str(x), debugmsg))
         msg['debug'] = debugmsg
@@ -228,22 +238,25 @@ def show_search():
     chromosomes = listchromosomes()
     return render_template('search.html', populations=populations, genomes=genomes, chromosomes=chromosomes, people=people)
 
-@app.route('/search', methods=['POST'])
-def search_entries():
-    ## TODO: check for valid entries e.g. coordinate is an int :)
-    search_pop, search_gen, search_chrom = \
-            request.form['search_pop'], request.form['search_gen'], request.form['search_chrom']
-    search_coord = request.form['search_coord']
-    search_allele = request.form['search_allele']
-    flashmsg, msg = search(search_pop, search_gen, search_chrom, search_coord, search_allele)
-    if flashmsg == None:
-        flash(msg['msg'])
-    else:
-        flash(flashmsg)
 
-    chromosomes = listchromosomes()
-    return render_template('search.html', msg=msg, flashmsg=flashmsg, populations=populations, genomes=genomes, prev_pop=search_pop, \
-    prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = search_chrom, coordinate=search_coord, allele = search_allele, people=people)
+@app.route('/search', methods=['GET','POST'])
+def search_entries():
+    if request.method == 'GET':
+        return show_search()
+    else:
+        search_pop, search_gen, search_chrom = \
+                request.form['search_pop'], request.form['search_gen'], request.form['search_chrom']
+        search_coord = request.form['search_coord']
+        search_allele = request.form['search_allele']
+        flashmsg, msg = search(search_pop, search_gen, search_chrom, search_coord, search_allele)
+        if flashmsg == None:
+            flash(msg['msg'])
+        else:
+            flash(flashmsg)
+
+        chromosomes = listchromosomes()
+        return render_template('search.html', msg=msg, flashmsg=flashmsg, populations=populations, genomes=genomes, prev_pop=search_pop, \
+        prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = search_chrom, coordinate=search_coord, allele = search_allele, people=people)
 
 @app.route('/people')
 def show_people():
