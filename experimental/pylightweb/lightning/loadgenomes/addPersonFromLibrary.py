@@ -271,6 +271,7 @@ with open('hide/huE9B698_chr1/Library.csv', 'w') as f:
             tile_variant_name, md5sum, popul, updated = variant
             tile_var_hex = hex(int(tile_variant_name))[2:]
             tile_var_hex = tile_var_hex.zfill(12)
+            tile_id = int(tile_var_hex[:9],16)
             path = tile_var_hex[:3]
             version = tile_var_hex[3:5]
             step = tile_var_hex[5:9]

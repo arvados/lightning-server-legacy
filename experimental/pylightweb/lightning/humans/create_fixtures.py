@@ -92,7 +92,8 @@ for fileIndex, f in enumerate(fileNames):
     human_json = { "model": "humans.human",
                    "pk": fileIndex+1,
                    "fields":{
-                       "phaseA_npy":"numpy_abvs/"+humanName+".npy",
+                       "phaseA_npy":"numpy_abvs/"+humanName+"_phaseA.npy",
+                       "phaseB_npy":"numpy_abvs/"+humanName+"_phaseB.npy",
                        "index_in_big_file":fileIndex,
                        "name":humanName,
                        "chromosomal_sex":"UNKNOWN",
