@@ -37,7 +37,7 @@ class TileVarInLine(NestedTabularInline):
     can_delete=False
 
 class TileAdmin(NestedModelAdmin):
-    list_display = ('getTileString', 'created')
+    list_display = ('getTileString', 'created', 'defaultIsRef')
     #search_fields = ['tilename']
     inlines = [UpperLocusInLine,TileVarInLine,]
     can_delete=False

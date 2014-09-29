@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load statistics %}
+
+{% block title %}Lightning: Tile Library Statistics{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li class="active"><a href="#">Library</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Statistics: {{num_people|floatformat}} People in the database</h1>
+	</div>
+	{% if warning %}
+	<div class="alert alert-danger" role="alert">
+		 Not all tile positions have the same population size!
+	</div>
+	{% endif %}
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Chromosome</th>
+					<th>Total positions</th>
+					<th>Number of positions where the reference genome has the largest population</th>
+					<th>Number of positions where a different tile has largest population</th>
+					<th>Total tiles</th>
+					<th>Average tile length</th>
+					<th>Average number of people with reference genome</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>Entire Genome</td>
+					<td>{{ positions|length }}</td>
+					<td>{{ positions|ref_is_default }}</td>
+					<td>{{ positions|ref_is_not_default }} </td>
+					<td>{{ tiles|length }}</td>
+					<td>{{ tiles|avg_length|floatformat }} bases</td>
+					<td>{{ tiles|ref_avg_size|floatformat }} people</td>
+
+				</tr>
+				{% for chr in chromosomes %}
+				<tr>
+					<td>{{ chr }}</td>
+					<td>{{ positions|narrow_to_chromosome:chr|length }}</td>
+					<td>{{ positions|narrow_to_chromosome:chr|ref_is_default }}</td>
+					<td>{{ positions|narrow_to_chromosome:chr|ref_is_not_default }}</td>
+					<td>{{ tiles|narrow_to_chromosome:chr|length }}</td>
+					<td>{{ tiles|narrow_to_chromosome:chr|avg_length|floatformat|default:"-" }}</td>
+					<td>{{ tiles|narrow_to_chromosome:chr|ref_avg_size|floatformat|default:"-" }} </td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</div>
+{% endblock %}
+
