@@ -183,7 +183,35 @@ with open(input_file, 'r') as f:
             elif j == 20000:
                 print "Tile was too long to reasonably store in memory"
                 toSaveData['sequence'] += " ERROR: READ IS TOO LONG TO REASONABLY STORE IN MEMORY "
-
+    write_new = True
+    is_ref = False
+    tile = toSaveData['tilename']
+    #If we are still processing the reference genome, not all tilenames will be loaded yet
+    if tile not in curr_tilevars:
+        curr_tilevars[tile] = [len(tilevars_to_write)]
+        is_ref = True
+    #At least one tile with that tilename exists. Check if we already have it
+    else:
+        poss_tile_indices = curr_tilevars[tile]
+        for index in poss_tile_indices:
+            if toSaveData['md5sum'] == tilevars_to_write[index][4]:
+                annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevars_to_write[index][0], today)
+                write_new = False
+                tilevars_to_write[index][3] += population_incr
+        if write_new:
+            curr_tilevars[tile].append(len(tilevars_to_write))
+    if write_new:
+        varname = hex(len(curr_tilevars[tile])-1)[2:].zfill(3)
+        tilevarname = int(tile+varname, 16)
+        tile = int(tile, 16)
+        annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, today)
+        if is_ref:
+            tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], today])
+            loci_to_write.append([tile, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
+                                  toSaveData['locus_end'], toSaveData['chrom_name']])
+        tilevars_to_write.append([tilevarname, tile, toSaveData['length'], population_incr, toSaveData['md5sum'], today, toSaveData['sequence'],
+                                  toSaveData['start_seq'], toSaveData['end_seq']])
+        annotations_to_write.extend(annotations)
 
 with open('hide/firstTiles/tile.csv', 'wb') as f:
     f.writelines(manipulateList(tiles_to_write))

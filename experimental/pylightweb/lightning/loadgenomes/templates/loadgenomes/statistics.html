@@ -9,18 +9,43 @@
 	<li class="active"><a href="#">Library</a></li>
 {% endblock %}
 
+{% block additional_scripts %}
+	<script>
+		var DisplayStats = function(res, status) {
+			if (status == "success"){
+				statsToDisplay = res.responseText.replace(/\s/g, '').split(';');
+				console.log(statsToDisplay[0]);
+				if (statsToDisplay[0] == "error"){
+					jQuery("#inconsistentData").removeClass('hidden').hide().fadeIn();
+				}
+				for (var i=1; i <statsToDisplay.length; i++){
+					jQuery("#StatTable tr:last").after(statsToDisplay[i]);
+				}
+			} else {
+				alert(res.responseText);
+			}
+		};
+		jQuery(document).ready(function () {
+			var args = { type:"GET", url:"{%url 'loadgenomes:loadstatistics' %}", data:{}, complete:DisplayStats};
+			jQuery.ajax(args);
+		});
+	</script>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
 	<div class="page-header">
 		<h1>Statistics: {{num_people|floatformat}} People in the database</h1>
 	</div>
-	{% if warning %}
-	<div class="alert alert-danger" role="alert">
+	<div id="inconsistentData"class="alert alert-danger hidden" role="alert">
 		 Not all tile positions have the same population size!
 	</div>
-	{% endif %}
+	<div class="alert alert-info" role="alert">
+		<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+		 This site takes a while to load. We are sorry for the inconvienence.
+	</div>
 	<div class="table-responsive">
-		<table class="table table-striped">
+		<table id="StatTable"class="table table-striped">
 			<thead>
 				<tr>
 					<th>Chromosome</th>
@@ -28,32 +53,12 @@
 					<th>Number of positions where the reference genome has the largest population</th>
 					<th>Number of positions where a different tile has largest population</th>
 					<th>Total tiles</th>
-					<th>Average tile length</th>
+					<th>Average tile length (in bases)</th>
 					<th>Average number of people with reference genome</th>
 				</tr>
 			</thead>
 			<tbody>
-				<tr>
-					<td>Entire Genome</td>
-					<td>{{ positions|length }}</td>
-					<td>{{ positions|ref_is_default }}</td>
-					<td>{{ positions|ref_is_not_default }} </td>
-					<td>{{ tiles|length }}</td>
-					<td>{{ tiles|avg_length|floatformat }} bases</td>
-					<td>{{ tiles|ref_avg_size|floatformat }} people</td>
 
-				</tr>
-				{% for chr in chromosomes %}
-				<tr>
-					<td>{{ chr }}</td>
-					<td>{{ positions|narrow_to_chromosome:chr|length }}</td>
-					<td>{{ positions|narrow_to_chromosome:chr|ref_is_default }}</td>
-					<td>{{ positions|narrow_to_chromosome:chr|ref_is_not_default }}</td>
-					<td>{{ tiles|narrow_to_chromosome:chr|length }}</td>
-					<td>{{ tiles|narrow_to_chromosome:chr|avg_length|floatformat|default:"-" }}</td>
-					<td>{{ tiles|narrow_to_chromosome:chr|ref_avg_size|floatformat|default:"-" }} </td>
-				</tr>
-				{% endfor %}
 			</tbody>
 		</table>
 	</div>

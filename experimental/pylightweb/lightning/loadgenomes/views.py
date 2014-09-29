@@ -8,6 +8,14 @@ from loadgenomes.models import VarAnnotation, Tile, TileVariant
 def statistics(request, check=True):
     positions = Tile.objects.all()
     loaded_popul_size = sum(var.population_size for var in positions[0].variants.all())
+    context = {
+        'num_people': loaded_popul_size/2.0,
+        }
+    return render(request, 'loadgenomes/statistics.html', context)
+
+def loadstatistics(request, check=True):
+    positions = Tile.objects.all()
+    loaded_popul_size = sum(var.population_size for var in positions[0].variants.all())
     warn = False
     if check:
         for pos in positions:
@@ -21,11 +29,9 @@ def statistics(request, check=True):
         'positions': positions,
         'tiles':tiles,
         'chromosomes':chromosomes,
-        'num_people': loaded_popul_size/2.0,
         'warning':warn,
         }
-    return render(request, 'loadgenomes/statistics.html', context)
-
+    return render(request, 'loadgenomes/loadstatistics.html', context)
 #def chrom_statistics(request, chrom):
 
 def index(request):
