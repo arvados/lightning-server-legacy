@@ -52,7 +52,7 @@
 		<!-- Bootstrap JavaScript -->
 		<script src="{% static 'js/bootstrap-3.2.0-dist/js/bootstrap.min.js' %}"></script>
 		{% block additional_scripts %}{% endblock %}
-		<div class="navbar navbar-fixed-top" role="navigation">
+		<div class="navbar navbar-default navbar-fixed-top" role="navigation">
 			<div class="container-fluid">
 				<div class="navbar-header">
 					<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
@@ -66,7 +66,13 @@
 				<div class="collapse navbar-collapse">
 					<ul class="nav navbar-nav">
 						<li><a href="{% url 'home:index' %}">Home</a></li>
-						<li><a href="{% url 'slippy:slippymap' %}">Population</a></li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Population <span class="caret"></span></a>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="{% url 'slippy:slippymap' %}">Genome Map</a></li>
+								<li><a href="{% url 'loadgenomes:statistics' %}">Tile Library Statistics</a></li>
+							</ul>
+						</li>
 						<li><a href="{% url 'humans:individuals' %}">Individuals</a></li>
 						<li><a href="http://lightning-dev4.curoverse.com">Beacon</a></li>
 					</ul>
