@@ -54,6 +54,16 @@ class Tile(models.Model):
     getTileString.short_description='Tile Name'
     def __unicode__(self):
         return self.getTileString()
+    def getPath(self):
+        strTilename = hex(self.tilename)[2:-1] #-1 removes the L (from Long Integer)
+        strTilename = strTilename.zfill(9)
+        path = strTilename[:3]
+        return int(path,16)
+    def defaultIsRef(self):
+        default = max((var for var in self.variants.all()), key=lambda var: var.population_size)
+        return default.isReference()
+    defaultIsRef.boolean = True
+    defaultIsRef.short_description = "Is the Reference Default?"
     class Meta:
         #Ensures ordering by tilename
         ordering = ['tilename']
@@ -113,7 +123,7 @@ class TileVariant(models.Model):
     def isReference(self):
         strTilename = hex(self.tile_variant_name)[2:-1] #-1 removes the L (from Long Integer)
         strTilename = strTilename.zfill(12)
-        var = strTilename[10:]
+        var = strTilename[9:]
         return var == '000'
     def getPosition(self):
         allVariants = sorted(self.tile.variants.all(), key=lambda var: var.population_size)
@@ -121,6 +131,11 @@ class TileVariant(models.Model):
     def isDefault(self):
         allVariants = sorted(self.tile.variants.all(), key=lambda var: var.population_size)
         return allVariants.index(self) == 0
+    def getPath(self):
+        strTilename = hex(self.tile_variant_name)[2:-1] #-1 removes the L (from Long Integer)
+        strTilename = strTilename.zfill(12)
+        path = strTilename[:3]
+        return int(path,16)
     def getSequence(self):
         if re.match('[actgACTGnN\.]+', self.sequence):
             return self.sequence

@@ -6,7 +6,7 @@ from humans.models import Human, IndividualGroup
 
 def individuals(request):
     all_humans = Human.objects.all().order_by('name')
-    return render(request, "individuals.html", {'all_humans':all_humans})
+    return render(request, "humans/individuals.html", {'all_humans':all_humans})
 
 def one_person(request, human_id):
     person = get_object_or_404(Human, pk=human_id)
@@ -22,7 +22,7 @@ def one_person(request, human_id):
         phased = "Unphased"
         A = np.load(person.phaseA_npy.path)
         data['A'] = A
-    return render(request, "person.html", data)
+    return render(request, "humans/person.html", data)
         
         
 
