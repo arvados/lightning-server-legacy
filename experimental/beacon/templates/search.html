@@ -93,11 +93,13 @@
    Allele: any string of nucleotides A,C,T,G. Max length of string is 248.<br/> 
   <br/>
   <b>Example Queries</b><br/>
-  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135909291, Allele: gaggggaacactgggcctgatatg. Result should be True.
+  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135909291, Allele: gaggggaacactgggcctgatatg. Result should be <b>True</b>.
   <br/><br/>
-  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135904749, Allele: gcc. Result should be True.
+  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135904749, Allele: gcc. Result should be <b>True</b>.
   <br/><br/>
-  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135904749, Allele: ccc. Result should be False.
+  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 135904749, Allele: ccc. Result should be <b>False</b>. 
+  <br/><br/>
+  Population: Personal Genome Project, Genome: hg19, Chromosome: 9, Coordinate: 113591257, Allele: gca. Result should be <b>True</b>.
   <br/> <br/>
   <b>Population</b><br/>
   For a list of people in this population, see <a href="{{ url_for('show_people') }}">population info</a>.
@@ -105,8 +107,7 @@
   <b>Contact</b><br/>
   For questions or feedback, please contact nancy@curoverse.com
 
-  
+{#
   <marquee behavior="scroll" direction="right"><img src="/static/nyancat.gif" width="100" height="100"/></marquee>
-  {#
   <marquee behavior="scroll" direction="up"><img src="/static/nyancat.gif" width="100" height="100" class="rotate90"/></marquee> #}
 {% endblock %}
