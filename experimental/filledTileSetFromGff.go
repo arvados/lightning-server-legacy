@@ -1159,12 +1159,14 @@ func main() {
     varType := fields[2] ; _ = varType
     comment := fields[8]
 
-    condensed_comment,_ := recache.ReplaceAllString( `\s+`, comment, " " )
-
     // converting to 0 based, end inclusive
     //
     s -= 1
     e -= 1
+
+    //condensed_comment,_ := recache.ReplaceAllString( `\s+`, comment, " " )
+    tmpstr,_ := recache.ReplaceAllString( `\s+`, comment, " " )
+    condensed_comment := fmt.Sprintf("gffsrc: %s %d %d %s %s", chrom, s, e, varType, tmpstr )
 
     if ( varType == "REF" ) {
 
