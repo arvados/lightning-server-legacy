@@ -46,21 +46,22 @@ def addAnnotations(annotations, tile_variant_id, today):
 
     return lists_to_extend, pop_size_increment
 
-def manipulateList(inpList):
+def manipulateList(inpList, num_to_keep=None):
     retlist = []
     for l in inpList:
         thingsToJoin = []
-        for foo in l:
-            if not foo and type(foo) == str:
-                thingsToJoin.append('""')
-            else:
-                thingsToJoin.append(str(foo))
+        for i, foo in enumerate(l):
+            if num_to_keep == None or i < num_to_keep:
+                if not foo and type(foo) == str:
+                    thingsToJoin.append('""')
+                else:
+                    thingsToJoin.append(str(foo))
         thingsToJoin[-1] += '\n'
         retlist.append(string.join(thingsToJoin, sep=','))
     return retlist
             
-now = datetime.date.today()
-today = str(now.year) + "-" + str(now.month) + "-" + str(now.day)
+now = datetime.datetime.now()
+now = str(now)
 
 input_file = 'entire.fj'
 
@@ -107,8 +108,8 @@ with open(input_file, 'r') as f:
             #Append csv statements
             # NOTE: The population_size is going to be twice the number of humans
             # for loadgenomes_tile: tilename, start_tag, end_tag, created
-            # for loadgenomes_tilevariant: tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag
-            # for loadgenomes_tilelocusannotation: tilevar_id, assembly, chromosome, begin_int, end_int, chromosome_name
+            # for loadgenomes_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, (population)
+            # for loadgenomes_tilelocusannotation: tile_id, assembly, chromosome, begin_int, end_int, chromosome_name
             # for loadgenomes_varannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
             write_new = True
             is_ref = False
@@ -121,23 +122,23 @@ with open(input_file, 'r') as f:
             else:
                 poss_tile_indices = curr_tilevars[tile]
                 for index in poss_tile_indices:
-                    if toSaveData['md5sum'] == tilevars_to_write[index][4]:
-                        annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevars_to_write[index][0], today)
+                    if toSaveData['md5sum'] == tilevars_to_write[index][3]:
+                        annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevars_to_write[index][0], now)
                         write_new = False
-                        tilevars_to_write[index][3] += population_incr
+                        tilevars_to_write[index][-1] += population_incr
                 if write_new:
                     curr_tilevars[tile].append(len(tilevars_to_write))
             if write_new:
                 varname = hex(len(curr_tilevars[tile])-1)[2:].zfill(3)
                 tilevarname = int(tile+varname, 16)
                 tile = int(tile, 16)
-                annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, today)
+                annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, now)
                 if is_ref:
-                    tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], today])
+                    tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], now])
                     loci_to_write.append([tile, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
                                           toSaveData['locus_end'], toSaveData['chrom_name']])
-                tilevars_to_write.append([tilevarname, tile, toSaveData['length'], population_incr, toSaveData['md5sum'], today, toSaveData['sequence'],
-                                          toSaveData['start_seq'], toSaveData['end_seq']])
+                tilevars_to_write.append([tilevarname, int(varname), toSaveData['length'], toSaveData['md5sum'], now, now, 
+                                          toSaveData['sequence'], toSaveData['start_seq'], toSaveData['end_seq'], tile, population_incr])
                 annotations_to_write.extend(annotations)
         if (line[:2] == '>{' or line[:3] == '> {'):
             j = 0
@@ -194,36 +195,37 @@ with open(input_file, 'r') as f:
     else:
         poss_tile_indices = curr_tilevars[tile]
         for index in poss_tile_indices:
-            if toSaveData['md5sum'] == tilevars_to_write[index][4]:
-                annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevars_to_write[index][0], today)
+            if toSaveData['md5sum'] == tilevars_to_write[index][3]:
+                annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevars_to_write[index][0], now)
                 write_new = False
-                tilevars_to_write[index][3] += population_incr
+                tilevars_to_write[index][-1] += population_incr
         if write_new:
             curr_tilevars[tile].append(len(tilevars_to_write))
     if write_new:
         varname = hex(len(curr_tilevars[tile])-1)[2:].zfill(3)
         tilevarname = int(tile+varname, 16)
         tile = int(tile, 16)
-        annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, today)
+        annotations, population_incr = addAnnotations(loadedData[u'notes'], tilevarname, now)
         if is_ref:
-            tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], today])
+            tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], now])
             loci_to_write.append([tile, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
                                   toSaveData['locus_end'], toSaveData['chrom_name']])
-        tilevars_to_write.append([tilevarname, tile, toSaveData['length'], population_incr, toSaveData['md5sum'], today, toSaveData['sequence'],
-                                  toSaveData['start_seq'], toSaveData['end_seq']])
-        annotations_to_write.extend(annotations)
+        tilevars_to_write.append([tilevarname, int(varname), toSaveData['length'], toSaveData['md5sum'], now, now, 
+                                  toSaveData['sequence'], toSaveData['start_seq'], toSaveData['end_seq'], tile, population_incr])
+        annotations_to_write.extend(annotations)  
 
-with open('hide/firstTiles/tile.csv', 'wb') as f:
+with open('hide/BRCA1/tile.csv', 'wb') as f:
     f.writelines(manipulateList(tiles_to_write))
-with open('hide/firstTiles/tilevariant.csv', 'w') as f:
-    f.writelines(manipulateList(tilevars_to_write))
-with open('hide/firstTiles/tilelocusannotation.csv', 'w') as f:
+with open('hide/BRCA1/tilevariant.csv', 'w') as f:
+    f.writelines(manipulateList(tilevars_to_write, 10))
+with open('hide/BRCA1/tilelocusannotation.csv', 'w') as f:
     f.writelines(manipulateList(loci_to_write))
-with open('hide/firstTiles/varannotation.csv', 'w') as f:
+with open('hide/BRCA1/varannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
-with open('hide/firstTiles/Library.csv', 'w') as f:
+with open('hide/BRCA1/Library.csv', 'w') as f:
+    # for loadgenomes_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population
     for l in tilevars_to_write:
-        tile_variant_name, tile_id, length, population_size, md5sum, last_modified, sequence, start_tag, end_tag = l
+        tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population_size = l
         #tilevarname, popul, md5sum
         tile_var_hex = hex(tile_variant_name)[2:]
         tile_var_hex = tile_var_hex.zfill(12)
@@ -232,6 +234,6 @@ with open('hide/firstTiles/Library.csv', 'w') as f:
         step = tile_var_hex[5:9]
         var = tile_var_hex[9:]
         tile_var_period_sep = string.join([path, version, step, var], '.') 
-        f.write(string.join([tile_var_period_sep, str(population_size), md5sum+'\n'], sep=','))
+        f.write(string.join([tile_var_period_sep, str(tile_variant_name), str(tile_id), str(population_size), md5sum+'\n'], sep=','))
 
 

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load statistics_filters %}
+
+{% block title %}Lightning: Tile Library Statistics for Path {{ path }}{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{# url 'home:index' #}">Home</a></li>
+	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
+	<li><a href="{% url 'tile_library:chr_statistics' chromosome_int %}">{{ chromosome }}</a></li>
+	<li class="active"><a href="#">Path {{ path }}</a></li>
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Tile Library Statistics: Path {{ path }}</h1>
+	</div>
+	<p>Note that current paths are chromosomal bands</p>
+	<div class="table-responsive">
+		<table id="StatTable" class="table table-striped">
+			<thead>
+				<tr>
+					<th>hg19 Cytomap Band</th>
+					<th>Path</th>
+					<th>Total positions</th>
+					<th>Total tiles</th>
+					<th>Average tile length (in bases)</th>
+					<th>Maximum number of variants at any position</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>{{ path_name }}</td>
+					<td>Path {{ path }}</td>
+					<td>{{ positions|length }}</td>
+					<td>{{ tiles|length }}</td>
+					<td>{{ tiles|avg_length|floatformat|default:'-' }}</td>
+					<td>{{ tiles|max_num_variants|default:'-' }}</td>
+				</tr>
+			<tbody>
+		</table>
+	</div>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Tile Position</th>
+					<th>Number of Tile Variants</th>
+					<th>Reference tile length (in bases)</th>
+					<th>Average tile variant length (in bases)</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for position in positions %}
+				<tr>
+					<td><a href="{% url 'tile_library:tile_view' chromosome_int path_int position.tilename %}">{{ position }}</a></td>
+					<td>{{ position.variants.count }}</td>
+					<td>{{ position|get_reference_length }}</td>
+					<td>{{ position|get_avg_length|floatformat|default:'-' }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</div>
+{% endblock %}
