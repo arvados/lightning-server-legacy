@@ -1,27 +1,32 @@
-from django.shortcuts import render
+import numpy as np
+import os.path
+from django.shortcuts import render, get_object_or_404
 
 from humans.models import Human, IndividualGroup
-# Create your views here.
-
-ethn_parser = {
-    "UNKNOWN":"UNKNOWN",
-    "AMER_INDIAN_ALASKAN":"American Indian / Alaska Native",
-    "HISPANIC_LATINO":"Hispanic or Latino",
-    "BLACK_AA":"Black or African American",
-    "HAWAIIAN_PACIFIC_ISLAND":"Native Hawaiian or Other Pacific Islander",
-    "WHITE":"White",
-    "ASIAN":"Asian",
-    }
 
 def individuals(request):
     all_humans = Human.objects.all().order_by('name')
-##    for hu in all_humans:
-##        ethn = hu.ethnicity.split(',')
-##        for ethn
-##        readable_ethn = ethn_parse[ethn]
-    return render(request, "individuals.html", {'all_humans':all_humans})
+    return render(request, "humans/individuals.html", {'all_humans':all_humans})
 
-#def one_person(request):
+def one_person(request, human_id):
+    person = get_object_or_404(Human, pk=human_id)
+    phased = "Not sequenced"
+    data = {'person':person, 'phased':phased}
+    if os.path.isfile(person.phaseA_npy.path) and os.path.isfile(person.phaseB_npy.path):
+        phased = "Phased"
+        A = np.load(person.phaseA_npy.path)
+        B = np.load(person.phaseB_npy.path)
+        data['A'] = A
+        data['B'] = B
+    if os.path.isfile(person.phaseA_npy.path) and not os.path.isfile(person.phaseB_npy.path):
+        phased = "Unphased"
+        A = np.load(person.phaseA_npy.path)
+        data['A'] = A
+    return render(request, "humans/person.html", data)
+        
+        
+
+
 #def groups(request):
 #    poss_groups = IndividualGroup.objects.all()
     

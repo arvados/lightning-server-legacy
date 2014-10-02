@@ -10,7 +10,7 @@ def slippymap(request):
     #filters = [f[0] for f in filters]
     #filters = sorted(filters)
     #return render(request, 'index.html', {'filters':filters})
-    return render(request, 'slippymap.html', {})
+    return render(request, 'slippy/slippymap.html', {})
 
 def simplesearch(request):
     def dealWithMatching(matching):
@@ -23,9 +23,9 @@ def simplesearch(request):
             else:
                 ptr = gene.genereviewURLs
             context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep, 'urlpointer':ptr}
-            return render(request, 'search.html', context)
+            return render(request, 'slippy/search.html', context)
         elif len(matching) > 1:
-            return render(request, 'multmatches.html', {'matching': matching})
+            return render(request, 'slippy/multmatches.html', {'matching': matching})
         else:
             return None
     error_msg = "No GET data sent."
@@ -58,7 +58,7 @@ def specificsearch(request):
             else:
                 ptr = gene.genereviewURLs
             context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep, 'urlpointer':ptr}
-            return render(request, 'search.html', context)
+            return render(request, 'slippy/search.html', context)
         elif len(matching) > 1:
             error_msg = 'Multiple genes matched "%s" exactly.' % geneName
         else:
@@ -73,7 +73,7 @@ def loadall(request):
             matching = Gene.objects.filter(genereview=True)
         else:
             matching = Gene.objects.filter(source=sourceName)
-        return render(request, 'loadall.html', {'matching':matching})
+        return render(request, 'slippy/loadall.html', {'matching':matching})
     return HttpResponseServerError(error_msg)
 
 
