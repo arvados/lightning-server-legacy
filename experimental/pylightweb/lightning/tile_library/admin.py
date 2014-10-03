@@ -10,7 +10,6 @@ class AnnotationAdmin(admin.ModelAdmin):
     extra = 0
     fieldsets = [
         (None, {'fields':['annotation_type', 'source', 'annotation_text', 'phenotype']}),
-        ('Time Data', {'fields':['created', 'last_modified']}),
     ]
     
 class TileLocusAdmin(admin.ModelAdmin):

@@ -5,24 +5,25 @@ from django.http import Http404
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, VarAnnotation
 
 def convert_chromosome_to_tilename(chr_int):
-    """chr_int: [1, 2, 3, ... 26]
+    """chr_int: [1, 2, 3, ... 26, 27]
         23 => chrX
         24 => chrY
         25 => chrM
         26 => strangely-shaped chromosomes
+        27 is non-existant, for determining the maximum integer possible in the database
     """
     chrom_int = int(chr_int) - 1
     if chrom_int < 0 or chrom_int > 26:
-        raise BaseException(str(chr_int) + " is not an integer between 1 and 26")
+        raise BaseException(str(chr_int) + " is not an integer between 1 and 27")
     chr_path_lengths = Tile.CHR_PATH_LENGTHS
-    name = hex(chr_path_lengths[chrom_int])[2:]+"00"+"0000"
+    name = hex(chr_path_lengths[chrom_int]).lstrip('0x').zfill(3)+"00"+"0000"
     varname = name + "000"
     name = int(name, 16)
     varname = int(varname, 16)
     return name, varname
 def convert_path_to_tilename(path_int):
     path_int = int(path_int)
-    name = hex(path_int)[2:]+"00"+"0000"
+    name = hex(path_int).lstrip('0x').zfill(3)+"00"+"0000"
     varname = name + "000"
     name = int(name, 16)
     varname = int(varname, 16)
