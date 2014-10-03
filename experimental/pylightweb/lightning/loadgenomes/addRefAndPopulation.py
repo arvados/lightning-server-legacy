@@ -214,15 +214,15 @@ with open(input_file, 'r') as f:
                                   toSaveData['sequence'], toSaveData['start_seq'], toSaveData['end_seq'], tile, population_incr])
         annotations_to_write.extend(annotations)  
 
-with open('hide/BRCA1/tile.csv', 'wb') as f:
+with open('hide/chrM/tile.csv', 'wb') as f:
     f.writelines(manipulateList(tiles_to_write))
-with open('hide/BRCA1/tilevariant.csv', 'w') as f:
+with open('hide/chrM/tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write, 10))
-with open('hide/BRCA1/tilelocusannotation.csv', 'w') as f:
+with open('hide/chrM/tilelocusannotation.csv', 'w') as f:
     f.writelines(manipulateList(loci_to_write))
-with open('hide/BRCA1/varannotation.csv', 'w') as f:
+with open('hide/chrM/varannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
-with open('hide/BRCA1/Library.csv', 'w') as f:
+with open('hide/chrM/Library.csv', 'w') as f:
     # for loadgenomes_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population
     for l in tilevars_to_write:
         tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population_size = l
