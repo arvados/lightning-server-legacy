@@ -43,7 +43,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'tile_library',
-    #'home',
+    'home',
     #'loadgenomes',
     #'slippy',
     #'loadgenes',
