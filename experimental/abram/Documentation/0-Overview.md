@@ -10,7 +10,7 @@ We are processing data we have for the 150+ Personal Genomic Project participant
 initial libarary files.
 
 This documentation is an attempt to record the method by which
-we created Lightning and it's supporting library files.  Concepts
+we created Lightning and its supporting library files.  Concepts
 will be introduced and explained as needed.
 
 Lightning is a work in progress and we are actively developing standards
