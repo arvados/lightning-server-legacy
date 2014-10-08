@@ -2,8 +2,9 @@
 import json
 import datetime
 import string
+import sys
 
-def addAnnotations(annotations, tile_variant_id, today):
+def addAnnotations(annotations, tile_variant_id, now):
     """
     annotations: list of annotations read in from FASTJ format
     tile_variant_id: the primary key for the tile_variant to add the annotations to
@@ -17,7 +18,7 @@ def addAnnotations(annotations, tile_variant_id, today):
 
     no phenotypic data is known to be passed from the FASTJ file
     """
-    # for loadgenomes_tilevarannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
+    # for tile_library_tilevarannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
     lists_to_extend = []
     for annotation in annotations:
         add = True
@@ -42,7 +43,7 @@ def addAnnotations(annotations, tile_variant_id, today):
         else:
             t='OTHER'
         if add:
-            lists_to_extend.append([tile_variant_id, t, 'library_generation', annotation, '', today, today])
+            lists_to_extend.append([tile_variant_id, t, 'library_generation', annotation, '', now, now])
 
     return lists_to_extend, pop_size_increment
 
@@ -98,8 +99,7 @@ loci_to_write = []
 tilevars_to_write = []
 annotations_to_write = []
 
-#Currently need to assume that ALL tiles in this band
-#We already have loadgenomes_tile populated, so we won't need to
+#Currently assumes that ALL tiles are in ONE band
 with open(input_file, 'r') as f:   
     i = 0
     j = 0
@@ -107,10 +107,10 @@ with open(input_file, 'r') as f:
         if (line[:2] == '>{' or line[:3] == '> {') and i > 0:
             #Append csv statements
             # NOTE: The population_size is going to be twice the number of humans
-            # for loadgenomes_tile: tilename, start_tag, end_tag, created
-            # for loadgenomes_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, (population)
-            # for loadgenomes_tilelocusannotation: tile_id, assembly, chromosome, begin_int, end_int, chromosome_name
-            # for loadgenomes_varannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
+            # for tile_library_tile: tilename, start_tag, end_tag, created
+            # for tile_library_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, (population)
+            # for tile_library_tilelocusannotation: tile_id, assembly, chromosome, begin_int, end_int, chromosome_name
+            # for tile_library_varannotation: tile_variant_id, annotation_type, source, annotation_text, phenotype, created, last_modified
             write_new = True
             is_ref = False
             tile = toSaveData['tilename']
@@ -137,7 +137,7 @@ with open(input_file, 'r') as f:
                     tiles_to_write.append([tile, toSaveData['start_tag'], toSaveData['end_tag'], now])
                     loci_to_write.append([tile, toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'],
                                           toSaveData['locus_end'], toSaveData['chrom_name']])
-                tilevars_to_write.append([tilevarname, int(varname), toSaveData['length'], toSaveData['md5sum'], now, now, 
+                tilevars_to_write.append([tilevarname, int(varname, 16), toSaveData['length'], toSaveData['md5sum'], now, now, 
                                           toSaveData['sequence'], toSaveData['start_seq'], toSaveData['end_seq'], tile, population_incr])
                 annotations_to_write.extend(annotations)
         if (line[:2] == '>{' or line[:3] == '> {'):
@@ -223,7 +223,7 @@ with open('hide/chrM/tilelocusannotation.csv', 'w') as f:
 with open('hide/chrM/varannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
 with open('hide/chrM/Library.csv', 'w') as f:
-    # for loadgenomes_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population
+    # for tile_library_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population
     for l in tilevars_to_write:
         tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population_size = l
         #tilevarname, popul, md5sum
