@@ -43,11 +43,12 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'tile_library',
+    'genes',
     'home',
     #'loadgenomes',
-    #'slippy',
+    'slippy',
     #'loadgenes',
-    #'humans',
+    'humans',
 )
 
 MIDDLEWARE_CLASSES = (
