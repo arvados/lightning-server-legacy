@@ -1,7 +1,7 @@
 """
-Notes: dependent on tile_library.models for Tile and TileLocusAnnotation
+Notes: does not use Tile for performance reasons: takes too long to respond
+Currently dependent on tile_library.models for TileLocusAnnotation constant definitions
 
-TODO: need to alter table if something is not necessary
 """
 
 from django.db import models
@@ -36,22 +36,20 @@ class UCSC_Gene(models.Model):
     ucsc_gene_id = models.CharField(max_length=255)
     assembly = models.PositiveSmallIntegerField(choices=TileLocusAnnotation.SUPPORTED_ASSEMBLY_CHOICES)
     chrom = models.PositiveSmallIntegerField(choices=TileLocusAnnotation.CHR_CHOICES, verbose_name="Chromosome Location")
-    strand = models.BooleanField(verbose_name="On the positive strand") #True => +; False => -
+    strand = models.NullBooleanField(verbose_name="On the positive strand") #True => +; False => -; None => unknown
     start_tx = models.PositiveIntegerField()
-    tile_start_tx = models.ForeignKey('tile_library.Tile', related_name='gene_start_tx')
+    tile_start_tx = models.BigIntegerField()
     end_tx = models.PositiveIntegerField()
-    tile_end_tx = models.ForeignKey('tile_library.Tile', related_name='gene_end_tx')
+    tile_end_tx = models.BigIntegerField()
     start_cds = models.PositiveIntegerField()
-    tile_start_cds = models.ForeignKey('tile_library.Tile', related_name='gene_start_cds')
+    tile_start_cds = models.BigIntegerField()
     end_cds = models.PositiveIntegerField()
-    tile_end_cds = models.ForeignKey('tile_library.Tile', related_name='gene_end_cds')
+    tile_end_cds = models.BigIntegerField()
     exon_count = models.PositiveIntegerField()
-    exon_starts = models.CommaSeparatedIntegerField(max_length=500)
-    exon_ends = models.CommaSeparatedIntegerField(max_length=500)
+    exon_starts = models.TextField()
+    exon_ends = models.TextField()
     uniprot_display_id = models.CharField(max_length=100)
     align_id = models.CharField(max_length=255)
-    has_gene_review = models.BooleanField(default=False)
-    gene_review_URLs = models.TextField(blank=True, null=True)
     def getTileCoordInt(self, tile):
         """Returns integer for path, version, and step for tile """
         strTilename = hex(tile).lstrip('0x').rstrip('L')
@@ -81,6 +79,16 @@ class UCSC_Gene(models.Model):
             return x_ref.gene_aliases, x_ref.description
         except:
             return None, None
+    def get_description(self):
+        try:
+            x_ref = self.x_ref
+            return x_ref.description
+        except:
+            return None
+    class Meta:
+        ordering = ['chrom', 'start_tx']
+        verbose_name = "Known Gene: UCSC"
+        verbose_name_plural = "Known Genes: UCSC"
 ##class GeneNames(models.Model):
 ##    """
 ##    Table used for search functionality
@@ -101,7 +109,7 @@ class GeneXRef(models.Model):
     rfam_acc: Rfam (RNA family information)
     trna_name: name from tRNA track in UCSC
     """
-    gene = models.OneToOneField(Gene, related_name="x_ref")
+    gene = models.OneToOneField(UCSC_Gene, related_name="x_ref")
     mrna = models.CharField(max_length=255)
     sp_id = models.CharField(max_length=255)
     sp_display_id = models.CharField(max_length=255)
@@ -111,5 +119,11 @@ class GeneXRef(models.Model):
     description = models.TextField()
     rfam_acc = models.CharField(max_length=255)
     trna_name = models.CharField(max_length=255)
+    has_gene_review = models.BooleanField(default=False)
+    gene_review_URLs = models.TextField(blank=True, null=True)
+    gene_review_phenotype_map = models.TextField(blank=True, null=True)
     def __unicode__(self):
         return self.gene_aliases
+    class Meta:
+        #order_with_respect_to = 'gene'
+        verbose_name = "Gene database xref"
