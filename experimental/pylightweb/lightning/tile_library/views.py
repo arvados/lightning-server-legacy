@@ -34,15 +34,21 @@ def get_chromosome_name_from_int(chr_int):
     return TileLocusAnnotation.CHR_CHOICES[chr_index.index(chr_int)][1]
 
 def overall_statistics(request):
-    positions = Tile.objects.all()
-    tiles = TileVariant.objects.all()
     chromosomes = TileLocusAnnotation.CHR_CHOICES
+    chrom_info = []
+    total_len = 0
+    for chromosome_int, chrom_name in chromosomes:
+        min_accepted, foo = convert_chromosome_to_tilename(chromosome_int)
+        max_accepted, foo = convert_chromosome_to_tilename(chromosome_int+1)
+        max_accepted -= 1
+        length = Tile.objects.filter(tilename__range=(min_accepted, max_accepted)).count()
+        total_len += length
+        chrom_info.append((chromosome_int, chrom_name, length))
     context = {
-        'positions':positions,
-        'tiles':tiles,
-        'chromosomes':chromosomes,
+        'total_len':total_len,
+        'chromosomes':chrom_info,
         }
-    return render(request, 'tile_library/statistics.html', context)
+    return render(request, 'tile_library/basic_statistics.html', context)
 
 def chr_statistics(request, chr_int):
     chr_int = int(chr_int)
