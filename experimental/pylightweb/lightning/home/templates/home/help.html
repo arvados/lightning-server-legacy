@@ -21,6 +21,9 @@
 	<h3>Information in the database <small>(What can be searched in the <a href="{% url 'slippy:slippymap' %}">Genome Map</a>?)</small></h3>
 	<p>We downloaded the UCSC Genome Browser tables knownGene and kgXref from assembly hg19, generated on February 2009. When you search for a gene, we query kgXref.geneSymbol (a human readable alias) for that string. The information from these tables can be found in the <a href="{% url 'genes:names' %}">Known Genes</a> tab. Genes with GeneReview articles were determined by matching the genesymbols from the <a href="ftp://ftp.ncbi.nih.gov/pub/GeneReviews/">NCBI GeneReview ftp site</a> with genesymbols in kgXref.geneSymbol. This matches all but 35 genes with GeneReview articles. The genes that are missing are ATXN8, USH1H, RPS17, POMGNT2, KCNJ18, MT-ATP6, MT-RNR1, MT-CO1, MT-CO2, MT-CO3, MT-ND1, MT-ND2, MT-ND3, MT-ND4, MT-ND5, MT-ND6, MT-TL2, MT-TL1, MT-ND4L, MT-CYB, MT-TY, MT-TT, MT-TW, MT-TV, MT-TQ, MT-TR, MT-TM, MT-TH, MT-TK, MT-TD, MT-TF, MT-TA, MT-TC, MT-TS2, and MT-TS1.  </p>
 
+	<h3>What about searching for SNPs or something other than genes?</h3>
+	<p>We are working to add that functionality and SNP information into the database. </p>
+
 	<h3>I can only find Chromosomes 1-22, X, Y, and Mitochondrial DNA. Where are the others?</h3>
 	<p>We haven't loaded those chromosomes or their associated genes into the database. </p>
 
