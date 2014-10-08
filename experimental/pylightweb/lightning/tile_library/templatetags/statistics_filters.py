@@ -20,7 +20,7 @@ def max_num_variants(tile_var_list):
 
 @register.filter
 def get_reference_length(position):
-    reference = position.variants.filter(variant_value=0).all()[0]
+    reference = position.variants.filter(variant_value=0).first()
     return reference.length
 
 @register.filter

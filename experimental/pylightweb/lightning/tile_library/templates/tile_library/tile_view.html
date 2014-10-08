@@ -5,7 +5,7 @@
 {% block title %}Lightning: Tile Library - Position {{ position }}{% endblock %}
 
 {% block breadcrumbs %}
-	<li><a href="{# url 'home:index' #}">Home</a></li>
+	<li><a href="{% url 'home:index' %}">Home</a></li>
 	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
 	<li><a href="{% url 'tile_library:chr_statistics' chr_int %}">{{ chr_name }}</a></li>
 	<li><a href="{% url 'tile_library:path_statistics' chr_int path_int %}">Path {{ path_hex }}</a></li>
