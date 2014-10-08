@@ -17,13 +17,21 @@ import "errors"
 import "../recache"
 import "../aux"
 
+var VERSION_STR string = "0.2"
+
 type TileHeader struct {
   TileID string `json:"tileID"`
+  Md5Sum string `json:"md5sum"`
   Locus []map[ string ]string `json:"locus"`
   N int `json:"n"`
   CopyNum int `json:"copy"`
+
   StartTag string `json:"startTag"`
   EndTag string `json:"endTag"`
+
+  StartSeq string `json:"startSeq"`
+  EndSeq string `json:"endSeq"`
+
   Notes []string `json:"notes,omitempty"`
 }
 
@@ -83,6 +91,8 @@ type TileSet struct {
   TagLength int
   LineWidth int
 
+  Version string
+
 }
 
 //---
@@ -92,7 +102,8 @@ func NewTileSet( tagLength int ) *TileSet {
                   TagToTileId: make( map[string]string ),
                   TileIdToTag: make( map[string]string ),
                   LineWidth: 50,
-                  TileCopyCollectionMap: make( map[string]TileCopyCollection ) }
+                  TileCopyCollectionMap: make( map[string]TileCopyCollection ),
+                  Version : VERSION_STR }
   return ts
 }
 
@@ -159,6 +170,9 @@ func (ts *TileSet) getEndTag ( tileSeq string ) string {
 }
 
 func (ts *TileSet) getTileBody ( tileSeq string ) string {
+
+  return string(tileSeq)
+
   if len(tileSeq) < 2*ts.TagLength { return "" }
   n := len(tileSeq) - ts.TagLength
   b := make( []byte, n - ts.TagLength )
@@ -186,7 +200,8 @@ func (ts *TileSet) AddTile( tileId string, tileSeq string, meta string ) {
 
   sTag := strings.ToUpper( ts.getStartTag( tileSeq ) )
   eTag := strings.ToUpper( ts.getEndTag( tileSeq ) )
-  body := strings.ToLower( ts.getTileBody( tileSeq ) )
+  //body := strings.ToLower( ts.getTileBody( tileSeq ) )
+  body := ts.getTileBody( tileSeq )
 
   //ts.TagToTileId[ sTag ]   = tileId
   //ts.TileIdToTag[ tileId ] = sTag
@@ -300,7 +315,7 @@ func (ts *TileSet) WriteFastjTile( writer *bufio.Writer, tileId string ) {
   */
   //writer.WriteString( fmt.Sprintf(">%s\n", ts.TileCopyCollectionMap[ baseId ].Meta[ copyNum ] ) )
 
-  x := ts.TileCopyCollectionMap[ baseId ].MetaJson[ copyNum ] 
+  x := ts.TileCopyCollectionMap[ baseId ].MetaJson[ copyNum ]
   meta,_ := json.Marshal( &x )
   writer.WriteString( fmt.Sprintf(">%s\n", string(meta) ) )
 
@@ -321,16 +336,6 @@ func (ts *TileSet) WriteFastjTile( writer *bufio.Writer, tileId string ) {
 // Write whole fastj file.
 //
 func (ts *TileSet) WriteFastj( writer *bufio.Writer ) {
-
-  /*
-  for baseId,_:= range ts.TileCopyCollectionMap {
-    for copyNum,_ := range ts.TileCopyCollectionMap[ baseId ].Body {
-      tileId := fmt.Sprintf( "%s.%x", baseId, copyNum )
-      ts.WriteFastjTile( writer, tileId )
-    }
-  }
-  writer.Flush()
-  */
 
   sortedBaseId := make([]string, len( ts.TileCopyCollectionMap ))
   i := 0
