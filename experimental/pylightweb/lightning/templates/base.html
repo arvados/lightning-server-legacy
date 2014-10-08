@@ -10,7 +10,6 @@
 		<link href="{% static 'js/bootstrap-3.2.0-dist/css/bootstrap.min.css' %}" rel="stylesheet" type="text/css">
 		<!-- CSS theme -->
 		<link href="{% static 'js/bootstrap-3.2.0-dist/css/bootstrap-theme.min.css' %}" rel="stylesheet" type="text/css">
-
 		<style>
 			label {
 				display: block;
@@ -69,12 +68,15 @@
 						<li class="dropdown">
 							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Population <span class="caret"></span></a>
 							<ul class="dropdown-menu" role="menu">
-								<li><a href="{# url 'slippy:slippymap' #}">Genome Map</a></li>
+								<li><a href="{% url 'slippy:slippymap' %}">Genome Map</a></li>
 								<li><a href="{% url 'tile_library:statistics' %}">Tile Library Statistics</a></li>
 							</ul>
 						</li>
-						<li><a href="{# url 'humans:individuals' #}">Individuals</a></li>
+						<li><a href="{% url 'humans:individuals' %}">Individuals</a></li>
+						<li><a href="{% url 'genes:names' %}">Known Genes</a></li>
 						<li><a href="http://lightning-dev4.curoverse.com">Beacon</a></li>
+						<li><a href="{% url 'home:help' %}">Help</a></li>
+
 					</ul>
 					{% block navbar %}{% endblock %}
 				</div><!--/.nav-collapse -->
