@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load statistics_filters %}
+
+{% block title %}Lightning: Tile Library Statistics for {{ chromosome }}{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
+	<li class="active"><a href="#">{{ chromosome }}</a></li>
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Tile Library Statistics: {{ chromosome }}</h1>
+	</div>
+	<p>Note that current paths are chromosomal bands</p>
+	<div class="alert alert-danger" role="alert">
+		<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+		 The path pages below can take a while to load. We are sorry for the inconvienence and are working toward a better implementation.
+	</div>
+	<div class="table-responsive">
+		<table id="StatTable"class="table table-striped">
+			<thead>
+				<tr>
+					<th>hg19 Cytomap Band</th>
+					<th>Path</th>
+					<th>Total positions</th>
+					<th>Total tiles</th>
+					<th>Average tile length (in bases)</th>
+					<th>Maximum number of variants at any position</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td></td>
+					<td>{{ chromosome }}</td>
+					<td>{{ positions|length }}</td>
+					<td>{{ tiles|length }}</td>
+					<td>{{ tiles|avg_length|floatformat|default:'-' }}</td>
+					<td>{{ tiles|max_num_variants|default:'-' }}</td>
+				</tr>
+				{% for path, path_hex, path_name in paths %}
+				<tr>
+					<td>{{ path_name }}</td>
+					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path %}">Path {{ path_hex }}</a></td>
+					<td>{{ positions|narrow_pos_to_path:path|length }}</td>
+					<td>{{ tiles|narrow_tiles_to_path:path|length }}</td>
+					<td>{{ tiles|narrow_tiles_to_path:path|avg_length|floatformat|default:'-' }}</td>
+					<td>{{ tiles|narrow_tiles_to_path:path|max_num_variants|default:'-' }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</div>
+{% endblock %}

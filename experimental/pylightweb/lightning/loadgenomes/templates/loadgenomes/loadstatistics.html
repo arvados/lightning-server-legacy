@@ -8,5 +8,5 @@ fine;
 {% endif %}
 
 {% for chr in chromosomes %}
-'<tr><td>{{ chr }}</td><td>{{ positions|narrow_to_chromosome:chr|length }}</td><td>{{ positions|narrow_to_chromosome:chr|ref_is_default }}</td><td>{{ positions|narrow_to_chromosome:chr|ref_is_not_default }}</td><td>{{ tiles|narrow_to_chromosome:chr|length }}</td><td>{{ tiles|narrow_to_chromosome:chr|avg_length|floatformat|default:"-" }}</td><td>{{ tiles|narrow_to_chromosome:chr|ref_avg_size|floatformat|default:"-" }} </td></tr>';
+'<tr><td>{{ chr }}</td><td>{{ positions|narrow_pos_to_chromosome:chr|length }}</td><td>{{ positions|narrow_pos_to_chromosome:chr|ref_is_default }}</td><td>{{ positions|narrow_pos_to_chromosome:chr|ref_is_not_default }}</td><td>{{ tiles|narrow_tiles_to_chromosome:chr|length }}</td><td>{{ tiles|narrow_tiles_to_chromosome:chr|avg_length|floatformat|default:"-" }}</td><td>{{ tiles|narrow_tiles_to_chromosome:chr|ref_avg_size|floatformat|default:"-" }} </td></tr>';
 {% endfor %}

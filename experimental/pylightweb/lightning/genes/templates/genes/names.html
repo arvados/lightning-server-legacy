@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load gene_filters %}
+
+{% block title %}Lightning: UCSC Known Genes{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li class="active"><a href="#">Known Genes (UCSC)</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Known Genes from UCSC</h1>
+	</div>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Gene Name</th>
+					<th>Description</th>
+					<th>Gene Review Article (if applicable)</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for gene_xref in genes %}
+				<tr>
+					<td><a href="{% url 'genes:specific' gene_xref.id %}">{{ gene_xref.gene_aliases }}</a></td>
+					<td>{{ gene_xref.description }}</td>
+					<td>{% for obj in gene_xref|get_gene_review_urls %}
+							<a href="{{obj.url}}">{{obj.phenotype}}</a><br>
+						{% endfor %}
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</div>
+{% endblock %}

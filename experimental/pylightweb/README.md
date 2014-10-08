@@ -47,10 +47,7 @@ How to Set-up a local lightning cluster:
   * set: DBPW = "mypassword" (the password entered for createuser above)
   * set: 'USER': '$USER'
 
-7.	Install nested-inlines:
-
-		$ sudo pip install -e git+git://github.com/Soaa-/django-nested-inlines.git#egg=django-nested-inlines
-8.	Create the needed tables:
+7.	Create the needed tables:
 
 		lighting/experimental/pylightweb/lightning$ python manage.py syncdb
 
