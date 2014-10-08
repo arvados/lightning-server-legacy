@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseServerError
 from django.http import Http404
 
 from loadgenomes.models import VarAnnotation, Tile, TileVariant
@@ -32,7 +32,30 @@ def loadstatistics(request, check=True):
         'warning':warn,
         }
     return render(request, 'loadgenomes/loadstatistics.html', context)
-#def chrom_statistics(request, chrom):
+
+def chrom_statistics(request, chrom):
+    chrom_int = int(chrom_int)-1
+    if chrom_int < 0 or chrom_int > 25:
+        return HttpResponseServerError("That is not a chromosome integer format, expect an integer between 1 and 25. We don't support unconventional chromosomes yet")
+    chr_path_lengths = [0,63,125,187,234,279,327,371,411,454,496,532,573,609,641,673,698,722,742,761,781,795,811,851,862,863]
+    min_accepted = hex(chr_path_lengths[chrom_int])[2:]+"00"+"0000"
+    min_var_accepted = min_accepted + "000"
+    min_accepted = int(min_accepted, 16)
+    min_var_accepted = int(min_var_accepted, 16)
+    max_accepted = hex(chr_path_lengths[chrom_int+1])[2:]+"00"+"0000"
+    max_var_accepted = max_accepted + "000"
+    max_accepted = int(max_accepted, 16)
+    max_var_accepted = int(max_var_accepted, 16)
+    positions = Tile.objects.filter(tilename__gte=min_accepted).filter(tilename__lt=max_accepted)
+    tiles = TileVariant.objects.filter(tile_variant_name__gte=min_var_accepted).filter(tile_variant_name__lt=max_var_accepted)
+    context = {
+        'positions': positions,
+        'tiles':tiles,
+        'chromosome':chrom_int,
+        }
+    return render(request, 'loadgenomes/loadstatistics.html', context)
+
+
 
 def index(request):
     trusted_annotation_list = VarAnnotation.objects.filter(source="library_generation")

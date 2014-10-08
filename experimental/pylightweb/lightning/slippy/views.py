@@ -3,40 +3,51 @@ from django.http import HttpResponse, HttpResponseServerError
 from django.http import Http404
 from django.template import RequestContext, loader
 
-from loadgenes.models import Gene
+from django.db.models import Count,Max,Min
+from genes.models import UCSC_Gene, GeneXRef
+
+def getTileCoordInt(tile):
+    """Returns integer for path, version, and step for tile """
+    strTilename = hex(tile).lstrip('0x').rstrip('L')
+    strTilename = strTilename.zfill(9)
+    path = int(strTilename[:3], 16)
+    version = int(strTilename[3:5], 16)
+    step = int(strTilename[5:], 16)
+    return path, version, step
+
 
 def slippymap(request):
-    #filters = Gene.objects.order_by().values_list('source').distinct()
-    #filters = [f[0] for f in filters]
-    #filters = sorted(filters)
-    #return render(request, 'index.html', {'filters':filters})
     return render(request, 'slippy/slippymap.html', {})
 
 def simplesearch(request):
     def dealWithMatching(matching):
-        if len(matching) == 1:
-            gene = matching[0]
-            spath, sversion, sstep = gene.getTileCoord(gene.startCGF)
-            epath, eversion, estep = gene.getTileCoord(gene.endCGF)
-            if gene.genereviewURLs == None:
-                ptr = ''
+        distinct_set = matching.order_by('gene_aliases').distinct('gene_aliases')
+        number_of_distinct = distinct_set.count()
+        if number_of_distinct == 1:
+            tile_end_tx = matching.aggregate(Max('gene__tile_end_tx'))['gene__tile_end_tx__max']
+            tile_start_tx = matching.aggregate(Min('gene__tile_start_tx'))['gene__tile_start_tx__min']
+            spath, sversion, sstep = getTileCoordInt(tile_start_tx)
+            epath, eversion, estep = getTileCoordInt(tile_end_tx)
+            gene = matching.first()
+            if gene.has_gene_review: 
+                ptr = gene.gene_review_URLs
             else:
-                ptr = gene.genereviewURLs
-            context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep, 'urlpointer':ptr}
+                ptr = ''
+            context = {'gene': gene.gene_aliases, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep, 'urlpointer':ptr}
             return render(request, 'slippy/search.html', context)
-        elif len(matching) > 1:
-            return render(request, 'slippy/multmatches.html', {'matching': matching})
+        elif number_of_distinct > 1:
+            return render(request, 'slippy/multmatches.html', {'matching': distinct_set})
         else:
             return None
     error_msg = "No GET data sent."
     if request.method == "GET":
         geneName = request.GET['geneName']
-        matching = Gene.objects.filter(gene_name__istartswith=geneName)
+        matching = GeneXRef.objects.filter(gene_aliases__istartswith=geneName)
         rendering = dealWithMatching(matching)
         if rendering != None:
             return rendering
         else:
-            matching = Gene.objects.filter(gene_name__icontains=geneName)
+            matching = GeneXRef.objects.filter(gene_aliases__icontains=geneName)
             rendering = dealWithMatching(matching)
             if rendering != None:
                 return rendering
@@ -48,19 +59,19 @@ def specificsearch(request):
     error_msg = "No GET data sent."
     if request.method == "GET":
         geneName = request.GET['geneName']
-        matching = Gene.objects.filter(gene_name=geneName)
-        if len(matching) == 1:
-            gene = matching[0]
-            spath, sversion, sstep = gene.getTileCoord(gene.startCGF)
-            epath, eversion, estep = gene.getTileCoord(gene.endCGF)
-            if gene.genereviewURLs == None:
-                ptr = ''
+        matching = GeneXRef.objects.filter(gene_aliases=geneName)
+        if matching != None:
+            tile_end_tx = matching.aggregate(Max('gene__tile_end_tx'))['gene__tile_end_tx__max']
+            tile_start_tx = matching.aggregate(Min('gene__tile_start_tx'))['gene__tile_start_tx__min']
+            spath, sversion, sstep = getTileCoordInt(tile_start_tx)
+            epath, eversion, estep = getTileCoordInt(tile_end_tx)
+            gene = matching.first()
+            if gene.has_gene_review: 
+                ptr = gene.gene_review_URLs
             else:
-                ptr = gene.genereviewURLs
-            context = {'gene': gene.gene_name, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep, 'urlpointer':ptr}
+                ptr = ''
+            context = {'gene': gene.gene_aliases, 'spath':spath, 'sstep':sstep, 'epath':epath, 'estep':estep, 'urlpointer':ptr}
             return render(request, 'slippy/search.html', context)
-        elif len(matching) > 1:
-            error_msg = 'Multiple genes matched "%s" exactly.' % geneName
         else:
             error_msg = 'No genes containing "%s" were found.' % geneName
     return HttpResponseServerError(error_msg)
@@ -68,12 +79,14 @@ def specificsearch(request):
 def loadall(request):
     error_msg = "No GET data sent."
     if request.method == "GET":
-        sourceName = request.GET['filter']
-        if sourceName == 'clinical':
-            matching = Gene.objects.filter(genereview=True)
+        phenotype = request.GET['filter']
+        if phenotype == 'clinical':
+            matching = GeneXRef.objects.filter(has_gene_review=True)
+            distinct_matching = matching.order_by('gene_aliases').distinct('gene_aliases')
         else:
-            matching = Gene.objects.filter(source=sourceName)
-        return render(request, 'slippy/loadall.html', {'matching':matching})
+            matching = GeneXRef.objects.filter(gene_review_phenotype_map__icontains=phenotype)
+            distinct_matching = matching.order_by('gene_aliases').distinct('gene_aliases')
+        return render(request, 'slippy/loadall.html', {'matching':matching, 'distinct':distinct_matching})
     return HttpResponseServerError(error_msg)
 
 

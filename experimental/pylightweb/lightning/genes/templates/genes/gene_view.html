@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load gene_filters %}
+
+{% block title %}Lightning: Gene {{gene.gene_aliases}}{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li><a href="{% url 'genes:names' %}">Known Genes (UCSC)</a></li>
+	<li class="active"><a href="#">Gene {{gene.gene_aliases}}</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Gene {{gene.gene_aliases}}: {{gene.description}}</h1>
+	</div>
+
+	<h3>Gene Review Articles</h3>
+	<ul>
+		{% for obj in gene|get_gene_review_urls %}
+			<li><a href="{{obj.url}}">{{obj.phenotype}}</a></li>
+		{% empty %}
+			<p> (None) </p>
+		{% endfor %}
+	</ul>
+
+	<h3>Genomic Information (relative to assembly {{gene.gene.assembly|assembly_pretty}})</h3>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Chromosome</th>
+					<th>Strand</th>
+					<th>Start of Transcription</th>
+					<th>Start of Coding Sequence</th>
+					<th>End of Coding Sequence</th>
+					<th>End of Transcription</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for gene_xref in genes %}
+				<tr>
+					<td>{{ gene_xref.gene.chrom|chromosome_pretty }}</td>
+					<td>{{ gene_xref.gene.strand|strand_pretty }}</td>
+					<td>{{ gene_xref.gene.tile_start_tx|tile_string }} (base {{ gene_xref.gene.start_tx }})</td>
+					<td>{{ gene_xref.gene.tile_start_cds|tile_string }} (base {{ gene_xref.gene.start_cds }})</td>
+					<td>{{ gene_xref.gene.tile_end_cds|tile_string }} (base {{ gene_xref.gene.end_cds }})</td>
+					<td>{{ gene_xref.gene.tile_end_tx|tile_string }} (base {{ gene_xref.gene.end_tx }})</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Number of Exons</th>
+					<th>Exon Starts <br>
+						Exon Ends</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for gene_xref in genes %}
+				<tr>
+					<td>{{ gene_xref.gene.exon_count }}</td>
+					<td>{{ gene_xref.gene.exon_starts|pretty_exons }}<br>
+						{{ gene_xref.gene.exon_ends|pretty_exons }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+
+	<h3>External Database Representations</h3>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Description</th>
+					<th>UCSC known gene iD</th>
+					<th>GenBank mRNA accession number</th>
+					<th>UniProt accession number</th>
+					<th>NCBI refseq ID</th>
+					<th>NCBI protein accession number</th>
+					<th>RNA family information</th>
+					<th>tRNA name</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for gene_xref in genes %}
+				<tr>
+					<td>{{ gene_xref.description }}</td>
+					<td><a href="https://genome.ucsc.edu/cgi-bin/hgGene?hgg_gene={{gene_xref.gene.ucsc_gene_id}}">{{ gene_xref.gene.ucsc_gene_id}}</a></td>
+					<td>{{ gene_xref.mrna }}</td>
+					<td><a href="http://www.uniprot.org/uniprot/{{gene_xref.sp_id}}">{{ gene_xref.sp_display_id }}</a></td>
+					<td>{{ gene_xref.ref_seq }}</td>
+					<td>{{ gene_xref.prot_acc }}</td>
+					<td>{{ gene_xref.rfam_acc }}</td>
+					<td>{{ gene_xref.trna_name }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+
+</div>
+{% endblock %}
