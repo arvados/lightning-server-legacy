@@ -1,3 +1,35 @@
+/*
+
+  NAME:
+     gff2fj - Convert a (chopped) GFF file to a FastJ file
+
+  USAGE:
+     gff2fj [global options] command [command options] [arguments...]
+
+  VERSION:
+     0.1, AGPLv3.0
+
+  AUTHOR:
+    Curoverse Inc. - <info@curoverse.com>
+
+  COMMANDS:
+     help, h      Shows a list of commands or help for one command
+
+  GLOBAL OPTIONS:
+     --input-gff, -i                      Input GFF file
+     --input-fastj, -f                    Input FastJ file
+     --fasta-chromosome, -c               Input chromosome Fasta file
+     --output-fastj, -o                   Output FastJ file
+     --variant-policy, -P 'REPORTED'      Variant policy (one of 'REPORTED', 'HETA', 'RANDOM' or 'REGEX') (default to 'REPORTED')
+     --note, -a                           Annotation to add to the 'note' list in the FastJ header
+     --allow-variant-on-tag, -T           Allow variants on tags (by default, tiles are extended to not allow variants on tags)
+     --seed, -S '0'                       Random seed (default to current time)
+     --verbose, -V                        Verbose flag
+     --help, -h                           show help
+     --version, -v                        print the version
+
+*/
+
 // Sample usage:
 //
 // ./gff2fj -i /scratch/tmp/chr19_band2_s13900000_e14000000.gff.gz  \
@@ -20,17 +52,11 @@
 //    handled properly.
 //
 
-// NOTES
-// =====
 //
-// Most of the issues with crossing tile boundaries should now be solved since we
-// extend tiles if there are any variants on tiles.  The code is kept from the previous
-// iteration of this tool and so the below discussion is kept for completeness.
-
 // Variant Policy
 // --------------
 //
-// There are three variant policies: HETA, REPORTED and RANDOM.  These inform how the FastJ will
+// There are three variant policies: HETA, REPORTED, RANDOM and REGEX.  These inform how the FastJ will
 // be generated from how the variants are reported in the the GFF file.
 //
 // HETA:
@@ -45,6 +71,13 @@
 //    - Place the variant(s) randomely on either allele "A" or "B".  The RNG can be seeded witha value
 //      from the command line.  Default is taken to be the current time
 //
+// REGEX:
+//    - Create only one tile for both alleles with a regexp to describe the variant.  For SNPs, the
+//      regexp will be in square brackets (for example, '[ag]') and for everything else, they will
+//      be in parenthesis (for example, '(|aa)').  The strings inside the brackets and parenthesis
+//      are sorted in lexigraphical order.  For INDELs, a deletion is denoted by an empty string.
+//      Homozygous SNPs are not enclosed in brackets.
+//
 
 // Gaps
 // ----
@@ -54,6 +87,9 @@
 
 // Variants crossing tile boundaries
 // ---------------------------------
+//
+// If the 'allow-variant-on-tag' option is set, INDELs that cross tile boundaries will be though of as
+//   a substitution followed by a deletion or insertion.
 //
 
 // Simple Substitutions:
@@ -114,7 +150,7 @@
 
  GFF notes:
 
-   GFF is 1 based, with, end inclusive.
+   GFF is 1 based, with end inclusive.
    Inserts have an end position one below the start position.
 
    In the variable 'comments' below (the comments section of the GFF file),
@@ -368,8 +404,6 @@ func (gss *GffScanState) DebugPrint( referenceTileSet *tile.TileSet ) {
   header := TileHeader{}
   json.Unmarshal( []byte( refTcc.Meta[0] ), &header )
 
-  //fmt.Printf(">>> %s\n", header.Locus[0]["build"] )
-
 }
 
 
@@ -603,16 +637,6 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
   for ; (refStartPos + entryLen) >= (gss.nextTagStart + gss.TagLen) ; {
 
     if gss.refStartVirtual == gss.startPos[ gss.startPosIndex-1 ] {
-
-      // Add the rest of the ref sequence to the current sequence.
-      //
-      //gss.gffCurSeq = append( gss.gffCurSeq, chromFa[ gss.refStartVirtual + gss.refLen : gss.nextTagStart + gss.TagLen ]... )
-
-      /*
-      fmt.Printf(" v %d + reflen %d (=%d) : nextTagStart %d + tagLen %d (=%d)  ((%d)) [%v]\n",
-        gss.refStartVirtual, gss.refLenVirtual, gss.refStartVirtual + gss.refLenVirtual,
-        gss.nextTagStart, gss.TagLen, gss.nextTagStart + gss.TagLen, len(chromFa), gss.variantOnTag )
-        */
 
       fa := chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.nextTagStart + gss.TagLen ]
       gss.gffCurSeq = append( gss.gffCurSeq, fa... )
@@ -1688,7 +1712,6 @@ func _main_phased( c *cli.Context ) {
 
     } else {
 
-      //panic( fmt.Sprintf("unknown varType %s on line %d", varType, line_no) )
       panic( fmt.Sprintf("unknown varType %s on line %d", varType, gLineNo) )
     }
 
