@@ -7,31 +7,53 @@
 {% block breadcrumbs %}
 	<li><a href="{% url 'home:index' %}">Home</a></li>
 	<li><a href="{% url 'genes:names' %}">Known Genes (UCSC)</a></li>
-	<li class="active"><a href="#">Gene {{gene.gene_aliases}}</a></li>
+	<li class="active"><a href="#">{{gene.gene_aliases}}</a></li>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
 	<div class="page-header">
-		<h1>Gene {{gene.gene_aliases}}: {{gene.description}}</h1>
+		<h1>{{gene.gene_aliases}}: <small>{{gene.description}}</small></h1>
 	</div>
 
-	<h3>Gene Review Articles</h3>
-	<ul>
-		{% for obj in gene|get_gene_review_urls %}
-			<li><a href="{{obj.url}}">{{obj.phenotype}}</a></li>
-		{% empty %}
-			<p> (None) </p>
-		{% endfor %}
-	</ul>
-
-	<h3>Genomic Information (relative to assembly {{gene.gene.assembly|assembly_pretty}})</h3>
+<!--	<div class="container"> -->
+		<h3>Gene Review Articles</h3>
+		<ul>
+			{% for obj in gene|get_gene_review_urls %}
+				<li><a href="{{obj.url}}">{{obj.phenotype}}</a></li>
+			{% empty %}
+				<p> (None) </p>
+			{% endfor %}
+		</ul>
+		<h3>Known Genes with name {{gene.gene_aliases}}</h3>
+		<div class="table-responsive">
+			<table class="table table-striped">
+				<thead>
+					<tr>
+						<th>Gene Number</th>
+						<th>Description</th>
+						<th>Chromosome</th>
+						<th>Strand</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for gene_xref in genes %}
+					<tr>
+						<td>{{forloop.counter}}</td>
+						<td>{{ gene_xref.description }}</td>
+						<td>{{ gene_xref.gene.chrom|chromosome_pretty }}</td>
+						<td>{{ gene_xref.gene.strand|strand_pretty }}</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	<h3>Genomic Information <small>(relative to assembly {{gene.gene.assembly|assembly_pretty}})</small></h3>
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
 				<tr>
-					<th>Chromosome</th>
-					<th>Strand</th>
+					<th>Gene Number</th>
 					<th>Start of Transcription</th>
 					<th>Start of Coding Sequence</th>
 					<th>End of Coding Sequence</th>
@@ -41,8 +63,7 @@
 			<tbody>
 				{% for gene_xref in genes %}
 				<tr>
-					<td>{{ gene_xref.gene.chrom|chromosome_pretty }}</td>
-					<td>{{ gene_xref.gene.strand|strand_pretty }}</td>
+					<td>{{forloop.counter}}</td>
 					<td>{{ gene_xref.gene.tile_start_tx|tile_string }} (base {{ gene_xref.gene.start_tx }})</td>
 					<td>{{ gene_xref.gene.tile_start_cds|tile_string }} (base {{ gene_xref.gene.start_cds }})</td>
 					<td>{{ gene_xref.gene.tile_end_cds|tile_string }} (base {{ gene_xref.gene.end_cds }})</td>
@@ -53,10 +74,14 @@
 		</table>
 	</div>
 
+<!--	</div>
+-->
+	<h3>Exon Splicing</h3>
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
 				<tr>
+					<th>Gene Number</th>
 					<th>Number of Exons</th>
 					<th>Exon Starts <br>
 						Exon Ends</th>
@@ -65,6 +90,7 @@
 			<tbody>
 				{% for gene_xref in genes %}
 				<tr>
+					<td>{{forloop.counter}}</td>
 					<td>{{ gene_xref.gene.exon_count }}</td>
 					<td>{{ gene_xref.gene.exon_starts|pretty_exons }}<br>
 						{{ gene_xref.gene.exon_ends|pretty_exons }}</td>
@@ -79,7 +105,7 @@
 		<table class="table table-striped">
 			<thead>
 				<tr>
-					<th>Description</th>
+					<th>Gene Number</th>
 					<th>UCSC known gene iD</th>
 					<th>GenBank mRNA accession number</th>
 					<th>UniProt accession number</th>
@@ -92,14 +118,18 @@
 			<tbody>
 				{% for gene_xref in genes %}
 				<tr>
-					<td>{{ gene_xref.description }}</td>
+					<td>{{forloop.counter}}</td>
 					<td><a href="https://genome.ucsc.edu/cgi-bin/hgGene?hgg_gene={{gene_xref.gene.ucsc_gene_id}}">{{ gene_xref.gene.ucsc_gene_id}}</a></td>
-					<td>{{ gene_xref.mrna }}</td>
+					<td>{{ gene_xref.mrna|default:'-'}}</td>
+					{% if gene_xref.sp_id %}
 					<td><a href="http://www.uniprot.org/uniprot/{{gene_xref.sp_id}}">{{ gene_xref.sp_display_id }}</a></td>
-					<td>{{ gene_xref.ref_seq }}</td>
-					<td>{{ gene_xref.prot_acc }}</td>
-					<td>{{ gene_xref.rfam_acc }}</td>
-					<td>{{ gene_xref.trna_name }}</td>
+					{% else %}
+					<td>-</td>
+					{% endif %}
+					<td>{{ gene_xref.ref_seq|default:'-' }}</td>
+					<td>{{ gene_xref.prot_acc|default:'-' }}</td>
+					<td>{{ gene_xref.rfam_acc|default:'-' }}</td>
+					<td>{{ gene_xref.trna_name|default:'-' }}</td>
 				</tr>
 				{% endfor %}
 			</tbody>
