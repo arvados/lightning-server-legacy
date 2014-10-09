@@ -1,9 +1,0 @@
-lightning: provides django settings for website and server configuration
-
-loadgenes: interface for genes and other annotations that span multiple tiles
-
-loadgenomes: interface for the Tile Library
-
-slippy: implements an interactive website showing a slippy map of the human genome
-
-manage.py: runs django commands
