@@ -169,7 +169,7 @@ import "sort"
 import "encoding/json"
 import _ "compress/gzip"
 
-import "flag"
+import "github.com/codegangsta/cli"
 
 import "math/rand"
 
@@ -181,21 +181,34 @@ import "../bioenv"
 
 var VERSION_STR string = "0.1, AGPLv3.0"
 
-//var gOutputWriter bioenv.BioEnvHandle
 var gBioEnvWriter bioenv.BioEnvHandle
 var gOutputWriter *bufio.Writer
 
 
 var gDebugFlag bool = false
-//var gDebugFlag bool = true
 var gDebugString string
 var gRefGenome string = "hg19"
 
-// In the future, REPORTED should be the default, but for
-// now phase information should essentially be ignored,
-// so we default to HETA.
-//
-var gVariantPolicy string = "HETA"
+var gAllowVariantOnTag bool = false
+
+var gLineNo int = 0
+
+var g_gffFileName string
+var g_fastjFileName string
+var g_chromFileName string
+var g_outputFastjFileName string
+var g_notes string
+
+var g_variantPolicy string = "REPORTED"
+var g_randomSeed int64
+
+var g_discardVariantOnTag bool
+var g_discardGaps bool
+var g_verboseFlag bool
+
+var g_referenceTileSet *tile.TileSet
+
+
 
 type TileHeader struct {
   TileID string `json:"tileID"`
@@ -260,107 +273,6 @@ func (gss *GffScanState) PrintState() {
   fmt.Printf("gffLeftTagSeqActual %s\n", string(gss.gffLeftTagSeqActual) )
   fmt.Printf("gffRightTagSeq %s\n", string(gss.gffRightTagSeq) )
 }
-
-var g_gffFileName *string
-var g_fastjFileName *string
-var g_chromFileName *string
-var g_outputFastjFileName *string
-var g_notes *string
-
-var g_variantPolicy *string
-var g_randomSeed *int64
-
-var g_discardVariantOnTag *bool
-var g_discardGaps *bool
-var g_verboseFlag *bool
-
-var g_referenceTileSet *tile.TileSet
-
-func init() {
-  var versionFlag *bool
-
-  _ = time.Now()
-
-
-  g_gffFileName = flag.String( "i", "", "Input GFF file")
-  flag.StringVar( g_gffFileName, "input-gff", "", "Input GFF file")
-
-  g_fastjFileName = flag.String( "f", "", "Input FastJ file")
-  flag.StringVar( g_fastjFileName, "input-fastj", "", "Input FastJ file")
-
-  g_chromFileName = flag.String( "c", "", "Input chromosome Fasta file")
-  flag.StringVar( g_chromFileName, "fasta-chromosome", "", "Input chromosome Fasta file")
-
-  g_outputFastjFileName = flag.String( "o", "-", "Output FastJ file")
-  flag.StringVar( g_outputFastjFileName, "output-fastj", "-", "Output FastJ file")
-
-  g_variantPolicy = flag.String( "P",
-                                 gVariantPolicy,
-                                 "Variant policy (one of 'REPORTED' - as reported in gff, 'HETA' - all het var. go to first allele, 'RANDOM' - choose random allele)")
-  flag.StringVar(
-      g_variantPolicy,
-      "variant-policy",
-      gVariantPolicy,
-      "Variant policy (one of 'REPORTED' - as reported in gff, 'HETA' - all het var. go to first allele, 'RANDOM' - choose random allele)")
-
-  ts := time.Now().UnixNano()
-  g_randomSeed = flag.Int64( "S", ts, "Random seed (defaults to time)")
-  flag.Int64Var( g_randomSeed, "seed", ts, "Random seed (defaults to time)")
-
-  g_verboseFlag = flag.Bool( "v", false, "Verbose flag")
-  flag.BoolVar( g_verboseFlag, "verbose", false, "Verbose flag")
-
-  versionFlag = flag.Bool( "V", false, "Print version and exit")
-  flag.BoolVar( versionFlag, "version", false, "Print version and exit")
-
-  g_notes = flag.String( "a", "", "Note annotation")
-  flag.StringVar( g_notes, "note", "", "Note annotation")
-
-  flag.Parse()
-
-  if *versionFlag {
-    fmt.Printf("gff2fj version %s\n", VERSION_STR)
-    fmt.Printf("Copyright Curoverse Inc.\n")
-    fmt.Printf("License: Apache 2.0\n")
-    os.Exit(0)
-  }
-
-  if *g_variantPolicy == "HETA" {
-    gVariantPolicy = "HETA"
-  } else if *g_variantPolicy == "REPORTED" {
-    gVariantPolicy = "REPORTED"
-  } else if *g_variantPolicy == "RANDOM" {
-    gVariantPolicy = "RANDOM"
-  } else {
-    gVariantPolicy = "HETA"
-  }
-
-  if len(*g_gffFileName)==0 {
-    fmt.Fprintf( os.Stderr, "Provide input GFF file\n")
-    flag.PrintDefaults()
-    os.Exit(2)
-  }
-
-  if len(*g_fastjFileName)==0 {
-    fmt.Fprintf( os.Stderr, "Provide input FastJ file\n")
-    flag.PrintDefaults()
-    os.Exit(2)
-  }
-
-  if len(*g_chromFileName)==0 {
-    fmt.Fprintf( os.Stderr, "Provide chromosome FASTA file\n")
-    flag.PrintDefaults()
-    os.Exit(2)
-  }
-
-  var err error
-  gBioEnvWriter,err = bioenv.CreateWriter( *g_outputFastjFileName )
-  if err != nil { panic(err) }
-
-  gOutputWriter = gBioEnvWriter.Writer
-
-}
-
 
 func (gss *GffScanState) generateTileStartPositions(referenceTileSet *tile.TileSet, buildVersion string) {
 
@@ -503,7 +415,7 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   gOutputWriter.WriteString( fmt.Sprintf(", \"startTag\":\"%s\"", refTcc.StartTag ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"endTag\":\"%s\""  , refTcc.EndTag ) )
 
-  gss.notes = append( gss.notes, fmt.Sprintf("Phase (%s) %s", *g_variantPolicy, gss.phase ) )
+  gss.notes = append( gss.notes, fmt.Sprintf("Phase (%s) %s", g_variantPolicy, gss.phase ) )
 
   if len(gss.notes) > 0 {
     gOutputWriter.WriteString(", \"notes\":[")
@@ -532,18 +444,13 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
 //
 func (gss *GffScanState) AdvanceState() {
 
-  //DEBUG
-  //fmt.Printf("\n\n")
-  //fmt.Printf("AdvanceState: variantOnTag %s\n", gss.variantOnTag)
-  //gss.DebugPrint( g_referenceTileSet )
-
   // If there's a variant on the tag, we
   // update the 'virtual' pointer along with
   // some other state variables but keep
   // the 'actual' pointer the same and
   // keep the left tag and sequence body.
   //
-  if gss.variantOnTag {
+  if !gAllowVariantOnTag && gss.variantOnTag {
 
 
     if (gss.refStartVirtual + gss.refLenVirtual) != (gss.refStartActual + gss.refLenActual) {
@@ -590,7 +497,8 @@ func (gss *GffScanState) AdvanceState() {
     gss.gffLeftTagSeqVirtual = gss.gffLeftTagSeqVirtual[0:0]
     gss.gffLeftTagSeqVirtual = append( gss.gffLeftTagSeqVirtual, gss.gffRightTagSeq... )
 
-    gss.gffCurSeq = append( gss.gffCurSeq, gss.gffLeftTagSeqActual... )
+    //gss.gffCurSeq = append( gss.gffCurSeq, gss.gffLeftTagSeqActual... )
+    gss.gffCurSeq = append( gss.gffCurSeq, gss.gffLeftTagSeqVirtual... )
     gss.refLenVirtual += gss.TagLen
     //gss.refLenActual += gss.TagLen
 
@@ -625,7 +533,7 @@ func (gss *GffScanState) AdvanceState() {
   gss.refLenActual= 0
 
   gss.notes = gss.notes[0:0]
-  if len(*g_notes) > 0 { gss.notes = append( gss.notes, *g_notes) }
+  if len(g_notes) > 0 { gss.notes = append( gss.notes, g_notes) }
   if len(gss.carryOverNotes) > 0 { gss.notes = append(gss.notes, gss.carryOverNotes... ) }
   gss.carryOverNotes = gss.carryOverNotes[0:0]
 
@@ -720,7 +628,7 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.nextTagStart + gss.TagLen ]... )
       }
 
-      if !gss.variantOnTag {
+      if gAllowVariantOnTag || !gss.variantOnTag {
         gss.AddTile( finalTileSet, referenceTileSet )
       }
 
@@ -770,6 +678,83 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
 
 
 }
+
+
+
+
+// SNPs also happen here, as they can be thought of as a substitution of length 1 in this context.
+//
+// refStartPos is the beginning of the substitution sequence.  We will fill in everything from the current
+// position up to the refStartPos with ref, then fill in the rest with the substitution.
+//
+// WORKING ON IT:
+// if subvar crosses the boundary, we need to add a tile and also add the suffix of the (current) tile
+// the the prefix of the next tile.
+//
+func (gss *GffScanState) processRegexSNP( finalTileSet *tile.TileSet,
+                                          referenceTileSet *tile.TileSet,
+                                          chromFa []byte,
+                                          refStartPos int,
+                                          snpvar0 string,
+                                          snpvar1 string,
+                                          ref_seq string,
+                                          comment string ) {
+
+  // Fill in with reference.
+  //
+  if refStartPos > (gss.refStartVirtual + gss.refLenVirtual) {
+    gss.processREF( finalTileSet, referenceTileSet, chromFa, refStartPos, 0 )
+  }
+
+  if refStartPos > (gss.refStartVirtual + gss.refLenVirtual) { return }
+
+  regexSNP := fmt.Sprintf( "[%s%s]", snpvar0, snpvar1 )
+  if snpvar0 == snpvar1 {
+    regexSNP = fmt.Sprintf( "%s", snpvar0 )
+  }
+
+  gss.gffCurSeq = append( gss.gffCurSeq, regexSNP... )
+
+  posInSeq := len(gss.gffCurSeq)
+  commentString := fmt.Sprintf("%s %s %d %d SNP (%d) %s => %s",
+    gRefGenome, gss.curChrom,
+    gss.refStartVirtual + gss.refLenVirtual,  gss.refStartVirtual + gss.refLenVirtual + 1,
+    posInSeq,
+    ref_seq, regexSNP )
+
+  gss.notes = append( gss.notes, comment )
+  gss.notes = append( gss.notes, commentString )
+
+
+  refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStartVirtual + gss.refLenVirtual)
+  if refLenRemain < gss.TagLen {
+    gss.gffRightTagSeq = append( gss.gffRightTagSeq, regexSNP... )
+    gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", comment) )
+    gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", commentString) )
+
+    gss.variantOnTag = true
+  }
+
+
+  if (refStartPos + 1) >= (gss.nextTagStart + gss.TagLen) {
+
+    if gss.refStartVirtual == gss.startPos[ gss.startPosIndex-1 ] {
+
+      if gAllowVariantOnTag || !gss.variantOnTag {
+        gss.AddTile( finalTileSet, referenceTileSet )
+      }
+
+    }
+    gss.AdvanceState()
+
+  }
+
+  dn := (refStartPos + 1) - (gss.refStartVirtual + gss.refLenVirtual)
+  gss.refLenVirtual += dn
+  gss.refLenActual += dn
+
+}
+
 
 // SNPs also happen here, as they can be thought of as a substitution of length 1 in this context.
 //
@@ -890,7 +875,7 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
 
       }
 
-      if !gss.variantOnTag {
+      if gAllowVariantOnTag || !gss.variantOnTag {
         gss.AddTile( finalTileSet, referenceTileSet )
       }
 
@@ -1020,7 +1005,7 @@ func (gss *GffScanState) processDEL( finalTileSet *tile.TileSet, referenceTileSe
       // Since it's a deletion, nothin need be added to the right tag sequence
       //
 
-      if !gss.variantOnTag {
+      if gAllowVariantOnTag || !gss.variantOnTag {
         gss.AddTile( finalTileSet, referenceTileSet )
       }
 
@@ -1116,6 +1101,78 @@ func (gss *GffScanState) processINDEL( finalTileSet *tile.TileSet, referenceTile
 
 }
 
+// ...
+//
+func (gss *GffScanState) processRegexAlteration( finalTileSet *tile.TileSet,
+                                                 referenceTileSet *tile.TileSet,
+                                                 chromFa []byte,
+                                                 refStartPos int,
+                                                 varType string,
+                                                 indelvar0 string,
+                                                 indelvar1 string,
+                                                 ref_seq string,
+                                                 comment string ) {
+
+  // Fill in with reference.
+  //
+  if refStartPos > (gss.refStartVirtual + gss.refLenVirtual) {
+    gss.processREF( finalTileSet, referenceTileSet, chromFa, refStartPos, 0 )
+  }
+
+  startPos := gss.startPos[ gss.startPosIndex-1 ]
+  baseTileId := gss.baseTileIdFromStartPosMap[ startPos ]
+  _ = baseTileId
+
+  indelRegex := fmt.Sprintf( "(%s|%s)", indelvar0, indelvar1 )
+  if indelvar0 == indelvar1 {
+    indelRegex = indelvar0
+  }
+  prettyRefSeq := ref_seq
+  if len(prettyRefSeq) == 0 { prettyRefSeq = "-" }
+
+  commentString := fmt.Sprintf("%s %s %d %d %s %d %s => %s",
+    gRefGenome, gss.curChrom,
+    gss.refStartVirtual + gss.refLenVirtual,  gss.refStartVirtual + gss.refLenVirtual + len(ref_seq),
+    varType,
+    gss.refStartVirtual + gss.refLenVirtual - startPos,
+    prettyRefSeq, indelRegex )
+
+  gss.notes = append( gss.notes, comment )
+  gss.notes = append( gss.notes, commentString )
+
+  gss.gffCurSeq = append( gss.gffCurSeq, indelRegex... )
+  refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStartVirtual + gss.refLenVirtual)
+  if refLenRemain < gss.TagLen {
+    gss.gffRightTagSeq = append( gss.gffRightTagSeq, indelRegex... )
+    gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", comment) )
+    gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", commentString) )
+
+    gss.variantOnTag = true
+  }
+
+  entryLen := len(ref_seq)
+
+  // We've spilled over
+  //
+  for ; (refStartPos + entryLen) >= (gss.nextTagStart + gss.TagLen) ; {
+
+    if gss.refStartVirtual == gss.startPos[ gss.startPosIndex-1 ] {
+
+      if gAllowVariantOnTag || !gss.variantOnTag {
+        gss.AddTile( finalTileSet, referenceTileSet )
+      }
+    }
+    gss.AdvanceState()
+
+  }
+
+  dn := (refStartPos + entryLen) - (gss.refStartVirtual + gss.refLenVirtual)
+  gss.refLenVirtual += dn
+  gss.refLenActual += dn
+
+}
+
+
 
 // Parse the variants.
 // This will pass through the phase information as inferred by the order
@@ -1156,33 +1213,189 @@ func parseVariants( comment string ) (var0 string, var1 string, ref_seq string) 
   if var1 == "-" { var1 = "" }
   if ref_seq == "-" { ref_seq = "" }
 
-  //if gDebugFlag { fmt.Printf("# var1 %s, var2 %s, ref_seq %s\n", var0, var1, ref_seq ) }
-
-  //if var0 == ref_seq { return var1, var0, ref_seq }
   return var0, var1, ref_seq
 
 }
 
 var g_rand *rand.Rand
 
+func initCommandLineOptions( c *cli.Context ) {
+  _ = time.Now()
+
+  g_gffFileName = c.String("input-gff")
+  g_fastjFileName = c.String("input-fastj")
+  g_chromFileName = c.String("fasta-chromosome")
+  g_outputFastjFileName = c.String("output-fastj")
+
+  g_variantPolicy = c.String("variant-policy")
+
+
+  gAllowVariantOnTag = c.Bool("allow-variant-on-tag")
+
+  ts := time.Now().UnixNano()
+  _ = ts
+  g_randomSeed = int64(c.Int("seed"))
+
+  g_verboseFlag = c.Bool("verbose")
+  g_notes = c.String("note")
+
+  if g_variantPolicy == "HETA" {
+  } else if g_variantPolicy == "REPORTED" {
+  } else if g_variantPolicy == "RANDOM" {
+  } else if g_variantPolicy == "REGEX" {
+  } else {
+    fmt.Fprintf( os.Stderr, "Unknown variant policy %s\n", g_variantPolicy)
+    cli.ShowAppHelp(c)
+    os.Exit(2)
+  }
+
+  if len(g_gffFileName)==0 {
+    fmt.Fprintf( os.Stderr, "Provide input GFF file\n")
+    cli.ShowAppHelp(c)
+    os.Exit(2)
+  }
+
+  if len(g_fastjFileName)==0 {
+    fmt.Fprintf( os.Stderr, "Provide input FastJ file\n")
+    cli.ShowAppHelp(c)
+    os.Exit(2)
+  }
+
+  if len(g_chromFileName)==0 {
+    fmt.Fprintf( os.Stderr, "Provide chromosome FASTA file\n")
+    cli.ShowAppHelp(c)
+    os.Exit(2)
+  }
+
+  var err error
+  gBioEnvWriter,err = bioenv.CreateWriter( g_outputFastjFileName )
+  if err != nil {
+    fmt.Fprintf( os.Stderr, "Could not open FastJ file '%s' for writing: %v\n", g_outputFastjFileName, err )
+    os.Exit(2)
+  }
+
+  gOutputWriter = gBioEnvWriter.Writer
+
+}
+
 func main() {
 
-  g_rand = rand.New( rand.NewSource(*g_randomSeed) )
+  app := cli.NewApp()
+  app.Name  = "gff2fj"
+  app.Usage = "Convert a (chopped) GFF file to a FastJ file"
+  app.Version = VERSION_STR
+  app.Author = "Curoverse Inc."
+  app.Email = "info@curoverse.com"
+  app.Action = func( c *cli.Context ) {
+    initCommandLineOptions(c)
+    _main_phased(c)
+  }
+
+  app.Flags = []cli.Flag{
+
+    cli.StringFlag{
+      Name: "input-gff, i",
+      Usage: "Input GFF file" },
+
+    cli.StringFlag{
+      Name: "input-fastj, f",
+      Usage: "Input FastJ file" },
+
+    cli.StringFlag{
+      Name: "fasta-chromosome, c",
+      Usage: "Input chromosome Fasta file" },
+
+    cli.StringFlag{
+      Name: "output-fastj, o",
+      Usage: "Output FastJ file" },
+
+    cli.StringFlag{
+      Name: "variant-policy, P",
+      Value: "REPORTED",
+      Usage: "Variant policy (one of 'REPORTED', 'HETA', 'RANDOM' or 'REGEX') (default to 'REPORTED')" },
+
+    cli.StringFlag{
+      Name: "note, a",
+      Usage: "Annotation to add to the 'note' list in the FastJ header" },
+
+    cli.BoolFlag{
+      Name: "allow-variant-on-tag, T",
+      Usage: "Allow variants on tags (by default, tiles are extended to not allow variants on tags)" },
+
+    cli.IntFlag{
+      Name: "seed, S",
+      Usage: "Random seed (default to current time)" },
+
+    cli.BoolFlag{
+      Name: "verbose, V",
+      Usage: "Verbose flag" },
+
+  }
+
+  app.Run(os.Args)
+
+}
+
+func processRegexLine( gss *GffScanState,
+                       finalTileSet *tile.TileSet,
+                       referenceTileSet *tile.TileSet,
+                       chromFa []byte,
+                       s int,
+                       dn int,
+                       varType string,
+                       comment string,
+                       condensed_comment string) {
+
+
+  if ( varType == "REF" ) {
+
+    gss.processREF( finalTileSet, referenceTileSet, chromFa, s, dn )
+
+  } else if ( (varType == "INDEL") || (varType == "SUB") ) {
+
+    indelvar0, indelvar1, ref_seq := parseVariants( comment )
+
+    if indelvar0 <= indelvar1 {
+      gss.processRegexAlteration( finalTileSet, referenceTileSet, chromFa, s, varType, indelvar0, indelvar1, ref_seq, condensed_comment )
+    } else {
+      gss.processRegexAlteration( finalTileSet, referenceTileSet, chromFa, s, varType, indelvar1, indelvar0, ref_seq, condensed_comment )
+    }
+
+  } else if ( varType == "SNP" ) {
+
+    subvar0, subvar1, ref_seq := parseVariants( comment )
+
+    if subvar0 <= subvar1 {
+      gss.processRegexSNP( finalTileSet, referenceTileSet, chromFa, s, subvar0, subvar1, ref_seq, condensed_comment )
+    } else {
+      gss.processRegexSNP( finalTileSet, referenceTileSet, chromFa, s, subvar1, subvar0, ref_seq, condensed_comment )
+    }
+
+  } else {
+    panic( fmt.Sprintf("unknown varType %s on line %d", varType, gLineNo) )
+  }
+
+
+}
+
+func _main_phased( c *cli.Context ) {
+
+  g_rand = rand.New( rand.NewSource(g_randomSeed) )
 
   tagLen := 24
 
-  gffFn := *g_gffFileName
-  fastjFn := *g_fastjFileName
-  chromFaFn := *g_chromFileName
-  gNoteLine := *g_notes
+  gffFn := g_gffFileName
+  fastjFn := g_fastjFileName
+  chromFaFn := g_chromFileName
+  gNoteLine := g_notes
 
-  gDebugString = fmt.Sprintf( "%s %s %s %s %s", gffFn, fastjFn, chromFaFn, *g_outputFastjFileName, gNoteLine )
+  gDebugString = fmt.Sprintf( "%s %s %s %s %s", gffFn, fastjFn, chromFaFn, g_outputFastjFileName, gNoteLine )
 
 
   //-----------------------------
   // Load the tile set for this band.
   //
-  if *g_verboseFlag { fmt.Println("# loading", fastjFn, "into memory...") }
+  if g_verboseFlag { fmt.Println("# loading", fastjFn, "into memory...") }
   referenceTileSet := tile.NewTileSet( tagLen )
   referenceTileSet.ReadFastjFile( fastjFn )
 
@@ -1241,7 +1454,7 @@ func main() {
   //-----------------------------
   // Load our hg reference band.
   //
-  if *g_verboseFlag { fmt.Println("# loading", chromFaFn, "into memory...") }
+  if g_verboseFlag { fmt.Println("# loading", chromFaFn, "into memory...") }
   chromFa,err := aux.FaToByteArray( chromFaFn )
   if err != nil { panic(err) }
   _ = chromFa
@@ -1249,7 +1462,7 @@ func main() {
   count := 0
   _ = count
 
-  if *g_verboseFlag { fmt.Println("# reading gff") }
+  if g_verboseFlag { fmt.Println("# reading gff") }
 
   //
   //-----------------------------
@@ -1259,13 +1472,15 @@ func main() {
   if err != nil { panic(err) }
   defer gffReader.Close()
 
-  line_no := -1
+  //line_no := -1
+  gLineNo = -1
 
 
   for gffReader.Scanner.Scan() {
     l := gffReader.Scanner.Text()
 
-    line_no += 1
+    //line_no += 1
+    gLineNo += 1
 
     if len(l)==0 { continue }
     if l[0] == '#' { continue }
@@ -1292,6 +1507,11 @@ func main() {
     tmpstr,_ := recache.ReplaceAllString( `\s+`, comment, " " )
     condensed_comment := fmt.Sprintf("gffsrc: %s %d %d %s %s", chrom, s, e, varType, tmpstr )
 
+    if g_variantPolicy == "REGEX" {
+      processRegexLine( &gss0, finalTileSet, referenceTileSet, chromFa, s, e-s+1, varType, comment, condensed_comment )
+      continue
+    }
+
     if ( varType == "REF" ) {
 
       gss0.processREF( finalTileSet, referenceTileSet, chromFa, s, e - s + 1 )
@@ -1301,7 +1521,7 @@ func main() {
 
       indelvar0, indelvar1, ref_seq := parseVariants( comment )
 
-      switch gVariantPolicy {
+      switch g_variantPolicy {
       case "REPORTED":
 
         if indelvar0 == ref_seq {
@@ -1381,7 +1601,7 @@ func main() {
 
       subvar0, subvar1, ref_seq := parseVariants( comment )
 
-      switch gVariantPolicy {
+      switch g_variantPolicy {
       case "REPORTED":
 
         if subvar0 == ref_seq {
@@ -1397,6 +1617,7 @@ func main() {
           gss1.notes = append( gss1.notes, condensed_comment )
           gss1.processSUB( finalTileSet, referenceTileSet, chromFa, s, subvar1, varType, true )
         }
+
 
       case "HETA":
 
@@ -1467,13 +1688,17 @@ func main() {
 
     } else {
 
-      panic( fmt.Sprintf("unknown varType %s on line %d", varType, line_no) )
+      //panic( fmt.Sprintf("unknown varType %s on line %d", varType, line_no) )
+      panic( fmt.Sprintf("unknown varType %s on line %d", varType, gLineNo) )
     }
 
   }
 
   gss0.AddTile( finalTileSet, referenceTileSet )
-  gss1.AddTile( finalTileSet, referenceTileSet )
+
+  if g_variantPolicy != "REGEX" {
+    gss1.AddTile( finalTileSet, referenceTileSet )
+  }
 
   gBioEnvWriter.Flush()
   gBioEnvWriter.Close()
