@@ -11,7 +11,7 @@ How to Set-up a local lightning cluster:
 =======================
 ## Notes: 
 * We are aware this is a cumbersome installation. We are working to smooth the procedure out. 
-* This will not populate the database with a tile library. For information on populating the database, see the README.md file in pylightweb/lightning/loadgenomes
+* This will not populate the database with a tile library. For information on populating the database, see the README.md file in pylightweb/lightning/tile_library
 
 ## Procedure:
 1.	Install python 2.7
@@ -21,19 +21,19 @@ How to Set-up a local lightning cluster:
 
 		```
 		$ python -c "import django; print(django.get_version())"
-		1.6.5
+		1.7
 		```
   * If this is wrong, run:
 
 		```
-		$ sudo pip install django==1.6.5
+		$ sudo pip install django
 		```
-  * For further instructions on proper installation of django, see <https://docs.djangoproject.com/en/1.6/topics/install/>
+  * For further instructions on proper installation of django, see <https://docs.djangoproject.com/en/1.7/topics/install/>
 
 3.	Ensure checkout of the development branch (code that runs on a localhost): 
 
 		$ git checkout --track -b development origin/development
-4.	Install postgresql and the dependencies necessary to interact with django:
+4.	Install postgresql (version 9.1 to 9.3 will work) and the dependencies necessary to interact with django:
 
 		$ sudo apt-get install postgresql-9.3
 		$ sudo apt-get install postgresql-server-dev-all
@@ -49,5 +49,5 @@ How to Set-up a local lightning cluster:
 
 7.	Create the needed tables:
 
-		lighting/experimental/pylightweb/lightning$ python manage.py syncdb
+		lighting/experimental/pylightweb/lightning$ python manage.py migrate
 
