@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #Testing performance
 
 import timeit
@@ -11,14 +10,14 @@ chrom = 2
 #biggest path
 path = 21
 
-min_pos, min_tile = convert_chromosome_to_tilename(chrom)
-max_pos, max_tile = convert_chromosome_to_tilename(chrom+1)
+min_pos, min_tile = views.convert_chromosome_to_tilename(chrom)
+max_pos, max_tile = views.convert_chromosome_to_tilename(chrom+1)
 
 max_pos -= 1
 max_tile -= 1
 
-min_path_pos, min_path_tile = convert_path_to_tilename(path)
-max_path_pos, max_path_tile = convert_path_to_tilename(path+1)
+min_path_pos, min_path_tile = views.convert_path_to_tilename(path)
+max_path_pos, max_path_tile = views.convert_path_to_tilename(path+1)
 
 max_path_pos -= 1
 max_path_tile -= 1
