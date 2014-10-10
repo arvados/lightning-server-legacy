@@ -14,10 +14,11 @@
 	</div>
 	<p class="lead">This site is a work in progress and is open-source</p>
 	<div class="alert alert-danger" role="alert">
-		Though we welcome you to explore the Tile Library (under the <a href="{% url 'tile_library:statistics' %}">Population</a> tab) and the <a href="{% url 'genes:names' %}">Known Genes</a>, these implementations are prototypes and take a while to load. We are currently working on a better implementation. 
+		Though we welcome you to explore the <a href="{% url 'genes:names' %}">Known Genes</a>, these implementations are prototypes and take a while to load. We are currently working on a better implementation. 
 	</div>
 	<p>Our goals include enabling fast analysis of population genetic data. We currently use whole genome sequence data obtained from the Personal Genome Project. These sequences have been converted losslessly to Compressed Genome Format, a developmental format enabling simple lift-over, annotation, visualization, and fast analysis of human genomes. </p>
 	<ul>
+		<li>To view the Tile Library, visit the <a href="{% url 'tile_library:statistics' %}">Tile Library Statistics</a> tab. </li>
 		<li>To view the population of 154 humans, search for genes, and view genes with Gene Review articles, visit the <a href="{% url 'slippy:slippymap' %}">Genome Map</a> tab (an explanation of the process of visualization will be coming soon). </li>
 
 		<li>To view individual human data, visit the <a href="{% url 'humans:individuals' %}">Individuals</a> Tab.</li>
