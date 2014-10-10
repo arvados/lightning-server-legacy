@@ -2,20 +2,20 @@
 {% load staticfiles %}
 {% load statistics_filters %}
 
-{% block title %}Lightning: Tile Library Statistics for Path {{ path }}{% endblock %}
+{% block title %}Lightning: Tile Library Statistics for Path {{ path_hex }}{% endblock %}
 
 {% block breadcrumbs %}
 	<li><a href="{% url 'home:index' %}">Home</a></li>
 	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
 	<li><a href="{% url 'tile_library:chr_statistics' chromosome_int %}">{{ chromosome }}</a></li>
-	<li class="active"><a href="#">Path {{ path }}</a></li>
+	<li class="active"><a href="#">Path {{ path_hex }}</a></li>
 {% endblock %}
 
 
 {% block content %}
 <div class="container-fluid">
 	<div class="page-header">
-		<h1>Tile Library Statistics: Path {{ path }}</h1>
+		<h1>Tile Library Statistics: Path {{ path_hex }}</h1>
 	</div>
 	<p>Note that current paths are chromosomal bands</p>
 	<div class="table-responsive">
@@ -26,43 +26,113 @@
 					<th>Path</th>
 					<th>Total positions</th>
 					<th>Total tiles</th>
+					<th>Average number of variants</th>
+					<th>Maximum number of variants</th>
+					<th>Minimum tile length (in bases)</th>
 					<th>Average tile length (in bases)</th>
-					<th>Maximum number of variants at any position</th>
+					<th>Maximum tile length (in bases)</th>
 				</tr>
 			</thead>
 			<tbody>
 				<tr>
-					<td>{{ path_name }}</td>
-					<td>Path {{ path }}</td>
-					<td>{{ positions|length }}</td>
-					<td>{{ tiles|length }}</td>
-					<td>{{ tiles|avg_length|floatformat|default:'-' }}</td>
-					<td>{{ tiles|max_num_variants|default:'-' }}</td>
+					<td>{{ path_cyto }}</td>
+					<td>Path {{ path_hex }}</td>
+					<td>{{ path.position_num }}</td>
+					<td>{{ path.tile_num }}</td>
+					<td>{{ path.avg_variant_val|floatformat|default:'-' }}</td>
+					<td>{{ path.max_variant_val|default:'-' }}</td>
+					<td>{{ path.min_length|default:'-' }}</td>
+					<td>{{ path.avg_length|floatformat|default:'-' }}</td>
+					<td>{{ path.max_length|default:'-' }}</td>
 				</tr>
-			<tbody>
+			</tbody>
 		</table>
 	</div>
+		<ul class="pagination">
+			{% if positions.has_previous %}
+			<li><a href="?{% url_replace request.GET 'page' positions.previous_page_number %}">&laquo;</a></li>
+			{% endif %}
+			<li class="active"><a href="#">Page {{ positions.number }} of {{ positions.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
+			{% if positions.has_next %}
+			<li><a href="?{% url_replace request.GET 'page' positions.next_page_number %}">&raquo;</a></li>
+			{% endif %}
+		</ul>
+	
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
 				<tr>
-					<th>Tile Position</th>
-					<th>Number of Tile Variants</th>
+					<th><div class="btn-group">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Tile Position <span class="caret"></span></button>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="?{% url_replace request.GET 'ordering' 'desc_tile' %}">Descending</a></li>
+								<li><a href="?{% url_replace request.GET 'ordering' 'asc_tile' %}">Ascending</a></li>
+							</ul>
+						</div>
+					</th>
+					<th><div class="btn-group">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"> Number of Tile Variants <span class="caret"></span></button>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="?{% url_replace request.GET 'ordering' 'desc_var' %}">Descending</a></li>
+								<li><a href="?{% url_replace request.GET 'ordering' 'asc_var' %}">Ascending</a></li>
+							</ul>
+						</div>
+					</th>
 					<th>Reference tile length (in bases)</th>
-					<th>Average tile variant length (in bases)</th>
+					<th><div class="btn-group">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Minimum Tile Length (in bases) <span class="caret"></span></button>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="?{% url_replace request.GET 'ordering' 'desc_min_len' %}">Descending</a></li>
+								<li><a href="?{% url_replace request.GET 'ordering' 'asc_min_len' %}">Ascending</a></li>
+							</ul>
+						</div>
+					</th>
+					<th><div class="btn-group">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Average Tile Length (in bases) <span class="caret"></span></button>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="?{% url_replace request.GET 'ordering' 'desc_avg_len' %}">Descending</a></li>
+								<li><a href="?{% url_replace request.GET 'ordering' 'asc_avg_len' %}">Ascending</a></li>
+							</ul>
+						</div>
+					</th>
+					<th><div class="btn-group">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Maximum Tile Length (in bases) <span class="caret"></span></button>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="?{% url_replace request.GET 'ordering' 'desc_max_len' %}">Descending</a></li>
+								<li><a href="?{% url_replace request.GET 'ordering' 'asc_max_len' %}">Ascending</a></li>
+							</ul>
+						</div>
+					</th>
 				</tr>
 			</thead>
 			<tbody>
 				{% for position in positions %}
 				<tr>
 					<td><a href="{% url 'tile_library:tile_view' chromosome_int path_int position.tilename %}">{{ position }}</a></td>
-					<td>{{ position.variants.count }}</td>
+					<td>{{ position.num_var }}</td>
 					<td>{{ position|get_reference_length }}</td>
-					<td>{{ position|get_avg_length|floatformat|default:'-' }}</td>
+					{% if position.num_var == 1 %}
+					<td>-</td>
+					<td>-</td>
+					<td>-</td>
+					{% else %}
+					<td>{{ position.min_len }}</td>
+					<td>{{ position.avg_len|floatformat }}</td>
+					<td>{{ position.max_len }}</td>
+					{% endif %}
 				</tr>
 				{% endfor %}
 			</tbody>
 		</table>
 	</div>
+	<ul class="pagination">
+		{% if positions.has_previous %}
+		<li><a href="?{% url_replace request.GET 'page' positions.previous_page_number %}">&laquo;</a></li>
+		{% endif %}
+		<li class="active"><a href="#">Page {{ positions.number }} of {{ positions.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
+		{% if positions.has_next %}
+		<li><a href="?{% url_replace request.GET 'page' positions.next_page_number %}">&raquo;</a></li>
+		{% endif %}
+	</ul>
 </div>
 {% endblock %}
