@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, HttpResponseServerError
 from django.http import Http404
 
-from tile_library.models import Tile, TileVariant, TileLocusAnnotation, VarAnnotation
+from tile_library.models import Tile, TileVariant, TileLocusAnnotation, VarAnnotation, GenomeStatistic
 
 def convert_chromosome_to_tilename(chr_int):
     """chr_int: [1, 2, 3, ... 26, 27]
@@ -35,28 +35,26 @@ def get_chromosome_name_from_int(chr_int):
 
 def overall_statistics(request):
     chromosomes = TileLocusAnnotation.CHR_CHOICES
-    chrom_info = []
-    total_len = 0
-    for chromosome_int, chrom_name in chromosomes:
-        min_accepted, foo = convert_chromosome_to_tilename(chromosome_int)
-        max_accepted, foo = convert_chromosome_to_tilename(chromosome_int+1)
-        max_accepted -= 1
-        length = Tile.objects.filter(tilename__range=(min_accepted, max_accepted)).count()
-        total_len += length
-        chrom_info.append((chromosome_int, chrom_name, length))
+    chromosomes = [name for i, name in chromosomes]
+    chromosomes.insert(0, 0)
+    statistics = GenomeStatistic.objects.all()
+    retval = zip(statistics, chromosomes)
     context = {
-        'total_len':total_len,
-        'chromosomes':chrom_info,
+        'stats':retval,
         }
-    return render(request, 'tile_library/basic_statistics.html', context)
+    return render(request, 'tile_library/statistics.html', context)
 
 def chr_statistics(request, chr_int):
     chr_int = int(chr_int)
+    
     min_accepted, min_tile_accepted = convert_chromosome_to_tilename(chr_int)
     max_accepted, max_tile_accepted = convert_chromosome_to_tilename(chr_int+1)
-    
-    positions = Tile.objects.filter(tilename__gte=min_accepted).filter(tilename__lt=max_accepted)
-    tiles = TileVariant.objects.filter(tile_variant_name__gte=min_tile_accepted).filter(tile_variant_name__lt=max_tile_accepted)
+    max_accepted -= 1
+    max_tile_accepted -= 1
+
+    chr_stats = GenomeStatistic.objects.get(pk=chr_int+1)
+    positions = Tile.objects.filter(tilename__range=(min_accepted, max_accepted))
+    tiles = TileVariant.objects.filter(tile_variant_name__range=(min_tile_accepted, max_tile_accepted))
 
     chromosome = get_chromosome_name_from_int(chr_int)
     chr_path_lengths=Tile.CHR_PATH_LENGTHS
@@ -64,7 +62,8 @@ def chr_statistics(request, chr_int):
     paths = [(i, hex(i)[2:], Tile.CYTOMAP[i]) for i in paths]
     context = {
         'chromosome_int':chr_int,
-        'chromosome':chromosome,
+        'chromosome_name':chromosome,
+        'chromosome_stats':chr_stats,
         'positions':positions,
         'tiles':tiles,
         'paths':paths,

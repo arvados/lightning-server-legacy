@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% load staticfiles %}
-{% load statistics_filters %}
 
 {% block title %}Lightning: Tile Library Statistics{% endblock %}
 
@@ -22,25 +21,29 @@
 					<th>Chromosome</th>
 					<th>Total positions</th>
 					<th>Total tiles</th>
+					<th>Average number of variants</th>
+					<th>Maximum number of variants</th>
+					<th>Minimum tile length (in bases)</th>
 					<th>Average tile length (in bases)</th>
-					<th>Maximum number of variants at any position</th>
+					<th>Maximum tile length (in bases)</th>
+
 				</tr>
 			</thead>
 			<tbody>
+				{% for statistic, chr_name in stats %}
 				<tr>
+					{% if forloop.first %}
 					<td>Entire Genome</td>
-					<td>{{ positions|length }}</td>
-					<td>{{ tiles|length }}</td>
-					<td>{{ tiles|avg_length|floatformat|default:'-' }}</td>
-					<td>{{ tiles|max_num_variants|default:'-' }}</td>
-				</tr>
-				{% for chr_int, chr_name in chromosomes %}
-				<tr>
-					<td><a href="{% url 'tile_library:chr_statistics' chr_int %}">{{ chr_name }}</a></td>
-					<td>{{ positions|narrow_pos_to_chromosome:chr_int|length }}</td>
-					<td>{{ tiles|narrow_tiles_to_chromosome:chr_int|length }}</td>
-					<td>{{ tiles|narrow_tiles_to_chromosome:chr_int|avg_length|floatformat|default:'-' }}</td>
-					<td>{{ tiles|narrow_tiles_to_chromosome:chr_int|max_num_variants|default:'-' }}</td>
+					{% else %}
+					<td><a href="{% url 'tile_library:chr_statistics' statistic.statistics_type %}">{{ chr_name }}</a></td>
+					{% endif %}
+					<td>{{ statistic.position_num }}</td>
+					<td>{{ statistic.tile_num }}</td>
+					<td>{{ statistic.avg_variant_val|floatformat|default:'-' }}</td>
+					<td>{{ statistic.max_variant_val|default:'-' }}</td>
+					<td>{{ statistic.min_length|default:'-' }}</td>
+					<td>{{ statistic.avg_length|floatformat|default:'-' }}</td>
+					<td>{{ statistic.max_length|default:'-' }}</td>
 				</tr>
 				{% endfor %}
 			</tbody>

@@ -1,5 +1,5 @@
 from django import template
-from django.db.models import Avg, Count, Max
+from django.db.models import Avg, Count, Max, Min
 from tile_library.models import Tile, TileVariant
 from tile_library import views
 
@@ -58,4 +58,16 @@ def narrow_tiles_to_path(tile_var_list, path):
     tiles = tile_var_list.filter(tile_variant_name__gte=min_accepted).filter(tile_variant_name__lt=max_accepted)
     return tiles
 
-
+@register.filter
+def aggregate_tiles_in_path(tile_var_list, path):
+    foo, min_accepted = views.convert_path_to_tilename(path)
+    foo, max_accepted = views.convert_path_to_tilename(path + 1)
+    max_accepted -= 1
+    info = tile_var_list.filter(tile_variant_name__range=(min_accepted, max_accepted)).aggregate(
+        avg_var_val=Avg('variant_value'),
+        max_var_val=Max('variant_value'),
+        min_len=Min('length'),
+        avg_len=Avg('length'),
+        max_len=Max('length'))
+    retval = [info]
+    return retval
