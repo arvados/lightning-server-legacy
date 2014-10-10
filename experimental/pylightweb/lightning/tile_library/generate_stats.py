@@ -36,7 +36,7 @@ def initialize():
                                                   TileVariant.objects.filter(tile_variant_name__range=(min_tile, max_tile)))
             print tile_var_info
             s = GenomeStatistic(statistics_type=i, position_num=pos_num, tile_num=tile_var_info['tile_num'],
-                                avg_variant_val=tile_var_info['avg_var_val'], max_variant_val=tile_var_info['max_var_val'],
+                                avg_variant_val=tile_var_info['avg_var_val']+1, max_variant_val=tile_var_info['max_var_val']+1,
                                 min_length=tile_var_info['min_len'], avg_length=tile_var_info['avg_len'],
                                 max_length=tile_var_info['max_len'])
             s.save()
@@ -51,7 +51,7 @@ def initialize():
         pos_num, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_path_pos,max_path_pos)),
                                           TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)))
         s = GenomeStatistic(statistics_type=27, path_name=path, position_num=pos_num, tile_num=tile_var_info['tile_num'],
-                            avg_variant_val=tile_var_info['avg_var_val'], max_variant_val=tile_var_info['max_var_val'],
+                            avg_variant_val=tile_var_info['avg_var_val']+1, max_variant_val=tile_var_info['max_var_val']+1,
                             min_length=tile_var_info['min_len'], avg_length=tile_var_info['avg_len'],
                             max_length=tile_var_info['max_len'])
         s.save()
@@ -73,8 +73,8 @@ def update():
         assert s.statistics_type == i
         s.position_num = pos_num
         s.tile_num = tile_var_info['tile_num']
-        s.avg_variant_val = tile_var_info['avg_var_val']
-        s.max_variant_val = tile_var_info['max_var_val']
+        s.avg_variant_val = tile_var_info['avg_var_val']+1
+        s.max_variant_val = tile_var_info['max_var_val']+1
         s.min_length = tile_var_info['min_len']
         s.avg_length = tile_var_info['avg_len']
         s.max_length = tile_var_info['max_len']
@@ -92,8 +92,8 @@ def update():
         assert s.path_name == path
         s.position_num = pos_num
         s.tile_num = tile_var_info['tile_num']
-        s.avg_variant_val = tile_var_info['avg_var_val']
-        s.max_variant_val = tile_var_info['max_var_val']
+        s.avg_variant_val = tile_var_info['avg_var_val']+1
+        s.max_variant_val = tile_var_info['max_var_val']+1
         s.min_length = tile_var_info['min_len']
         s.avg_length = tile_var_info['avg_len']
         s.max_length = tile_var_info['max_len']

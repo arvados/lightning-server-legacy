@@ -9,7 +9,7 @@
 	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
 	<li><a href="{% url 'tile_library:chr_statistics' chr_int %}">{{ chr_name }}</a></li>
 	<li><a href="{% url 'tile_library:path_statistics' chr_int path_int %}">Path {{ path_hex }}</a></li>
-	<li class="active"><a href="#">{{ position }}</a></li>
+	<li class="active"><a href="#">Tile {{ position }}</a></li>
 {% endblock %}
 
 
@@ -17,10 +17,6 @@
 <div class="container-fluid">
 	<div class="page-header">
 		<h1>Tile Position {{ position }} <small>(Path {{ path_hex }}, {{chr_name}}{{path_name}})</small></h1>
-	</div>
-	<div class="alert alert-danger" role="alert">
-		<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-		 The path page in the breadcrumbs can take a while to load. We are sorry for the inconvienence and are working toward a better implementation. For now, using the back button will be faster.
 	</div>
 	<div class="alert alert-info" role="alert">
 		Note that annotations can be shared between tiles. 

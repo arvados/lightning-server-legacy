@@ -1,6 +1,8 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, HttpResponseServerError
 from django.http import Http404
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.template import RequestContext
 
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, VarAnnotation, GenomeStatistic
 from django.db.models import Avg, Count, Max, Min
@@ -52,14 +54,13 @@ def chr_statistics(request, chr_int):
     chromosome = get_chromosome_name_from_int(chr_int)
     chr_path_lengths=Tile.CHR_PATH_LENGTHS
     paths = range(chr_path_lengths[chr_int-1], chr_path_lengths[chr_int])
-    parsed_paths = [(i, hex(i).lstrip('0x'), Tile.CYTOMAP[i]) for i in paths]
     path_info = GenomeStatistic.objects.filter(path_name__range=(chr_path_lengths[chr_int-1], chr_path_lengths[chr_int]-1)).order_by('path_name')
-    path_mess = [(i, hex(i).lstrip('0x'), Tile.CYTOMAP[i], path_obj) for (i, path_obj) in zip(paths, path_info)]
+    path_objects = [(i, hex(i).lstrip('0x'), Tile.CYTOMAP[i], path_obj) for (i, path_obj) in zip(paths, path_info)]
     context = {
         'chromosome_int':chr_int,
         'chromosome_name':chromosome,
         'chromosome_stats':chr_stats,
-        'paths':path_mess,
+        'paths':path_objects,
         }
     return render(request, 'tile_library/chr_statistics.html', context)
 
@@ -69,16 +70,53 @@ def path_statistics(request, chr_int, path_int):
     chromosome = get_chromosome_name_from_int(chr_int)
     min_accepted, min_tile_accepted = convert_path_to_tilename(path_int)
     max_accepted, max_tile_accepted = convert_path_to_tilename(path_int+1)
-    positions = Tile.objects.filter(tilename__gte=min_accepted).filter(tilename__lt=max_accepted)
-    tiles = TileVariant.objects.filter(tile_variant_name__gte=min_tile_accepted).filter(tile_variant_name__lt=max_tile_accepted)
+    max_accepted -= 1
+    max_tile_accepted -= 1
+    #Positions is iterated over in view, so paginate this
+    ordering = request.GET.get('ordering')
+    positions = Tile.objects.filter(tilename__range=(min_accepted, max_accepted)).annotate(
+        num_var=Count('variants'), min_len=Min('variants__length'), avg_len=Avg('variants__length'),
+        max_len=Max('variants__length'))
+
+    if ordering == 'desc_tile':
+        positions = positions.order_by('-tilename')
+    elif ordering == 'desc_var':
+        positions = positions.order_by('-num_var')
+    elif ordering == 'asc_var':
+        positions = positions.order_by('num_var')
+    elif ordering == 'desc_min_len':
+        positions = positions.order_by('-min_len')
+    elif ordering == 'asc_min_len':
+        positions = positions.order_by('min_len')
+    elif ordering == 'desc_avg_len':
+        positions = positions.order_by('-avg_len')
+    elif ordering == 'asc_avg_len':
+        positions = positions.order_by('avg_len')
+    elif ordering == 'desc_max_len':
+        positions = positions.order_by('-max_len')
+    elif ordering == 'asc_max_len':
+        positions = positions.order_by('max_len')
+    paginator = Paginator(positions, 16)
+    page = request.GET.get('page')
+    try:
+        partial_positions = paginator.page(page)
+    except PageNotAnInteger:
+        #Deliver the first page
+        partial_positions = paginator.page(1)
+    except EmptyPage:
+        #If page is out of range, deliver last page of results
+        partial_positions = paginator.page(paginator.num_pages)
+    path = GenomeStatistic.objects.get(path_name=path_int)
+    
     context = {
+        'request':request,
         'chromosome_int': chr_int,
         'chromosome': chromosome,
         'path_int':path_int,
-        'path':hex(path_int)[2:],
-        'path_name':Tile.CYTOMAP[path_int],
-        'positions':positions,
-        'tiles':tiles,
+        'path_hex':hex(path_int)[2:],
+        'path_cyto':Tile.CYTOMAP[path_int],
+        'path':path,
+        'positions':partial_positions,
         }
     return render(request, 'tile_library/path_statistics.html', context)
 
