@@ -50,7 +50,7 @@
 				{% for path in paths %}
 				<tr>
 					<td>{{ path.path_cyto }}</td>
-					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path.path_int %}">Path {{ path.path_hex }}</a></td>
+					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path.path_int %}">Path {{ path.path_hex|default:'0' }}</a></td>
 					<td>{{ path.num_pos }}</td>
 					<td>{{ path.avg_var_val|floatformat|default:'-' }}</td>
 					<td>{{ path.max_var_val|default:'-' }}</td>
