@@ -357,6 +357,8 @@ class GenomeStatistic(models.Model):
 
     statistics_type = models.PositiveSmallIntegerField(db_index=True)
     
+    path_name = models.PositiveIntegerField(db_index=True, blank=True, null=True)
+
     position_num = models.BigIntegerField()
     tile_num = models.BigIntegerField()
     
