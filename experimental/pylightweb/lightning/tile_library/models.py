@@ -290,3 +290,92 @@ class TileLocusAnnotation(models.Model):
     class Meta:
         #Ensures ordering by tilename
         ordering = ['tile']
+
+
+class GenomeStatistic(models.Model):
+    """
+    postgres provides good querying capability, but scientists also want statistics...
+    """
+    GENOME = 0
+    CHR_1 = 1
+    CHR_2 = 2
+    CHR_3 = 3
+    CHR_4 = 4
+    CHR_5 = 5
+    CHR_6 = 6
+    CHR_7 = 7
+    CHR_8 = 8
+    CHR_9 = 9
+    CHR_10 = 10
+    CHR_11 = 11
+    CHR_12 = 12
+    CHR_13 = 13
+    CHR_14 = 14
+    CHR_15 = 15
+    CHR_16 = 16
+    CHR_17 = 17
+    CHR_18 = 18
+    CHR_19 = 19
+    CHR_20 = 20
+    CHR_21 = 21
+    CHR_22 = 22
+    CHR_X = 23
+    CHR_Y = 24
+    CHR_M = 25
+    CHR_OTHER = 26
+    PATH = 27
+    NAME_CHOICES = (
+        (GENOME, 'Entire Genome'),
+        (CHR_1, 'chr1'),
+        (CHR_2, 'chr2'),
+        (CHR_3, 'chr3'),
+        (CHR_4, 'chr4'),
+        (CHR_5, 'chr5'),
+        (CHR_6, 'chr6'),
+        (CHR_7, 'chr7'),
+        (CHR_8, 'chr8'),
+        (CHR_9, 'chr9'),
+        (CHR_10, 'chr10'),
+        (CHR_11, 'chr11'),
+        (CHR_12, 'chr12'),
+        (CHR_13, 'chr13'),
+        (CHR_14, 'chr14'),
+        (CHR_15, 'chr15'),
+        (CHR_16, 'chr16'),
+        (CHR_17, 'chr17'),
+        (CHR_18, 'chr18'),
+        (CHR_19, 'chr19'),
+        (CHR_20, 'chr20'),
+        (CHR_21, 'chr21'),
+        (CHR_22, 'chr22'),
+        (CHR_X, 'chrX'),
+        (CHR_Y, 'chrY'),
+        (CHR_M, 'chrM'),
+        (CHR_OTHER, 'Other Chromosome'),
+        (PATH, 'path'),
+    )
+
+    statistics_type = models.PositiveSmallIntegerField(db_index=True)
+    
+    position_num = models.BigIntegerField()
+    tile_num = models.BigIntegerField()
+    
+    avg_variant_val = models.PositiveIntegerField(null=True)
+    max_variant_val = models.PositiveIntegerField(null=True)
+    
+    min_length = models.PositiveIntegerField(null=True)
+    avg_length = models.PositiveIntegerField(null=True)
+    max_length = models.PositiveIntegerField(null=True)
+
+    avg_annotations_per_position = models.PositiveIntegerField(blank=True, null=True)
+    max_annotations_per_position = models.PositiveIntegerField(blank=True, null=True)
+    avg_annotations_per_tile = models.PositiveIntegerField(blank=True, null=True)
+    max_annotations_per_tile = models.PositiveIntegerField(blank=True, null=True)
+
+  
+
+
+
+
+
+    
