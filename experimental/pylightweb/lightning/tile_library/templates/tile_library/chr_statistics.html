@@ -47,18 +47,16 @@
 					<td>{{ chromosome_stats.max_length|default:'-' }}</td>
 
 				</tr>
-				{% for path, path_hex, path_name in paths %}
+				{% for path in paths %}
 				<tr>
-					<td>{{ path_name }}</td>
-					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path %}">Path {{ path_hex }}</a></td>
-					<td>{{ positions|narrow_pos_to_path:path|length }}</td>
-					{% for info in tiles|aggregate_tiles_in_path:path %}
-					<td>{{ info.avg_var_val|floatformat|default:'-' }}</td>
-					<td>{{ info.max_var_val|default:'-' }}</td>
-					<td>{{ info.min_len|default:'-' }}</td>
-					<td>{{ info.avg_len|floatformat|default:'-' }}</td>
-					<td>{{ info.max_len|default:'-' }}</td>
-					{% endfor %}
+					<td>{{ path.path_cyto }}</td>
+					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path.path_int %}">Path {{ path.path_hex }}</a></td>
+					<td>{{ path.num_pos }}</td>
+					<td>{{ path.avg_var_val|floatformat|default:'-' }}</td>
+					<td>{{ path.max_var_val|default:'-' }}</td>
+					<td>{{ path.min_len|default:'-' }}</td>
+					<td>{{ path.avg_len|floatformat|default:'-' }}</td>
+					<td>{{ path.max_len|default:'-' }}</td>
 				</tr>
 				{% endfor %}
 			</tbody>
