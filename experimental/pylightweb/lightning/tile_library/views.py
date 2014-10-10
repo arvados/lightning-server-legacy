@@ -3,6 +3,7 @@ from django.http import HttpResponse, HttpResponseServerError
 from django.http import Http404
 
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, VarAnnotation, GenomeStatistic
+from django.db.models import Avg, Count, Max, Min
 
 def convert_chromosome_to_tilename(chr_int):
     """chr_int: [1, 2, 3, ... 26, 27]
@@ -59,14 +60,30 @@ def chr_statistics(request, chr_int):
     chromosome = get_chromosome_name_from_int(chr_int)
     chr_path_lengths=Tile.CHR_PATH_LENGTHS
     paths = range(chr_path_lengths[chr_int-1], chr_path_lengths[chr_int])
-    paths = [(i, hex(i)[2:], Tile.CYTOMAP[i]) for i in paths]
+    path_info = []
+    for path in paths:
+        min_path_pos, min_path_tile = convert_path_to_tilename(path)
+        max_path_pos, max_path_tile = convert_path_to_tilename(path + 1)
+        max_path_pos -= 1
+        max_path_tile -= 1
+        pos_count = positions.filter(tilename__range=(min_path_pos, max_path_pos)).count()
+        info = tiles.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate(
+            avg_var_val=Avg('variant_value'),
+            max_var_val=Max('variant_value'),
+            min_len=Min('length'),
+            avg_len=Avg('length'),
+            max_len=Max('length'))
+        interesting_info = {'path_int':path, 'path_hex':hex(path).lstrip('0x'), 'path_cyto':Tile.CYTOMAP[path],
+                            'num_pos':pos_count}
+        for thing in info:
+            interesting_info[thing] = info[thing]
+        path_info.append(interesting_info)
+
     context = {
         'chromosome_int':chr_int,
         'chromosome_name':chromosome,
         'chromosome_stats':chr_stats,
-        'positions':positions,
-        'tiles':tiles,
-        'paths':paths,
+        'paths':path_info,
         }
     return render(request, 'tile_library/chr_statistics.html', context)
 
