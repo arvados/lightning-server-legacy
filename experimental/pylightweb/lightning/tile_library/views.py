@@ -38,7 +38,7 @@ def overall_statistics(request):
     chromosomes = TileLocusAnnotation.CHR_CHOICES
     chromosomes = [name for i, name in chromosomes]
     chromosomes.insert(0, 0)
-    statistics = GenomeStatistic.objects.all()
+    statistics = GenomeStatistic.objects.filter(pk__range=(1,27)).order_by('statistics_type')
     retval = zip(statistics, chromosomes)
     context = {
         'stats':retval,
@@ -47,43 +47,19 @@ def overall_statistics(request):
 
 def chr_statistics(request, chr_int):
     chr_int = int(chr_int)
-    
-    min_accepted, min_tile_accepted = convert_chromosome_to_tilename(chr_int)
-    max_accepted, max_tile_accepted = convert_chromosome_to_tilename(chr_int+1)
-    max_accepted -= 1
-    max_tile_accepted -= 1
-
     chr_stats = GenomeStatistic.objects.get(pk=chr_int+1)
-    positions = Tile.objects.filter(tilename__range=(min_accepted, max_accepted))
-    tiles = TileVariant.objects.filter(tile_variant_name__range=(min_tile_accepted, max_tile_accepted))
 
     chromosome = get_chromosome_name_from_int(chr_int)
     chr_path_lengths=Tile.CHR_PATH_LENGTHS
     paths = range(chr_path_lengths[chr_int-1], chr_path_lengths[chr_int])
-    path_info = []
-    for path in paths:
-        min_path_pos, min_path_tile = convert_path_to_tilename(path)
-        max_path_pos, max_path_tile = convert_path_to_tilename(path + 1)
-        max_path_pos -= 1
-        max_path_tile -= 1
-        pos_count = positions.filter(tilename__range=(min_path_pos, max_path_pos)).count()
-        info = tiles.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate(
-            avg_var_val=Avg('variant_value'),
-            max_var_val=Max('variant_value'),
-            min_len=Min('length'),
-            avg_len=Avg('length'),
-            max_len=Max('length'))
-        interesting_info = {'path_int':path, 'path_hex':hex(path).lstrip('0x'), 'path_cyto':Tile.CYTOMAP[path],
-                            'num_pos':pos_count}
-        for thing in info:
-            interesting_info[thing] = info[thing]
-        path_info.append(interesting_info)
-
+    parsed_paths = [(i, hex(i).lstrip('0x'), Tile.CYTOMAP[i]) for i in paths]
+    path_info = GenomeStatistic.objects.filter(path_name__range=(chr_path_lengths[chr_int-1], chr_path_lengths[chr_int]-1)).order_by('path_name')
+    path_mess = [(i, hex(i).lstrip('0x'), Tile.CYTOMAP[i], path_obj) for (i, path_obj) in zip(paths, path_info)]
     context = {
         'chromosome_int':chr_int,
         'chromosome_name':chromosome,
         'chromosome_stats':chr_stats,
-        'paths':path_info,
+        'paths':path_mess,
         }
     return render(request, 'tile_library/chr_statistics.html', context)
 

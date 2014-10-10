@@ -28,6 +28,7 @@
 					<th>hg19 Cytomap Band</th>
 					<th>Path</th>
 					<th>Total positions</th>
+					<th>Total tiles</th>
 					<th>Average number of variants</th>
 					<th>Maximum number of variants</th>
 					<th>Minimum tile length (in bases)</th>
@@ -40,6 +41,7 @@
 					<td></td>
 					<td>{{ chromosome_name }}</td>
 					<td>{{ chromosome_stats.position_num }}</td>
+					<td>{{ chromosome_stats.tile_num }}</td>
 					<td>{{ chromosome_stats.avg_variant_val|floatformat|default:'-' }}</td>
 					<td>{{ chromosome_stats.max_variant_val|default:'-' }}</td>
 					<td>{{ chromosome_stats.min_length|default:'-' }}</td>
@@ -47,16 +49,17 @@
 					<td>{{ chromosome_stats.max_length|default:'-' }}</td>
 
 				</tr>
-				{% for path in paths %}
+				{% for path_int, path_hex, path_cyto, path in paths %}
 				<tr>
-					<td>{{ path.path_cyto }}</td>
-					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path.path_int %}">Path {{ path.path_hex|default:'0' }}</a></td>
-					<td>{{ path.num_pos }}</td>
-					<td>{{ path.avg_var_val|floatformat|default:'-' }}</td>
-					<td>{{ path.max_var_val|default:'-' }}</td>
-					<td>{{ path.min_len|default:'-' }}</td>
-					<td>{{ path.avg_len|floatformat|default:'-' }}</td>
-					<td>{{ path.max_len|default:'-' }}</td>
+					<td>{{ path_cyto }}</td>
+					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path_int %}">Path {{ path_hex|default:'0' }}</a></td>
+					<td>{{ path.position_num }}</td>
+					<td>{{ path.tile_num }}</td>
+					<td>{{ path.avg_variant_val|floatformat|default:'-' }}</td>
+					<td>{{ path.max_variant_val|default:'-' }}</td>
+					<td>{{ path.min_length|default:'-' }}</td>
+					<td>{{ path.avg_length|floatformat|default:'-' }}</td>
+					<td>{{ path.max_length|default:'-' }}</td>
 				</tr>
 				{% endfor %}
 			</tbody>
