@@ -360,16 +360,16 @@ class GenomeStatistic(models.Model):
     position_num = models.BigIntegerField()
     tile_num = models.BigIntegerField()
     
-    avg_variant_val = models.PositiveIntegerField(null=True)
+    avg_variant_val = models.DecimalField(null=True, max_digits=15, decimal_places=3)
     max_variant_val = models.PositiveIntegerField(null=True)
     
     min_length = models.PositiveIntegerField(null=True)
-    avg_length = models.PositiveIntegerField(null=True)
+    avg_length = models.DecimalField(null=True, max_digits=15, decimal_places=3)
     max_length = models.PositiveIntegerField(null=True)
 
-    avg_annotations_per_position = models.PositiveIntegerField(blank=True, null=True)
+    avg_annotations_per_position = models.DecimalField(blank=True, null=True, max_digits=15, decimal_places=3)
     max_annotations_per_position = models.PositiveIntegerField(blank=True, null=True)
-    avg_annotations_per_tile = models.PositiveIntegerField(blank=True, null=True)
+    avg_annotations_per_tile = models.DecimalField(blank=True, null=True, max_digits=15, decimal_places=3)
     max_annotations_per_tile = models.PositiveIntegerField(blank=True, null=True)
 
   
