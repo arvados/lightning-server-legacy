@@ -59,7 +59,8 @@
 			</form>
 		</div>
 	</div>
-	{% if genes.paginator.num_pages < 76
+	{% if genes.paginator.num_pages < 76 %}
+	{% endif %}
 	<ul class="pagination">
 		{% if genes.has_previous %}
 		<li><a href="?{% url_replace request.GET 'page' genes.previous_page_number %}">&laquo;</a></li>
