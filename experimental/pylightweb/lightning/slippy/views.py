@@ -17,7 +17,28 @@ def getTileCoordInt(tile):
 
 
 def slippymap(request):
-    return render(request, 'slippy/slippymap.html', {})
+    gene_filter = request.GET.get('filter')
+    pheno_filter = request.GET.get('phenotype')
+    reviewed = request.GET.get('reviewed')
+    if gene_filter != None or pheno_filter != None or reviewed != None:
+        matching = GeneXRef.objects.order_by('gene_aliases')
+        distinct_genes = GeneXRef.objects.order_by('gene_aliases').distinct('gene_aliases')
+        if gene_filter != None and gene_filter != 'all':
+            matching = matching.filter(gene_aliases__istartswith=gene_filter)
+            distinct_genes = distinct_genes.filter(gene_aliases__istartswith=gene_filter)
+            if not distinct_genes.exists() and len(gene_filter) > 1:
+                matching = matching.filter(gene_aliases__icontains=gene_filter)
+                distinct_genes = distinct_genes.filter(gene_aliases__icontains=gene_filter)
+        if pheno_filter != None:
+            matching = matching.filter(gene_review_phenotype_map__icontains=pheno_filter)
+            distinct_genes = distinct_genes.filter(gene_review_phenotype_map__icontains=pheno_filter)
+        if reviewed != None:
+            matching = matching.filter(has_gene_review=True)
+            distinct_genes = distinct_genes.filter(has_gene_review=True)
+    else:
+        matching = None
+        distinct_genes = None
+    return render(request, 'slippy/slippymap.html', {'genes':distinct_genes, 'matching':matching})
 
 def simplesearch(request):
     def dealWithMatching(matching):

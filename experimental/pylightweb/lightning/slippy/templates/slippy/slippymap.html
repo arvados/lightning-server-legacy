@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% load staticfiles %}
+{% load gene_to_tile_filters %}
+
 
 {% block title %}Lightning: 154 PGP Genomes, unphased{% endblock %}
 {% block style_extender %}
@@ -121,6 +123,9 @@
 			max_val_genes,
 			curr_gene_i;
 		var loadMultipleGenes = function() {
+			jQuery("#progress-bar").attr('aria-valuenow', '0');
+			jQuery("#progress-bar").text('0%');
+			jQuery("#progress-bar").css("width", "0%");
 			jQuery("#modal-loading-genes").modal('show');
 			//Set button to loading
 			jQuery("#loadGeneReviewed").button('loading');
@@ -130,9 +135,6 @@
 			return false;
 		};
 		var startDisplayingGenes = function(res, status) {
-			jQuery("#progress-bar").attr('aria-valuenow', '0');
-			jQuery("#progress-bar").text('0%');
-			jQuery("#progress-bar").css("width", "0%");
 			if (status == "success"){
 				genesToDisplay = res.responseText.replace(/\s/g, '').split('|');
 				max_val_genes = genesToDisplay.length;
@@ -144,6 +146,7 @@
 				jQuery("#modal-loading-genes").modal('hide');
 			}
 		};
+
 		var displayOneGene = function() { 
 			if (keepAddingOverlays) {
 				var curr_progress = (Math.ceil((curr_gene_i/max_val_genes)*100)).toString();
@@ -206,6 +209,22 @@
     		beginDragon("{% static 'slippy/TileNumSupertiles.csv' %}", tilePixelSize, borderPixelSize,
 						"{% static 'slippy/offsets.txt' %}", "{% static 'slippy/pngs/entire.dzi' %}",
 						"{% static 'slippy/js/openseadragon-images/' %}", "{% static 'slippy/iter.txt' %}");
+			
+			{% if genes %}
+				var responseText = "";
+				{% for gene_xref in genes %}
+					responseText += "{{gene_xref.gene_aliases}},{{matching|get_tile_start_tx:gene_xref.gene_aliases}},{{matching|get_tile_end_tx:gene_xref.gene_aliases}},{{gene_xref.gene_review_URLs}}|";
+				{% endfor %}
+				jQuery("#progress-bar").attr('aria-valuenow', '0');
+				jQuery("#progress-bar").text('0%');
+				jQuery("#progress-bar").css("width", "0%");
+				jQuery("#modal-loading-genes").modal('show');
+				genesToDisplay = responseText.replace(/\s/g, '').split('|');
+				max_val_genes = genesToDisplay.length;
+				keepAddingOverlays = true;
+				curr_gene_i = 0;
+				setTimeout(displayOneGene,200);
+			{% endif %}
 		});
 	</script>
 {% endblock %}
