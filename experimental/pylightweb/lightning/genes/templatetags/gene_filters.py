@@ -14,11 +14,20 @@ def url_replace(request, field, value):
     return urllib.urlencode(dict_)
 
 @register.simple_tag
-def url_replace_and_clear(request, field, value, field_to_clear):
+def url_replace_and_clear(request, field, value, *fields_to_clear):
     dict_ = request.copy()
     dict_[field] = value
-    if field_to_clear in dict_:
-        del dict_[field_to_clear]
+    for f in fields_to_clear:
+        if f in dict_:
+            del dict_[f]
+    return urllib.urlencode(dict_)
+
+@register.simple_tag
+def url_clear(request, *fields_to_clear):
+    dict_ = request.copy()
+    for f in fields_to_clear:
+        if f in dict_:
+            del dict_[f]
     return urllib.urlencode(dict_)
 
 @register.filter
