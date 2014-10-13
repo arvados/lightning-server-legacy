@@ -6,6 +6,21 @@ from django.template import RequestContext
 
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, VarAnnotation, GenomeStatistic
 from django.db.models import Avg, Count, Max, Min
+from genes.models import GeneXRef
+
+def getTileCoordInt(tile):
+    """Returns integer for path, version, and step for tile """
+    strTilename = hex(tile).lstrip('0x').rstrip('L')
+    strTilename = strTilename.zfill(9)
+    path = int(strTilename[:3], 16)
+    version = int(strTilename[3:5], 16)
+    step = int(strTilename[5:], 16)
+    return path, version, step
+
+def convert_pos_to_tile(tile):
+    strTilename = hex(tile).lstrip('0x').rstrip('L')
+    strTilename = strTilename.zfill(12)
+    return int(strTilename, 16)
 
 def convert_chromosome_to_tilename(chr_int):
     """chr_int: [1, 2, 3, ... 26, 27]
@@ -24,6 +39,7 @@ def convert_chromosome_to_tilename(chr_int):
     name = int(name, 16)
     varname = int(varname, 16)
     return name, varname
+
 def convert_path_to_tilename(path_int):
     path_int = int(path_int)
     name = hex(path_int).lstrip('0x').zfill(3)+"00"+"0000"
@@ -119,6 +135,84 @@ def path_statistics(request, chr_int, path_int):
         'positions':partial_positions,
         }
     return render(request, 'tile_library/path_statistics.html', context)
+
+def get_chr_int_from_path(path_int):
+    for i, chrom in enumerate(Tile.CHR_PATH_LENGTHS):
+        if path_int < chrom:
+            return i
+
+def gene_view(request, gene_xref_id):
+    gene = GeneXRef.objects.get(pk=gene_xref_id)
+    
+    alias = gene.gene_aliases
+    genes = GeneXRef.objects.filter(gene_aliases=alias)
+    min_accepted = genes.aggregate(Min('gene__tile_start_tx'))['gene__tile_start_tx__min']
+    max_accepted = genes.aggregate(Max('gene__tile_end_tx'))['gene__tile_end_tx__max']
+    min_tile_accepted = convert_pos_to_tile(min_accepted)
+    max_tile_accepted = convert_pos_to_tile(max_accepted)
+
+    beg_path_int, foo, bar = getTileCoordInt(min_accepted)
+    beg_path_hex = hex(beg_path_int).lstrip('0x')
+    beg_path_name = Tile.CYTOMAP[beg_path_int]
+    beg_path = GenomeStatistic.objects.get(path_name=beg_path_int)
+    
+    chr_int = get_chr_int_from_path(beg_path_int)
+    chromosome = get_chromosome_name_from_int(chr_int)
+
+    end_path_int, foo, bar = getTileCoordInt(max_accepted)
+    if beg_path_int != end_path_int:
+        end_path_hex = hex(end_path_int).lstrip('0x')
+        end_path_name = Tile.CYTOMAP[end_path_int]
+        end_path = GenomeStatistic.objects.get(path_name=end_path_int)
+        position_info = {'beg_path_int':beg_path_int, 'beg_path_hex':beg_path_hex, 'beg_path_name':beg_path_name,
+                     'beg_path':beg_path,
+                     'end_path_int':end_path_int, 'end_path_hex':end_path_hex, 'end_path_name':end_path_name,
+                     'end_path':end_path, 'chr_int':chr_int, 'chr_name':chromosome}
+    position_info = {'end_path_int':beg_path_int, 'end_path_hex':beg_path_hex, 'end_path_name':beg_path_name,
+                     'end_path':beg_path, 'chr_int':chr_int, 'chr_name':chromosome}
+    
+    #Positions is iterated over in view, so paginate this
+    ordering = request.GET.get('ordering')
+    positions = Tile.objects.filter(tilename__range=(min_accepted, max_accepted)).annotate(
+        num_var=Count('variants'), min_len=Min('variants__length'), avg_len=Avg('variants__length'),
+        max_len=Max('variants__length'))
+
+    if ordering == 'desc_tile':
+        positions = positions.order_by('-tilename')
+    elif ordering == 'desc_var':
+        positions = positions.order_by('-num_var')
+    elif ordering == 'asc_var':
+        positions = positions.order_by('num_var')
+    elif ordering == 'desc_min_len':
+        positions = positions.order_by('-min_len')
+    elif ordering == 'asc_min_len':
+        positions = positions.order_by('min_len')
+    elif ordering == 'desc_avg_len':
+        positions = positions.order_by('-avg_len')
+    elif ordering == 'asc_avg_len':
+        positions = positions.order_by('avg_len')
+    elif ordering == 'desc_max_len':
+        positions = positions.order_by('-max_len')
+    elif ordering == 'asc_max_len':
+        positions = positions.order_by('max_len')
+    paginator = Paginator(positions, 16)
+    page = request.GET.get('page')
+    try:
+        partial_positions = paginator.page(page)
+    except PageNotAnInteger:
+        #Deliver the first page
+        partial_positions = paginator.page(1)
+    except EmptyPage:
+        #If page is out of range, deliver last page of results
+        partial_positions = paginator.page(paginator.num_pages)
+        
+    context = {
+        'request':request,
+        'gene':gene,
+        'position_info': position_info,
+        'positions':partial_positions,
+        }
+    return render(request, 'tile_library/gene_view.html', context)
 
 def tile_view(request, chr_int, path_int, tilename):
     chr_int = int(chr_int)

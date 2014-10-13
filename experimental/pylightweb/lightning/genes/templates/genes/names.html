@@ -4,6 +4,14 @@
 
 {% block title %}Lightning: UCSC Known Genes{% endblock %}
 
+{% block navbar %}
+	<ul class="nav navbar-right">
+	{% if genes.paginator.num_pages < 25 %}
+			<li><a class="btn btn-default navbar-btn" href="{% url 'slippy:slippymap' %}?{% url_clear request.GET 'page' %}">Load Map With All Genes Below</a></li>
+			{% endif %}
+	</ul>
+{% endblock %}
+
 {% block breadcrumbs %}
 	<li><a href="{% url 'home:index' %}">Home</a></li>
 	<li class="active"><a href="#">Known Genes (UCSC)</a></li>
@@ -14,7 +22,6 @@
 	<div class="page-header">
 		<h1>Known Genes from UCSC</h1>
 	</div>
-
 	<ul class="nav nav-pills">
 		{% if get_objects.reviewed == None and get_objects.phenotype == None %}
 			{% if get_objects.gene_filter == 'all' or get_objects.gene_filter == None %}
@@ -59,8 +66,7 @@
 			</form>
 		</div>
 	</div>
-	{% if genes.paginator.num_pages < 76 %}
-	{% endif %}
+
 	<ul class="pagination">
 		{% if genes.has_previous %}
 		<li><a href="?{% url_replace request.GET 'page' genes.previous_page_number %}">&laquo;</a></li>
@@ -82,7 +88,11 @@
 			<tbody>
 				{% for gene_xref in genes %}
 				<tr>
-					<td><a href="{% url 'genes:specific' gene_xref.id %}">{{ gene_xref.gene_aliases }}</a></td>
+					<td><div class="btn-group">
+						<a class="btn btn-default" href="{% url 'genes:specific' gene_xref.id %}">{{ gene_xref.gene_aliases }}</a>
+						<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?filter={{ gene_xref.gene_aliases }}">Map</a>
+						<a class="btn btn-default" href="{% url 'tile_library:gene_view' gene_xref.id %}">Tile Library</a>
+					</td>
 					<td>{{ gene_xref.description }}</td>
 					<td>{% for obj in gene_xref|get_gene_review_urls %}
 							<a href="{{obj.url}}">{{obj.phenotype}}</a><br>

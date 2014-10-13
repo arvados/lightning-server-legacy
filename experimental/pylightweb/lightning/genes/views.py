@@ -13,7 +13,8 @@ def current_gene_names(request):
     if gene_filter != None and gene_filter != 'all':
         distinct_genes = distinct_genes.filter(gene_aliases__istartswith=gene_filter)
         if not distinct_genes.exists():
-            distinct_genes = distinct_genes.filter(gene_aliases__icontains=gene_filter)
+            if len(gene_filter) > 1:
+                distinct_genes = distinct_genes.filter(gene_aliases__icontains=gene_filter)
 
     pheno_filter = request.GET.get('phenotype')
     if pheno_filter != None:
