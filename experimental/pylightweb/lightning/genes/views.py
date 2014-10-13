@@ -35,7 +35,7 @@ def current_gene_names(request):
         partial_genes = paginator.page(paginator.num_pages)
         
     letters = string.uppercase
-    get_objects = {'gene_filter':gene_filter, 'reviewed':reviewed, 'page':page}
+    get_objects = {'gene_filter':gene_filter, 'reviewed':reviewed, 'phenotype':pheno_filter, 'page':page}
     context = {
         'request':request,
         'genes':partial_genes,

@@ -16,7 +16,7 @@
 	</div>
 
 	<ul class="nav nav-pills">
-		{% if get_objects.reviewed == None %}
+		{% if get_objects.reviewed == None and get_objects.phenotype == None %}
 			{% if get_objects.gene_filter == 'all' or get_objects.gene_filter == None %}
 				<li class="active"><a href="?{% url_replace_and_clear request.GET 'filter' 'all' 'reviewed' 'phenotype' %}">Show All</a></li>
 			{% else %}
