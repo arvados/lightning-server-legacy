@@ -14,6 +14,25 @@
 	<div class="page-header">
 		<h1>Known Genes from UCSC</h1>
 	</div>
+	<ul class="nav nav-pills">
+		<li><a href="?{% url_replace_and_clear request.GET 'filter' 'all' 'reviewed'%}">Show All</a></li>
+		<li><a href="?{% url_replace request.GET 'reviewed' 'True' %}">Show Only Genes with Gene Review Articles</a></li>
+	</ul>
+	<ul class="nav nav-pills">
+		{% for letter in letters %}
+		<li><a href="?{% url_replace request.GET 'filter' letter %}">{{letter}}</a></li>
+		{% endfor %}
+	</ul>
+			
+	<ul class="pagination">
+		{% if genes.has_previous %}
+		<li><a href="?{% url_replace request.GET 'page' genes.previous_page_number %}">&laquo;</a></li>
+		{% endif %}
+		<li class="active"><a href="#">Page {{ genes.number }} of {{ genes.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
+		{% if genes.has_next %}
+		<li><a href="?{% url_replace request.GET 'page' genes.next_page_number %}">&raquo;</a></li>
+		{% endif %}
+	</ul>
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
@@ -37,5 +56,14 @@
 			</tbody>
 		</table>
 	</div>
+	<ul class="pagination">
+		{% if genes.has_previous %}
+		<li><a href="?{% url_replace request.GET 'page' genes.previous_page_number %}">&laquo;</a></li>
+		{% endif %}
+		<li class="active"><a href="#">Page {{ genes.number }} of {{ genes.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
+		{% if genes.has_next %}
+		<li><a href="?{% url_replace request.GET 'page' genes.next_page_number %}">&raquo;</a></li>
+		{% endif %}
+	</ul>
 </div>
 {% endblock %}

@@ -1,9 +1,25 @@
 from django import template
 import string
+import urllib
 
 from tile_library.models import TileLocusAnnotation
 
 register = template.Library()
+
+
+@register.simple_tag
+def url_replace(request, field, value):
+    dict_ = request.copy()
+    dict_[field] = value
+    return urllib.urlencode(dict_)
+
+@register.simple_tag
+def url_replace_and_clear(request, field, value, field_to_clear):
+    dict_ = request.copy()
+    dict_[field] = value
+    if field_to_clear in dict_:
+        del dict_[field_to_clear]
+    return urllib.urlencode(dict_)
 
 @register.filter
 def get_gene_review_urls(gene_xref):
