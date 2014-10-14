@@ -14,9 +14,14 @@
 <div class="container-fluid">
 	<div class="page-header">
 		<h1>{{gene.gene_aliases}}: <small>{{gene.description}}</small></h1>
+		<div class="btn-group">
+			<a class="btn btn-default disabled active" href="{% url 'genes:specific' gene.id %}">Generic View</a>
+			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?filter={{ gene.gene_aliases }}">Map View</a>
+			<a class="btn btn-default" href="{% url 'tile_library:gene_view' gene.id %}">Tile Library View</a>
+		</div>
 	</div>
 
-<!--	<div class="container"> -->
+
 		<h3>Gene Review Articles</h3>
 		<ul>
 			{% for obj in gene|get_gene_review_urls %}
@@ -74,8 +79,7 @@
 		</table>
 	</div>
 
-<!--	</div>
--->
+
 	<h3>Exon Splicing</h3>
 	<div class="table-responsive">
 		<table class="table table-striped">
