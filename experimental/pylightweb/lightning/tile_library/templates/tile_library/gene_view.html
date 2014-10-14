@@ -18,7 +18,7 @@
 		<h1>Tile Library Statistics: Gene {{ gene.gene_aliases }}</h1>
 		<div class="btn-group">
 			<a class="btn btn-default" href="{% url 'genes:specific' gene.id %}">Generic View</a>
-			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?filter={{ gene.gene_aliases }}">Map View</a>
+			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?exact={{ gene.gene_aliases }}">Map View</a>
 			<a class="btn btn-default disabled active" href="{% url 'tile_library:gene_view' gene.id %}">Tile Library View</a>
 		</div>
 	</div>
@@ -79,7 +79,6 @@
 			<li><a href="?{% url_replace request.GET 'page' positions.next_page_number %}">&raquo;</a></li>
 			{% endif %}
 		</ul>
-	
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
@@ -129,7 +128,11 @@
 			</thead>
 			<tbody>
 				{% for position in positions %}
+				{% if position.has_exon %}
+				<tr class="success">
+				{% else %}
 				<tr>
+				{% endif %}
 					<td><a href="{% url 'tile_library:tile_view' position_info.chr_int position_info.end_path_int position.tilename %}">{{ position }}</a></td>
 					<td>{{ position.num_var }}</td>
 					<td>{{ position|get_reference_length }}</td>
