@@ -16,6 +16,11 @@
 <div class="container-fluid">
 	<div class="page-header">
 		<h1>Tile Library Statistics: Gene {{ gene.gene_aliases }}</h1>
+		<div class="btn-group">
+			<a class="btn btn-default" href="{% url 'genes:specific' gene.id %}">Generic View</a>
+			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?filter={{ gene.gene_aliases }}">Map View</a>
+			<a class="btn btn-default disabled active" href="{% url 'tile_library:gene_view' gene.id %}">Tile Library View</a>
+		</div>
 	</div>
 	{% if position_info.beg_path %}
 		<p>Gene {{ gene.gene_aliases }} spans two paths: path {{ position_info.beg_path_hex }} ({{ position_info.chr_name }}{{position_info.beg_path_name}}) to path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}})</p>
