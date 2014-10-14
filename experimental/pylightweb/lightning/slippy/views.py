@@ -17,10 +17,14 @@ def getTileCoordInt(tile):
 
 
 def slippymap(request):
+    exact_gene = request.GET.get('exact')
     gene_filter = request.GET.get('filter')
     pheno_filter = request.GET.get('phenotype')
     reviewed = request.GET.get('reviewed')
-    if gene_filter != None or pheno_filter != None or reviewed != None:
+    if exact_gene != None:
+        matching = GeneXRef.objects.filter(gene_aliases=exact_gene)
+        distinct_genes = GeneXRef.objects.order_by('gene_aliases').distinct('gene_aliases').filter(gene_aliases=exact_gene)
+    elif gene_filter != None or pheno_filter != None or reviewed != None:
         matching = GeneXRef.objects.order_by('gene_aliases')
         distinct_genes = GeneXRef.objects.order_by('gene_aliases').distinct('gene_aliases')
         if gene_filter != None and gene_filter != 'all':
