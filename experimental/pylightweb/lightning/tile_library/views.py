@@ -141,7 +141,47 @@ def get_chr_int_from_path(path_int):
         if path_int < chrom:
             return i
 
+def annotate_with_exons(genes, positions):
+    #Currently assumes all genes in Hg19 and do not pass over chromosomes
+    all_exons = []
+    for gene in genes:
+        begins = gene.gene.exon_starts.strip(',').split(',')
+        ends = gene.gene.exon_ends.strip(',').split(',')
+        exons = [(int(begin), int(end)) for begin, end in zip(begins, ends)]
+        all_exons.extend(exons)
+    
+    all_exons = sorted(list(set(all_exons)), key=lambda x:x[0])
+    #print all_exons
+    in_exon=False
+    curr_exon = 0
+    exon_dict = {}
+    for position in positions:
+        name = int(position.tilename)
+
+        while all_exons[curr_exon][1] < position.min_base:
+            curr_exon += 1
+        #print position.min_base, position.max_base, all_exons[curr_exon]
+        if not in_exon:
+            if position.max_base < all_exons[curr_exon][0]:
+                exon_dict[name] = in_exon #False
+            else:
+                in_exon = True
+                exon_dict[name] = in_exon #True
+                if position.max_base > all_exons[curr_exon][1]:
+                    in_exon = False
+                    curr_exon += 1
+        else:
+            if position.max_base < all_exons[curr_exon][1]:
+                exon_dict[name] = in_exon #True
+            else:
+                exon_dict[name] = in_exon #True
+                in_exon = False
+                curr_exon += 1
+    
+    return exon_dict
+
 def gene_view(request, gene_xref_id):
+    #TODO: figure out how to use assembly number from gene to 
     gene = GeneXRef.objects.get(pk=gene_xref_id)
     
     alias = gene.gene_aliases
@@ -175,8 +215,9 @@ def gene_view(request, gene_xref_id):
     ordering = request.GET.get('ordering')
     positions = Tile.objects.filter(tilename__range=(min_accepted, max_accepted)).annotate(
         num_var=Count('variants'), min_len=Min('variants__length'), avg_len=Avg('variants__length'),
-        max_len=Max('variants__length'))
-
+        max_len=Max('variants__length'), min_base=Min('tile_locus_annotations__begin_int'),
+        max_base=Max('tile_locus_annotations__end_int'))
+    exon_dict = annotate_with_exons(genes, positions)
     if ordering == 'desc_tile':
         positions = positions.order_by('-tilename')
     elif ordering == 'desc_var':
@@ -205,12 +246,14 @@ def gene_view(request, gene_xref_id):
     except EmptyPage:
         #If page is out of range, deliver last page of results
         partial_positions = paginator.page(paginator.num_pages)
-        
+    for pos in partial_positions:
+        pos.has_exon = exon_dict[int(pos.tilename)]
     context = {
         'request':request,
         'gene':gene,
         'position_info': position_info,
         'positions':partial_positions,
+        'exon_dict':exon_dict,
         }
     return render(request, 'tile_library/gene_view.html', context)
 
