@@ -63,7 +63,7 @@ def a2base64index(foochar):
 def findtilevar(genome, path, step):
     fname = './abv/' + genome + '.abv'
     with open(fname, 'r') as f: ##TODO: will break? if fname does not exist. we should raise useful error mesage here.
-        tiles = f.read().split(' ')[1:] #[1: get rid of genome name at beginning of ABV
+        tiles = f.read().split(' ')[1:] #[1: get rid of genome name at beginning of ABV, also each tile is separated by a space
         tiles = dict(zip(tiles[::2], tiles[1::2])) #turn it from '0', 'seq0', '1', 'seq1' to a dictionary with keys 0, 1, ...
         tile = tiles[path]
         var = tile[int(step):int(step)+2] #retrieve exactly two tiles
