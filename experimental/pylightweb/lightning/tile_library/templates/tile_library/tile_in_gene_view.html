@@ -19,6 +19,16 @@
 <div class="container-fluid">
 	<div class="page-header">
 		<h1>Tile Position {{ position }} <small>(Path {{ path_hex }}, {{chr_name}}{{path_name}}, Gene {{gene.gene_aliases}})</small></h1>
+		{% if gene_ends.min_tile < position.tilename %}	
+		<a class="btn btn-default" href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename|add:'-1' %}">&laquo; Previous Tile Position</a>
+		{% else %}	
+		<a class="btn btn-default disabled" href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename|add:'-1' %}">&laquo; Previous Tile Position</a>
+		{% endif %}
+		{% if gene_ends.max_tile > position.tilename %}			
+		<a class="btn btn-default" href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename|add:'1' %}">Next Tile Position &raquo;</a>
+		{% else %}	
+		<a class="btn btn-default disabled" href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename|add:'1' %}">Next Tile Position &raquo;</a>
+		{% endif %}
 	</div>
 	<div class="alert alert-info" role="alert">
 		Note that annotations can be shared between tiles. 

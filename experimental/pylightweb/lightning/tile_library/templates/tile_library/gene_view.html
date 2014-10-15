@@ -134,7 +134,7 @@
 				{% else %}
 				<tr>
 				{% endif %}
-					<td><a href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename position.has_exon %}">{{ position }}</a></td>
+					<td><a href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename %}">{{ position }}</a></td>
 					<td>{{ position.num_var }}</td>
 					<td>{{ position|get_reference_length }}</td>
 					{% if position.num_var == 1 %}
