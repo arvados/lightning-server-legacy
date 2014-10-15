@@ -339,20 +339,20 @@ def tile_in_gene_view(request, gene_xref_id, tilename):
         'exons':zip(all_exons, genes),
         }
     return render(request, 'tile_library/tile_in_gene_view.html', context)
-
+    
 
 def tile_view(request, chr_int, path_int, tilename):
     chr_int = int(chr_int)
     path_int = int(path_int)
     tile_int = int(tilename)
    
-    next_path, version, step = getTileCoordInt(tile_int+1)
-    next_chr = get_chr_int_from_path(next_path)
-    next_tile = {'tile_int':tile_int+1, 'path_int':next_path, 'chr_int':next_chr}
+    #next_path, version, step = getTileCoordInt(tile_int+1)
+    #next_chr = get_chr_int_from_path(next_path)
+    #next_tile = {'tile_int':tile_int+1, 'path_int':next_path, 'chr_int':next_chr}
     
-    prev_path, version, step = getTileCoordInt(tile_int-1)
-    prev_chr = get_chr_int_from_path(prev_path)
-    prev_tile = {'tile_int':tile_int-1, 'path_int':prev_path, 'chr_int':prev_chr}
+    #prev_path, version, step = getTileCoordInt(tile_int-1)
+    #prev_chr = get_chr_int_from_path(prev_path)
+    #prev_tile = {'tile_int':tile_int-1, 'path_int':prev_path, 'chr_int':prev_chr}
     
     position = Tile.objects.get(pk=tile_int)
     tiles = position.variants.all()
@@ -364,8 +364,8 @@ def tile_view(request, chr_int, path_int, tilename):
         'path_name': Tile.CYTOMAP[path_int],
         'position': position,
         'tiles':tiles,
-        'next_tile':next_tile,
-        'prev_tile':prev_tile,
+        #'next_tile':next_tile,
+        #'prev_tile':prev_tile,
         }
     return render(request, 'tile_library/tile_view.html', context)
 
