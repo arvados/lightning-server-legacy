@@ -87,17 +87,25 @@
 				<tr>
 					<th>Gene Number</th>
 					<th>Number of Exons</th>
-					<th>Exon Starts <br>
-						Exon Ends</th>
+					<th>Exons (shown in green)</th>
 				</tr>
 			</thead>
 			<tbody>
-				{% for gene_xref in genes %}
+				{% for exon in exons %}
 				<tr>
 					<td>{{forloop.counter}}</td>
-					<td>{{ gene_xref.gene.exon_count }}</td>
-					<td>{{ gene_xref.gene.exon_starts|pretty_exons }}<br>
-						{{ gene_xref.gene.exon_ends|pretty_exons }}</td>
+					<td>{{exon|length|add:"-1"}}</td>
+					<td><div class="row">
+							<div class="col-md-8">
+								<div class="progress">
+									{% for i, j in exon %}
+									<div class="progress-bar progress-bar-danger" style="width: {{i}}%"></div>
+  									<div class="progress-bar progress-bar-success" style="width: {{j}}%"></div>
+									{% endfor %}
+								</div>
+							</div>
+						</div>
+					</td>
 				</tr>
 				{% endfor %}
 			</tbody>
