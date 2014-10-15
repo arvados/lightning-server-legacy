@@ -45,28 +45,39 @@ structure describing the parameters of the file.  Here is an example:
         ...
         { "Type" : "het", "VariantALength" : 2, "VariantA" : [2,5], "VariantBLength" : 1, "VariantB" : [3] },
         ...
-        { "Type" : "het*", "VariantALength" : 1, "VariantA" : [35], "VariantBLength" : 1, "VariantB" : [128] },
+        { "Type" : "het*", "VariantALength" : 1, "VariantA" : [35], "VariantBLength" : 1, "VariantB" : [128] }
       ],
 
       "CharMap" : { "." : 0, "-" : 1, "C" : 2, "D" : 3, "E" : 4, ... , "+" : 62, "*" : -2, "#" : -1 },
 
       "ABV" : {
-        "0" : "----------....----D--..#.. ... DD-----",
-        "1" : "-----***1-....-A--#--..#.. ... ..3---",
-        ...
-        "35e" : "-----***1-....-A--#--..#.. ... ..3---"
+
+        "A" : {
+          "0" : "----------....----D--..#.. ... DD-----",
+          "1" : "-----***1-....-A--#--..#.. ... ..3---",
+          ...
+          "35e" : "-----***1-....-A--#--..#.. ... ..3---"
+        },
+
+        "B" : {
+          "0" : "----------....----D--..#.. ... DD-----",
+          "1" : "-----***1-....-A--#--..#.. ... ..3---",
+          ...
+          "35e" : "-----***1-....-A--#--..#.. ... ..3---"
+        }
+
       },
 
       "OverflowMap" : {
-        "af:1e" : 5,
-        "12f:211" : 35,
+        "0:1e" : 5,
+        "1:211" : 35,
         ...
         "ff:123" : 310
       },
 
       "FinalOverflowMap" : {
         ...
-        "2fe0:13a3" : { "Type" : "FastJ", "Data" : ">{ \"tileID\" : \"28e.00.001.000\", \"locus\" : ... }\nACCCAA ... AAC\nCT\n" },
+        "35e:13a3" : { "Type" : "FastJ", "Data" : ">{ \"tileID\" : \"35e.00.13a3.000\", \"locus\" : ... }\nACCCAA ... AAC\nCT\n" },
         ...
       }
 
