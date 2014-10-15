@@ -23,10 +23,11 @@
 		</div>
 	</div>
 	{% if position_info.beg_path %}
-		<p>Gene {{ gene.gene_aliases }} spans two paths: path {{ position_info.beg_path_hex }} ({{ position_info.chr_name }}{{position_info.beg_path_name}}) to path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}})</p>
+		<p>Gene {{ gene.gene_aliases }} spans two paths: path {{ position_info.beg_path_hex }} ({{ position_info.chr_name }}{{position_info.beg_path_name}}) to path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}}).
 	{% else %}
-		<p>Gene {{ gene.gene_aliases }} is in path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}}) </p>
+		<p>Gene {{ gene.gene_aliases }} is in path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}}).
 	{% endif %}
+		If an exon exists in the tile, the table row is highlighted in green.</p>
 	<div class="table-responsive">
 		<table id="StatTable" class="table table-striped">
 			<thead>
@@ -133,7 +134,7 @@
 				{% else %}
 				<tr>
 				{% endif %}
-					<td><a href="{% url 'tile_library:tile_view' position_info.chr_int position_info.end_path_int position.tilename %}">{{ position }}</a></td>
+					<td><a href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename %}">{{ position }}</a></td>
 					<td>{{ position.num_var }}</td>
 					<td>{{ position|get_reference_length }}</td>
 					{% if position.num_var == 1 %}

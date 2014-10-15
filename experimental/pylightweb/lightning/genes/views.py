@@ -4,6 +4,7 @@ from django.http import Http404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 import string
 
+from django.db.models import Avg, Count, Max, Min
 from genes.models import UCSC_Gene, GeneXRef
 
 def current_gene_names(request):
@@ -46,13 +47,36 @@ def current_gene_names(request):
     
     return render(request, 'genes/names.html', context)
 
+def split_exons(genes, info):
+    def to_percent(locus):
+        return (int(locus)-info['start'])/float(info['end']-info['start'])*100
+    #Currently assumes all genes in Hg19 and do not pass over chromosomes
+    all_exons = []
+    for gene in genes:
+        begins = gene.gene.exon_starts.strip(',').split(',')
+        ends = gene.gene.exon_ends.strip(',').split(',')
+        exons = []
+        for i, (begin, end) in enumerate(zip(begins, ends)):
+            second = to_percent(end) - to_percent(begin)
+            if i == 0:
+                exons.append((to_percent(begin), second))
+            else:
+                exons.append((to_percent(begin)-to_percent(ends[i-1]), second))
+        exons.append((100-to_percent(ends[-1]), 0))
+        all_exons.append(exons)
+
+    return all_exons
+
 def specific_gene(request, xref_id):
     gene = GeneXRef.objects.get(pk=xref_id)
     alias = gene.gene_aliases
-    genes = GeneXRef.objects.filter(gene_aliases=alias).order_by('description')
+    genes = GeneXRef.objects.filter(gene_aliases=alias).order_by('gene__chrom','description')
+    info = genes.aggregate(start=Min('gene__start_tx'), end=Max('gene__end_tx'))
+    exons = split_exons(genes, info)
     context = {
         'gene':gene,
         'genes':genes,
+        'exons':exons,
         }
     return render(request, 'genes/gene_view.html', context)
         

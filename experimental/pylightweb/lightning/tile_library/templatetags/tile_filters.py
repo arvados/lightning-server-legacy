@@ -7,6 +7,15 @@ import re
 register = template.Library()
 
 @register.filter
+def strand_pretty(strand):
+    if strand:
+        return '+'
+    elif strand == False:
+        return '-'
+    else:
+        return ''
+
+@register.filter
 def get_SNP_INDEL_annotations(tile):
     return tile.annotations.filter(annotation_type='SNP_INDEL')
 

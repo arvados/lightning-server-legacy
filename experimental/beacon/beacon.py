@@ -34,22 +34,23 @@ abvfnames = [s[:-4] for s in os.listdir(foo) if s.endswith('.abv')]
 #people = "\n".join(map(lambda x: str(x), abvfnames))
 people = abvfnames
 genomes = ['hg19']
-wonkychrom = 10 
+wonkychrom = 26 
 
 def listchromosomes():
     chromosomes = []
-    cursor = g.db.execute('SELECT DISTINCT chromosome FROM loadgenomes_tilelocusannotation')
+    cursor = g.db.execute('SELECT DISTINCT chromosome FROM tile_library_tilelocusannotation')
     row = cursor.fetchall()
     for i in range(len(row)):
         chromosomes.append(row[i][0])
     if wonkychrom in chromosomes:
         #get out the chromsomenames
-        cursor = g.db.execute('SELECT DISTINCT chromosome_name FROM loadgenomes_tilelocusannotation')
+        cursor = g.db.execute('SELECT DISTINCT chromosome_name FROM tile_library_tilelocusannotation')
         row = cursor.fetchall()
         for i in range(len(row)):
             chromosomes.append(row[i][1])
         chromosomes = filter(None, chromosomes)
         chromosomes.remove(wonkychrom)
+    chromosomes.sort()
     return chromosomes
 
 #this is really dumb. there has to be a python library for b64 that does this already
@@ -63,7 +64,7 @@ def a2base64index(foochar):
 def findtilevar(genome, path, step):
     fname = './abv/' + genome + '.abv'
     with open(fname, 'r') as f: ##TODO: will break? if fname does not exist. we should raise useful error mesage here.
-        tiles = f.read().split(' ')[1:] #[1: get rid of genome name at beginning of ABV, also each tile is separated by a space
+        tiles = f.read().split(' ')[1:] #[1: get rid of genome name at beginning of ABV
         tiles = dict(zip(tiles[::2], tiles[1::2])) #turn it from '0', 'seq0', '1', 'seq1' to a dictionary with keys 0, 1, ...
         tile = tiles[path]
         var = tile[int(step):int(step)+2] #retrieve exactly two tiles
@@ -81,7 +82,7 @@ def findseq(tilevar, tile_id):
         foo =  a2base64index(tilevar)-2
         tilevarname = tile_id + str(foo).zfill(3)
         tilevarname = int(tilevarname, 16)
-    cursor = g.db.execute('SELECT * FROM loadgenomes_tilevariant WHERE %s = tile_variant_name', tilevarname)
+    cursor = g.db.execute('SELECT * FROM tile_library_tilevariant WHERE %s = tile_variant_name', tilevarname)
     row = cursor.fetchone()
     if row == None:
         msg = 'Error: Could not parse genome in database at this location. Please email the maintener with your query parameters. '
@@ -128,11 +129,11 @@ def findtileid(search_coord, search_chrom):
     except ValueError:
         iswonky = True
     if iswonky:
-        cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s >= begin_int AND %s < end_int AND chromosome = %s AND chromosome_name = %s LIMIT 1', [search_coord, search_coord, wonkychrom, search_chrom])
+        cursor = g.db.execute('SELECT * FROM tile_library_tilelocusannotation WHERE %s >= begin_int AND %s < end_int AND chromosome = %s AND chromosome_name = %s LIMIT 1', [search_coord, search_coord, wonkychrom, search_chrom])
         row = cursor.fetchone()
     else:
         search_chrom_name = ''
-        cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s >= begin_int AND %s < end_int AND chromosome = %s LIMIT 1', [search_coord, search_coord, search_chrom])
+        cursor = g.db.execute('SELECT * FROM tile_library_tilelocusannotation WHERE %s >= begin_int AND %s < end_int AND chromosome = %s LIMIT 1', [search_coord, search_coord, search_chrom])
         row = cursor.fetchone()
     if row == None:
         return None, None
@@ -140,7 +141,7 @@ def findtileid(search_coord, search_chrom):
     begin_ints = []
     begin_ints.append(row['begin_int'])
     secondid = int(row['id'])+1
-    cursor = g.db.execute('SELECT * FROM loadgenomes_tilelocusannotation WHERE %s = id LIMIT 1', [secondid])
+    cursor = g.db.execute('SELECT * FROM tile_library_tilelocusannotation WHERE %s = id LIMIT 1', [secondid])
     row = cursor.fetchone()
     begin_ints.append(row['begin_int'])
     return tile_id, begin_ints
@@ -256,7 +257,7 @@ def search_entries():
 
         chromosomes = listchromosomes()
         return render_template('search.html', msg=msg, flashmsg=flashmsg, populations=populations, genomes=genomes, prev_pop=search_pop, \
-        prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = search_chrom, coordinate=search_coord, allele = search_allele, people=people)
+        prev_gen=search_gen, chromosomes=chromosomes, prev_chrom = int(search_chrom), coordinate=search_coord, allele = search_allele, people=people)
 
 @app.route('/people')
 def show_people():

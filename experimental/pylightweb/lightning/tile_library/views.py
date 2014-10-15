@@ -151,33 +151,29 @@ def annotate_with_exons(genes, positions):
         all_exons.extend(exons)
     
     all_exons = sorted(list(set(all_exons)), key=lambda x:x[0])
-    #print all_exons
     in_exon=False
     curr_exon = 0
     exon_dict = {}
     for position in positions:
         name = int(position.tilename)
-
         while all_exons[curr_exon][1] < position.min_base:
             curr_exon += 1
-        #print position.min_base, position.max_base, all_exons[curr_exon]
         if not in_exon:
             if position.max_base < all_exons[curr_exon][0]:
                 exon_dict[name] = in_exon #False
             else:
                 in_exon = True
                 exon_dict[name] = in_exon #True
-                if position.max_base > all_exons[curr_exon][1]:
+                if position.max_base - 24 > all_exons[curr_exon][1]:
                     in_exon = False
                     curr_exon += 1
         else:
-            if position.max_base < all_exons[curr_exon][1]:
+            if position.max_base - 24 < all_exons[curr_exon][1]:
                 exon_dict[name] = in_exon #True
             else:
                 exon_dict[name] = in_exon #True
                 in_exon = False
                 curr_exon += 1
-    
     return exon_dict
 
 def gene_view(request, gene_xref_id):
@@ -208,7 +204,8 @@ def gene_view(request, gene_xref_id):
                      'beg_path':beg_path,
                      'end_path_int':end_path_int, 'end_path_hex':end_path_hex, 'end_path_name':end_path_name,
                      'end_path':end_path, 'chr_int':chr_int, 'chr_name':chromosome}
-    position_info = {'end_path_int':beg_path_int, 'end_path_hex':beg_path_hex, 'end_path_name':beg_path_name,
+    else:
+        position_info = {'end_path_int':beg_path_int, 'end_path_hex':beg_path_hex, 'end_path_name':beg_path_name,
                      'end_path':beg_path, 'chr_int':chr_int, 'chr_name':chromosome}
     
     #Positions is iterated over in view, so paginate this
@@ -257,10 +254,106 @@ def gene_view(request, gene_xref_id):
         }
     return render(request, 'tile_library/gene_view.html', context)
 
+def split_exons(genes, info):
+    def to_percent(locus):
+        return (int(locus)-info['start'])/float(info['end']-info['start'])*100
+    #Currently assumes all genes in Hg19 and do not pass over chromosomes
+    has_exons = False
+    all_exons = []
+    for gene in genes:
+        begins = gene.gene.exon_starts.strip(',').split(',')
+        ends = gene.gene.exon_ends.strip(',').split(',')
+        exons = []
+        inner_exons = []
+        for beg, end in zip(begins, ends):
+            beg = int(beg)
+            end = int(end)
+            if beg >= info['start'] and beg <= info['end']:
+                #If beginning of exon in middle
+                if end > info['end']:
+                    inner_exons.append((beg, info['end']))
+                else:
+                    inner_exons.append((beg, end))
+            elif beg <= info['start'] and end >= info['start']:
+                #if beginning of exon before the start of the tile, but the exon
+                # ends after the tile starts
+                if end > info['end']:
+                    #The exon extends past the tile
+                    inner_exons = [(info['start'], info['end'])]
+                else:
+                    inner_exons.append((info['start'], end))
+            #else do nothing: the exon isn't in the tile
+        for i, (begin, end) in enumerate(inner_exons):
+            second = to_percent(end) - to_percent(begin)
+            if i == 0:
+                exons.append((to_percent(begin), second))
+            else:
+                exons.append((to_percent(begin)-to_percent(inner_exons[i-1][1]), second))
+        if len(inner_exons) == 0:
+            exons.append((100, 0))
+        else:
+            has_exons = True
+            exons.append((100-to_percent(inner_exons[-1][1]), 0))
+        all_exons.append(exons)
+        
+
+    return has_exons, all_exons
+
+def tile_in_gene_view(request, gene_xref_id, tilename):
+    def to_percent(l, info):
+        return (int(l)-info['start'])/float(info['end']-info['start'])*100
+    tile_int = int(tilename)
+    path_int, version, step = getTileCoordInt(tile_int)
+    position = Tile.objects.get(pk=tile_int)
+
+    tiles = position.variants.all()
+    gene = GeneXRef.objects.get(pk=gene_xref_id)
+    
+    alias = gene.gene_aliases
+    genes = GeneXRef.objects.filter(gene_aliases=alias).order_by('gene__chrom','description')
+    gene_ends = genes.aggregate(min_tile=Min('gene__tile_start_tx'), max_tile=Max('gene__tile_end_tx'))
+    gene_assembly = gene.gene.assembly
+    locus = position.tile_locus_annotations.filter(assembly=gene_assembly).first()
+    info = {'start':int(locus.begin_int), 'end':int(locus.end_int)}
+    start_tag = to_percent(info['start']+24, info)
+    body = to_percent(info['end']-24, info)
+    end_tag = to_percent(info['end'], info)
+    tile_outline = [start_tag, body-start_tag, end_tag-body]
+    in_exon, all_exons = split_exons(genes, info)
+        
+    chr_int = get_chr_int_from_path(path_int)
+
+    context = {
+        'chr_int': chr_int,
+        'chr_name': get_chromosome_name_from_int(chr_int),
+        'path_int':path_int,
+        'path_hex': hex(path_int)[2:],
+        'path_name': Tile.CYTOMAP[path_int],
+        'position': position,
+        'gene':gene,
+        'genes':genes,
+        'gene_ends':gene_ends,
+        'tiles':tiles,
+        'in_exon':in_exon,
+        'pos_outline':tile_outline,
+        'exons':zip(all_exons, genes),
+        }
+    return render(request, 'tile_library/tile_in_gene_view.html', context)
+    
+
 def tile_view(request, chr_int, path_int, tilename):
     chr_int = int(chr_int)
     path_int = int(path_int)
     tile_int = int(tilename)
+   
+    #next_path, version, step = getTileCoordInt(tile_int+1)
+    #next_chr = get_chr_int_from_path(next_path)
+    #next_tile = {'tile_int':tile_int+1, 'path_int':next_path, 'chr_int':next_chr}
+    
+    #prev_path, version, step = getTileCoordInt(tile_int-1)
+    #prev_chr = get_chr_int_from_path(prev_path)
+    #prev_tile = {'tile_int':tile_int-1, 'path_int':prev_path, 'chr_int':prev_chr}
+    
     position = Tile.objects.get(pk=tile_int)
     tiles = position.variants.all()
     context = {
@@ -271,6 +364,8 @@ def tile_view(request, chr_int, path_int, tilename):
         'path_name': Tile.CYTOMAP[path_int],
         'position': position,
         'tiles':tiles,
+        #'next_tile':next_tile,
+        #'prev_tile':prev_tile,
         }
     return render(request, 'tile_library/tile_view.html', context)
 
