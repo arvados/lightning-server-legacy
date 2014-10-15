@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load tile_filters %}
+
+
+
+{% block title %}Lightning: Tile Library - Position {{ position }}{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
+	<li><a href="{% url 'tile_library:chr_statistics' chr_int %}">{{ chr_name }}</a></li>
+	<li><a href="{% url 'tile_library:gene_view' gene.id %}">Gene {{gene.gene_aliases}}</a></li>
+	<li class="active"><a href="#">Tile {{ position }}</a></li>
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Tile Position {{ position }} <small>(Path {{ path_hex }}, {{chr_name}}{{path_name}}, Gene {{gene.gene_aliases}})</small></h1>
+	</div>
+	<div class="alert alert-info" role="alert">
+		Note that annotations can be shared between tiles. 
+	</div>
+	{% if in_exon %}
+	<h3>Exon Splicing Within Tile</h3>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Strand</th>
+					<th>Gene Description</th>
+					<th>Total Number of Exons</th>
+					<th>Number of Exons in Tile</th>
+					<th>Exons (shown in green) or Tile with Tags</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td></td>
+					<td>Tile: tags shown in blue</td>
+					<td></td>
+					<td></td>
+					<td>
+						<div class="progress">
+							<div class="progress-bar progress-bar-info" style="width: {{pos_outline.0}}%"></div>
+  							<div class="progress-bar progress-bar-warning" style="width: {{pos_outline.1}}%"></div>
+							<div class="progress-bar progress-bar-info" style="width: {{pos_outline.2}}%"></div>
+						</div>
+					</td>
+				</tr>
+				
+				{% for exon, gene in exons %}
+				<tr>
+					<td>{{gene.gene.strand|strand_pretty}}</td>
+					<td>{{gene.description}}</td>
+					<td>{{gene.gene.exon_count}}</td>
+					<td>{{exon|length|add:"-1"}}</td>
+					<td>
+								<div class="progress">
+									{% for i, j in exon %}
+									<div class="progress-bar progress-bar-danger" style="width: {{i}}%"></div>
+  									<div class="progress-bar progress-bar-success" style="width: {{j}}%"></div>
+									{% endfor %}
+								</div>
+							
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	{% else %}
+	<div class="alert alert-danger" role="alert">
+		No piece of this tile is coding. All bases are introns, non-coding, or not translated for gene {{gene.gene_aliases}}.
+	</div>
+	{% endif %}
+	<h3>Tile Variants</h3>
+	<div class="table-responsive">
+		<table id="StatTable" class="table table-striped">
+			<thead>
+				<tr>
+					<th>Variant Value</th>
+					<th>Start Tag</th>
+					<th>Tile Length (in bases)</th>
+					<th>Annotations</th>
+					<th>dbSNP annotations</th>
+					<th>Predicted Protein Changes</th>
+					<th>Other annotations, non-parsed</th>
+					<th>End Tag</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for tile in tiles %}
+				<tr>
+					<td>{{ tile.variant_value }}</td>
+					{% if forloop.first %}
+						<td>{{ position.start_tag }}</td>
+					{% else %}
+						<td>{{ tile.start_tag|upper }}</td>
+					{% endif %}
+					<td>{{ tile.length }}</td>
+					<td>{% for annotation in tile|get_SNP_INDEL_annotations %}
+							{{ annotation|get_readable_annotation_text }} <br>
+						{% endfor %}						
+					</td>
+					<td>
+						{% for annotation in tile|get_database_annotations %}
+							{% for snp_ref in annotation|get_snps %} 
+							<a href="http://www.ncbi.nlm.nih.gov/SNP/snp_ref.cgi?searchType=adhoc_search&type=rs&rs={{ snp_ref }}">{{ snp_ref }}</a><br>
+							{% endfor %}
+						{% endfor %}
+					</td>
+					<td>					
+						{% for annotation in tile|get_database_annotations %}
+							{{annotation|get_aa|default:''}}<br>
+						{% endfor %}
+					</td>
+					<td>					
+						{% for annotation in tile|get_database_annotations %}
+							{% for unparsed in annotation|get_other %}
+							{{ unparsed}}<br>
+							{% endfor %}
+						{% endfor %}
+					</td>
+					{% if forloop.first %}
+						<td>{{ position.end_tag }}</td>
+					{% else %}
+						<td>{{ tile.end_tag|upper }}</td>
+					{% endif %}
+				</tr>
+				{% endfor %}
+			<tbody>
+		</table>
+	</div>
+	<p class="lead">Reference Genome Sequence:</p>
+	<ul class="list-unstyled">
+		<li>{{ position.start_tag }}</li>
+		{% for seq in tiles|get_reference_sequence  %}
+			<li>{{seq}}</li>
+		{% endfor %}
+		<li>{{ position.end_tag }}</li>
+	</ul>
+<!-- TODO: md5sums and sequences for the non-reference tile should probably be placed here, giving the table more room for references, etc
+	 TODO: sort the annotations?-->
+</div>
+{% endblock %}
+
