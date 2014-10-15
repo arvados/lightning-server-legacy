@@ -70,7 +70,7 @@ def split_exons(genes, info):
 def specific_gene(request, xref_id):
     gene = GeneXRef.objects.get(pk=xref_id)
     alias = gene.gene_aliases
-    genes = GeneXRef.objects.filter(gene_aliases=alias).order_by('description')
+    genes = GeneXRef.objects.filter(gene_aliases=alias).order_by('gene__chrom','description')
     info = genes.aggregate(start=Min('gene__start_tx'), end=Max('gene__end_tx'))
     exons = split_exons(genes, info)
     context = {
