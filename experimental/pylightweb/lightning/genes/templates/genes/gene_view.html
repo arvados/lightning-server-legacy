@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load staticfiles %}
 {% load gene_filters %}
+{% load humanize %}
 
 {% block title %}Lightning: Gene {{gene.gene_aliases}}{% endblock %}
 
@@ -17,7 +18,9 @@
 		<div class="btn-group">
 			<a class="btn btn-default disabled active" href="{% url 'genes:specific' gene.id %}">Generic View</a>
 			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?exact={{ gene.gene_aliases }}">Map View</a>
+			{% if num_non_over == 1 %}
 			<a class="btn btn-default" href="{% url 'tile_library:gene_view' gene.id %}">Tile Library View</a>
+			{% endif %}
 		</div>
 	</div>
 
@@ -30,12 +33,20 @@
 				<p> (None) </p>
 			{% endfor %}
 		</ul>
-		<h3>Known Genes with name {{gene.gene_aliases}}</h3>
+		{% if num_genes == 1 %}
+		<h3>1 Known Gene with name {{gene.gene_aliases}}</h3>
+		{% elif num_non_over == 1 %}
+		<h3>Known Genes with name {{gene.gene_aliases}} <small>({{num_genes}} Gene Transcripts overlapping the same general locus of the genome)</small></h3>
+		{% else %}
+		<h3>Known Genes with name {{gene.gene_aliases}} <small>({{num_genes}} Gene Transcripts covering {{num_non_over}} genome loci)</small></h3>
+		{% endif %}
 		<div class="table-responsive">
 			<table class="table table-striped">
 				<thead>
 					<tr>
+						{% if num_genes > 1 %}
 						<th>Gene Number</th>
+						{% endif %}
 						<th>Description</th>
 						<th>Chromosome</th>
 						<th>Strand</th>
@@ -44,7 +55,9 @@
 				<tbody>
 					{% for gene_xref in genes %}
 					<tr>
+						{% if num_genes > 1 %}
 						<td>{{forloop.counter}}</td>
+						{% endif %}
 						<td>{{ gene_xref.description }}</td>
 						<td>{{ gene_xref.gene.chrom|chromosome_pretty }}</td>
 						<td>{{ gene_xref.gene.strand|strand_pretty }}</td>
@@ -58,21 +71,27 @@
 		<table class="table table-striped">
 			<thead>
 				<tr>
+					{% if num_genes > 1 %}
 					<th>Gene Number</th>
+					{% endif %}
 					<th>Start of Transcription</th>
 					<th>Start of Coding Sequence</th>
 					<th>End of Coding Sequence</th>
 					<th>End of Transcription</th>
+					<th>Length of Transcription</th>
 				</tr>
 			</thead>
 			<tbody>
 				{% for gene_xref in genes %}
 				<tr>
+					{% if num_genes > 1 %}
 					<td>{{forloop.counter}}</td>
-					<td>{{ gene_xref.gene.tile_start_tx|tile_string }} (base {{ gene_xref.gene.start_tx }})</td>
-					<td>{{ gene_xref.gene.tile_start_cds|tile_string }} (base {{ gene_xref.gene.start_cds }})</td>
-					<td>{{ gene_xref.gene.tile_end_cds|tile_string }} (base {{ gene_xref.gene.end_cds }})</td>
-					<td>{{ gene_xref.gene.tile_end_tx|tile_string }} (base {{ gene_xref.gene.end_tx }})</td>
+					{% endif %}
+					<td>{{ gene_xref.gene.tile_start_tx|tile_string }} (base {{ gene_xref.gene.start_tx|intcomma }})</td>
+					<td>{{ gene_xref.gene.tile_start_cds|tile_string }} (base {{ gene_xref.gene.start_cds|intcomma }})</td>
+					<td>{{ gene_xref.gene.tile_end_cds|tile_string }} (base {{ gene_xref.gene.end_cds|intcomma }})</td>
+					<td>{{ gene_xref.gene.tile_end_tx|tile_string }} (base {{ gene_xref.gene.end_tx|intcomma }})</td>
+					<td>{{ gene_xref.tx_length|intcomma }} bases </td>
 				</tr>
 				{% endfor %}
 			</tbody>
@@ -85,7 +104,9 @@
 		<table class="table table-striped">
 			<thead>
 				<tr>
+					{% if num_genes > 1 %}
 					<th>Gene Number</th>
+					{% endif %}
 					<th>Number of Exons</th>
 					<th>Exons (shown in green)</th>
 				</tr>
@@ -93,7 +114,9 @@
 			<tbody>
 				{% for exon in exons %}
 				<tr>
+					{% if num_genes > 1 %}
 					<td>{{forloop.counter}}</td>
+					{% endif %}
 					<td>{{exon|length|add:"-1"}}</td>
 					<td><div class="row">
 							<div class="col-md-8">
@@ -117,7 +140,9 @@
 		<table class="table table-striped">
 			<thead>
 				<tr>
+					{% if num_genes > 1 %}
 					<th>Gene Number</th>
+					{% endif %}
 					<th>UCSC known gene iD</th>
 					<th>GenBank mRNA accession number</th>
 					<th>UniProt accession number</th>
@@ -130,7 +155,9 @@
 			<tbody>
 				{% for gene_xref in genes %}
 				<tr>
+					{% if num_genes > 1 %}
 					<td>{{forloop.counter}}</td>
+					{% endif %}
 					<td><a href="https://genome.ucsc.edu/cgi-bin/hgGene?hgg_gene={{gene_xref.gene.ucsc_gene_id}}">{{ gene_xref.gene.ucsc_gene_id}}</a></td>
 					<td>{{ gene_xref.mrna|default:'-'}}</td>
 					{% if gene_xref.sp_id %}
