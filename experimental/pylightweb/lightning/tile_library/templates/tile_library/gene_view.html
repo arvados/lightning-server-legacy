@@ -23,54 +23,12 @@
 		</div>
 	</div>
 	{% if position_info.beg_path %}
-		<p>Gene {{ gene.gene_aliases }} spans two paths: path {{ position_info.beg_path_hex }} ({{ position_info.chr_name }}{{position_info.beg_path_name}}) to path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}}).
+		<p>Gene {{ gene.gene_aliases }} spans multiple paths: path {{ position_info.beg_path_hex }} ({{ position_info.chr_name }}{{position_info.beg_path_name}}) to path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}}).
 	{% else %}
 		<p>Gene {{ gene.gene_aliases }} is in path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}}).
 	{% endif %}
 		If an exon exists in the tile, the table row is highlighted in green.</p>
-	<div class="table-responsive">
-		<table id="StatTable" class="table table-striped">
-			<thead>
-				<tr>
-					<th>hg19 Cytomap Band</th>
-					<th>Path</th>
-					<th>Total positions</th>
-					<th>Total tiles</th>
-					<th>Average number of variants</th>
-					<th>Maximum number of variants</th>
-					<th>Minimum tile length (in bases)</th>
-					<th>Average tile length (in bases)</th>
-					<th>Maximum tile length (in bases)</th>
-				</tr>
-			</thead>
-			<tbody>
-				{% if position_info.beg_path %}
-					<tr>
-						<td>{{ position_info.beg_path_name }}</td>
-						<td>Path {{ position_info.beg_path_hex }}</td>
-						<td>{{ position_info.beg_path.position_num }}</td>
-						<td>{{ position_info.beg_path.tile_num }}</td>
-						<td>{{ position_info.beg_path.avg_variant_val|floatformat|default:'-' }}</td>
-						<td>{{ position_info.beg_path.max_variant_val|default:'-' }}</td>
-						<td>{{ position_info.beg_path.min_length|default:'-' }}</td>
-						<td>{{ position_info.beg_path.avg_length|floatformat|default:'-' }}</td>
-						<td>{{ position_info.beg_path.max_length|default:'-' }}</td>
-					</tr>
-				{% endif %}
-				<tr>
-					<td>{{ position_info.end_path_name }}</td>
-					<td>Path {{ position_info.end_path_hex }}</td>
-					<td>{{ position_info.end_path.position_num }}</td>
-					<td>{{ position_info.end_path.tile_num }}</td>
-					<td>{{ position_info.end_path.avg_variant_val|floatformat|default:'-' }}</td>
-					<td>{{ position_info.end_path.max_variant_val|default:'-' }}</td>
-					<td>{{ position_info.end_path.min_length|default:'-' }}</td>
-					<td>{{ position_info.end_path.avg_length|floatformat|default:'-' }}</td>
-					<td>{{ position_info.end_path.max_length|default:'-' }}</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
+
 		<ul class="pagination">
 			{% if positions.has_previous %}
 			<li><a href="?{% url_replace request.GET 'page' positions.previous_page_number %}">&laquo;</a></li>

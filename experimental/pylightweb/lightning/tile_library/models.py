@@ -43,7 +43,6 @@ class Tile(models.Model):
 
     Functions:
         getTileString(): returns string: human readable tile name
-        getPath(): returns string: human readable tile path
     
     """
     CHR_PATH_LENGTHS = [0,63,125,187,234,279,327,371,411,454,496,532,573,609,641,673,698,722,742,761,781,795,811,851,862,863,863]
@@ -65,11 +64,6 @@ class Tile(models.Model):
     getTileString.short_description='Tile Name'
     def __unicode__(self):
         return self.getTileString()
-    def getPath(self):
-        strTilename = hex(self.tilename).lstrip('0x').rstrip('L')
-        strTilename = strTilename.zfill(9)
-        path = strTilename[:3]
-        return int(path,16)
     class Meta:
         #Ensures ordering by tilename
         ordering = ['tilename']
@@ -101,9 +95,6 @@ class TileVariant(models.Model):
         getString(): returns string: human readable tile variant name
         isReference(): returns boolean: True if the variant is the reference variant.
             Depends on tile_variant_name (check if variant is equal to 000) (or variant_value)
-        getPath(): returns int: path integer
-        getStep(): returns int: step integer
-        
     """
     tile_variant_name = models.BigIntegerField(primary_key=True, editable=False, db_index=True)
     tile = models.ForeignKey(Tile, related_name='variants', db_index=True)
@@ -128,16 +119,6 @@ class TileVariant(models.Model):
     getString.short_description='Variant Name'
     def isReference(self):
         return self.variant_value == 0
-    def getPath(self):
-        strTilename = hex(self.tile_variant_name).lstrip('0x').rstrip('L')
-        strTilename = strTilename.zfill(12)
-        path = strTilename[:3]
-        return int(path,16)
-    def getStep(self):
-        strTilename = hex(self.tile_variant_name).lstrip('0x').rstrip('L')
-        strTilename = strTilename.zfill(12)
-        step = strTilename[5:9]
-        return int(step,16)
     def __unicode__(self):
         return self.getString()
     class Meta:

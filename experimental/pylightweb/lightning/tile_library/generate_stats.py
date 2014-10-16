@@ -1,5 +1,5 @@
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, VarAnnotation, GenomeStatistic
-from tile_library import views
+from tile_library import functions
 from django.db.models import Avg, Count, Max, Min
 import time
 
@@ -28,8 +28,8 @@ def initialize():
                 pos_num, tile_var_info = get_info(Tile.objects, TileVariant.objects)
             else:
                 print "Chromosome", i, ":"
-                min_pos, min_tile = views.convert_chromosome_to_tilename(i)
-                max_pos, max_tile = views.convert_chromosome_to_tilename(i+1)
+                min_pos, min_tile = functions.get_min_position_and_tile_variant_from_chromosome_int(i)
+                max_pos, max_tile = functions.get_min_position_and_tile_variant_from_chromosome_int(i+1)
                 max_pos -= 1
                 max_tile -= 1
                 pos_num, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_pos,max_pos)),
@@ -50,8 +50,8 @@ def initialize():
     assert GenomeStatistic.objects.count() == 27
     for path in range(Tile.CHR_PATH_LENGTHS[-1]):
         print "Path", path
-        min_path_pos, min_path_tile = views.convert_path_to_tilename(path)
-        max_path_pos, max_path_tile = views.convert_path_to_tilename(path + 1)
+        min_path_pos, min_path_tile = functions.get_min_position_and_tile_variant_from_path_int(path)
+        max_path_pos, max_path_tile = functions.get_min_position_and_tile_variant_from_path_int(path + 1)
         max_path_pos -= 1
         max_path_tile -= 1
         pos_num, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_path_pos,max_path_pos)),
@@ -76,8 +76,8 @@ def update(path_only=False):
                 pos_num, tile_var_info = get_info(Tile.objects, TileVariant.objects)
             else:
                 print "Chromosome", i, ":"
-                min_pos, min_tile = views.convert_chromosome_to_tilename(i)
-                max_pos, max_tile = views.convert_chromosome_to_tilename(i+1)
+                min_pos, min_tile = functions.get_min_position_and_tile_variant_from_chromosome_int(i)
+                max_pos, max_tile = functions.get_min_position_and_tile_variant_from_chromosome_int(i+1)
                 max_pos -= 1
                 max_tile -= 1
                 pos_num, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_pos,max_pos)),
@@ -98,8 +98,8 @@ def update(path_only=False):
             s.save()
     for path in range(Tile.CHR_PATH_LENGTHS[-1]):
         print "Path", path
-        min_path_pos, min_path_tile = views.convert_path_to_tilename(path)
-        max_path_pos, max_path_tile = views.convert_path_to_tilename(path + 1)
+        min_path_pos, min_path_tile = functions.get_min_position_and_tile_variant_from_path_int(path)
+        max_path_pos, max_path_tile = functions.get_min_position_and_tile_variant_from_path_int(path + 1)
         max_path_pos -= 1
         max_path_tile -= 1
         pos_num, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_path_pos,max_path_pos)),

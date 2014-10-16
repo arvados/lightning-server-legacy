@@ -2,8 +2,9 @@
 
 import time
 
+import tile_library.functions as fns
+
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, VarAnnotation, GenomeStatistic
-from tile_library import views
 from django.db.models import Avg, Count, Max, Min
 
 def timeit(fn):
@@ -20,12 +21,12 @@ def timeitarg(fn, *args):
 def run():
     chrom = 2
     path = 21
-    min_pos, min_tile = views.convert_chromosome_to_tilename(chrom)
-    max_pos, max_tile = views.convert_chromosome_to_tilename(chrom+1)
+    min_pos, min_tile = fns.get_min_position_and_tile_variant_from_chromosome_int(chrom)
+    max_pos, max_tile = fns.get_min_position_and_tile_variant_from_chromosome_int(chrom+1)
     max_pos -= 1
     max_tile -= 1
-    min_path_pos, min_path_tile = views.convert_path_to_tilename(path)
-    max_path_pos, max_path_tile = views.convert_path_to_tilename(path+1)
+    min_path_pos, min_path_tile = fns.get_min_position_and_tile_variant_from_path_int(path)
+    max_path_pos, max_path_tile = fns.get_min_position_and_tile_variant_from_path_int(path+1)
     max_path_pos -= 1
     max_path_tile -= 1
 
@@ -55,8 +56,8 @@ def run():
 
 def run_chr():
     chrom = 1
-    min_pos, min_tile = views.convert_chromosome_to_tilename(chrom)
-    max_pos, max_tile = views.convert_chromosome_to_tilename(chrom+1)
+    min_pos, min_tile = fns.get_min_position_and_tile_variant_from_chromosome_int(chrom)
+    max_pos, max_tile = fns.get_min_position_and_tile_variant_from_chromosome_int(chrom+1)
     max_pos -= 1
     max_tile -= 1
     #Get Genome Statistics for chr1
@@ -70,8 +71,8 @@ def run_chr():
     times = []
     chr_path_lengths=Tile.CHR_PATH_LENGTHS
     for path in range(chr_path_lengths[chrom-1], chr_path_lengths[chrom]):
-        min_path_pos, min_path_tile = views.convert_path_to_tilename(path)
-        max_path_pos, max_path_tile = views.convert_path_to_tilename(path + 1)
+        min_path_pos, min_path_tile = fns.get_min_position_and_tile_variant_from_path_int(path)
+        max_path_pos, max_path_tile = fns.get_min_position_and_tile_variant_from_path_int(path + 1)
         max_path_pos -= 1
         max_path_tile -= 1
         t1 = time.time()

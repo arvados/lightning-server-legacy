@@ -2,8 +2,8 @@ from django.test import TestCase
 
 from tile_library.models import Tile, TileVariant
 
-import tile_library.views as views
-#Currently testing functions defined by models and views. Very basic
+import tile_library.functions as functions
+#Currently testing functions defined by models and 'functions'. Very basic
 
 #NO testing for views yet
 #from django.core.urlresolvers import reverse
@@ -30,16 +30,6 @@ class TestTileMethods(TestCase):
         new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
         self.assertEqual(type(new_tile.getTileString()), str)
         self.assertEqual(new_tile.getTileString(), '1c4.03.002f')
-
-    def test_get_path(self):
-        """
-        Tile.getPath() returns int of path
-        Testing with Tile 0a1.00.1004
-        """
-        tilename = int('a1001004', 16)
-        new_tile = Tile(tilename=tilename, start_tag="ACGT", end_tag="CCCG")
-        self.assertEqual(type(new_tile.getPath()), int)
-        self.assertEqual(new_tile.getPath(), int('a1', 16))
 
     def test_tile_constants(self):
         """
@@ -99,54 +89,28 @@ class TestTileVariantMethods(TestCase):
         new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=0,
                                        length=250, md5sum="05fee", sequence="TO BIG TO STORE")
         self.assertEqual(new_tile_variant.isReference(), True)
-
-    def test_get_path(self):
-        """
-        Tile.getPath() returns int of path
-        Testing with Tile 0a1.00.1004
-        """
-        tile_int = int('1c40020af', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('1c40020af000', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=0,
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE")
-        self.assertEqual(type(new_tile_variant.getPath()), int)
-        self.assertEqual(new_tile_variant.getPath(), int('1c4', 16))
-
-    def test_get_step(self):
-        """
-        Tile.getPath() returns int of path
-        Testing with Tile 0a1.00.1004
-        """
-        tile_int = int('1c40020af', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('1c40020af000', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=0,
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE")
-        self.assertEqual(type(new_tile_variant.getStep()), int)
-        self.assertEqual(new_tile_variant.getStep(), int('20af', 16))
     
 class TestViewFunctions(TestCase):
     fixtures = ['highest_path.json.gz']
-    def test_convert_chromosome_to_tilename(self):
-        wierdname, weirdvarname = views.convert_chromosome_to_tilename(26)
-        name, varname = views.convert_chromosome_to_tilename(1)
+    def test_get_min_position_and_tile_variant_from_chromosome_int(self):
+        wierdname, weirdvarname = functions.get_min_position_and_tile_variant_from_chromosome_int(26)
+        name, varname = functions.get_min_position_and_tile_variant_from_chromosome_int(1)
         self.assertEqual(name, 0)
         self.assertEqual(varname, 0)
-        self.assertRaises(BaseException, views.convert_chromosome_to_tilename, 0)
-        self.assertRaises(BaseException, views.convert_chromosome_to_tilename, 28)
+        self.assertRaises(BaseException, functions.get_min_position_and_tile_variant_from_chromosome_int, 0)
+        self.assertRaises(BaseException, functions.get_min_position_and_tile_variant_from_chromosome_int, 28)
     def test_assumptions_of_convert_chromosome(self):
-        maximumname, maximumvarname = views.convert_chromosome_to_tilename(27)
+        maximumname, maximumvarname = functions.get_min_position_and_tile_variant_from_chromosome_int(27)
         self.assertEqual(Tile.objects.filter(tilename__gte=maximumname).exists(), False)
         self.assertEqual(TileVariant.objects.filter(tile_variant_name__gte=maximumvarname).exists(), False)
-        maximumname, maximumvarname = views.convert_chromosome_to_tilename(26)
+        maximumname, maximumvarname = functions.get_min_position_and_tile_variant_from_chromosome_int(26)
         self.assertEqual(Tile.objects.filter(tilename__gte=maximumname).exists(), False)
         self.assertEqual(TileVariant.objects.filter(tile_variant_name__gte=maximumvarname).exists(), False)
-        maximumname, maximumvarname = views.convert_chromosome_to_tilename(25)
+        maximumname, maximumvarname = functions.get_min_position_and_tile_variant_from_chromosome_int(25)
         self.assertEqual(Tile.objects.filter(tilename__gte=maximumname).exists(), True)
         self.assertEqual(TileVariant.objects.filter(tile_variant_name__gte=maximumvarname).exists(), True)
-    def test_convert_path_to_tilename(self):
-        name, varname = views.convert_path_to_tilename(0)
+    def test_get_min_position_and_tile_variant_from_path_int(self):
+        name, varname = functions.get_min_position_and_tile_variant_from_path_int(0)
         self.assertEqual(name, 0)
         self.assertEqual(varname, 0)
     
