@@ -17,9 +17,11 @@
 		<h1>{{gene.gene_aliases}}: <small>{{gene.description}}</small></h1>
 		<div class="btn-group">
 			<a class="btn btn-default disabled active" href="{% url 'genes:specific' gene.id %}">Generic View</a>
-			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?exact={{ gene.gene_aliases }}">Map View</a>
 			{% if num_non_over == 1 %}
+			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?exact={{ gene.gene_aliases }}">Map View</a>
 			<a class="btn btn-default" href="{% url 'tile_library:gene_view' gene.id %}">Tile Library View</a>
+			{% else %}
+			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?multiple-exact={{ gene.gene_aliases }}">Map View</a>
 			{% endif %}
 		</div>
 	</div>
@@ -118,6 +120,9 @@
 					<td>{{forloop.counter}}</td>
 					{% endif %}
 					<td>{{exon|length|add:"-1"}}</td>
+					{% if exon|length > 100 %}
+					<td>(Unable to accurately represent: too many exons)</td>
+					{% else %}
 					<td><div class="row">
 							<div class="col-md-8">
 								<div class="progress">
@@ -129,6 +134,7 @@
 							</div>
 						</div>
 					</td>
+					{% endif %}
 				</tr>
 				{% endfor %}
 			</tbody>
