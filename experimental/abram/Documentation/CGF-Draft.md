@@ -33,28 +33,44 @@ structure describing the parameters of the file.  Here is an example:
       "StepPerPath" : [ 5433, 11585, ..., 181, 35 ],
       "TotalStep" : 10655006,
 
-      "TileMap" : [
-        { "Type" : "hom", "VariantALength" : 1, "VariantA" : [0], "VariantBLength" : 1, "VariantB" : [0] },
-        { "Type" : "hom*", "VariantALength" : 1, "VariantA" : [0], "VariantBLength" : 1, "VariantB" : [0] },
-        { "Type" : "het", "VariantALength" : 1, "VariantA" : [1], "VariantBLength" : 1, "VariantB" : [0] },
-        { "Type" : "het", "VariantALength" : 1, "VariantA" : [0], "VariantBLength" : 1, "VariantB" : [1] },
-        { "Type" : "het*", "VariantALength" : 1, "VariantA" : [1], "VariantBLength" : 1, "VariantB" : [0] },
-        { "Type" : "het*", "VariantALength" : 1, "VariantA" : [0], "VariantBLength" : 1, "VariantB" : [1] },
-        { "Type" : "hom", "VariantALength" : 1, "VariantA" : [1], "VariantBLength" : 1, "VariantB" : [1] },
-        { "Type" : "hom", "VariantALength" : 1, "VariantA" : [1], "VariantBLength" : 1, "VariantB" : [1] },
-        ...
-        { "Type" : "het", "VariantALength" : 2, "VariantA" : [2,5], "VariantBLength" : 1, "VariantB" : [3] },
-        ...
-        { "Type" : "het*", "VariantALength" : 1, "VariantA" : [35], "VariantBLength" : 1, "VariantB" : [128] }
-      ],
-
-      "CharMap" : { "." : 0, "-" : 1, "C" : 2, "D" : 3, "E" : 4, ... , "+" : 62, "*" : -2, "#" : -1 },
-
       "ABV" : {
         "0" : "----------....----D--..#.. ... DD-----",
         "1" : "-----***1-....-A--#--..#.. ... ..3---",
         ...
         "35e" : "-----***1-....-A--#--..#.. ... ..3---"
+      },
+
+      "CharMap" : { "A":0, ".":0, "B":1, "-" : 1, "C":2, "D":3, "E":4, ... , "+":62, "*":-2, "#":-1 },
+
+      "TileMap" : [
+        { "Type" : "hom",  "Ploidy" : 2, "Variant" : [ [0], [0] ], 1, "VariantLength" : [1,1] },
+        { "Type" : "hom*", "Ploidy" : 2, "Variant" : [ [0], [0] ], 1, "VariantLength" : [1,1] },
+        { "Type" : "het",  "Ploidy" : 2, "Variant" : [ [1], [0] ], 1, "VariantLength" : [1,1] },
+        { "Type" : "hom*", "Ploidy" : 2, "Variant" : [ [0], [1] ], 1, "VariantLength" : [1,1] },
+        { "Type" : "het*", "Ploidy" : 2, "Variant" : [ [1], [0] ], 1, "VariantLength" : [1,1] },
+        { "Type" : "het*", "Ploidy" : 2, "Variant" : [ [0], [1] ], 1, "VariantLength" : [1,1] },
+        { "Type" : "hom",  "Ploidy" : 2, "Variant" : [ [1], [1] ], 1, "VariantLength" : [1,1] },
+        { "Type" : "hom*", "Ploidy" : 2, "Variant" : [ [1], [1] ], 1, "VariantLength" : [1,1] },
+        { "Type" : "het",  "Ploidy" : 2, "Variant" : [ [0,0], [1] ], 1, "VariantLength" : [2,1] },
+        ...
+        { "Type" : "het",  "Ploidy" : 2, "Variant" : [ [2,5], [3] ], 1, "VariantLength" : [2,1] },
+        ...
+        { "Type" : "het",  "Ploidy" : 2, "Variant" : [ [35], [128] ], 1, "VariantLength" : [1,1] }
+      ],
+
+      "PhaseLoci" : {
+        "PhaseGroup_0_0_0_1" :
+        [
+          [ "1e:50:30", "1f:32:201" ],
+          ...
+          [ "23:f1:45", "25:32:50" ]
+        ],
+        "PhaseGroup_0_0_1_12" :
+        [
+          [ "1e:50:28", "1e:50:2a" ],
+          ...
+          [ "33:f0:5e", "33:f0:5f" ]
+        ]
       },
 
       "OverflowMap" : {
@@ -72,57 +88,73 @@ structure describing the parameters of the file.  Here is an example:
 
     }
 
-Non hash and non star values (that is, not `#` and not `*`) values at Positions in the entries of the `ABV` JSON object encode a position into the `TileMap' JSON object.
-If a hash is encountered (`#`), the appropriate entry can be looked up in the `OverflowMap` JSON object.
-In the case of a star (`*`), the encoding is more complex and will be discussed in more detail below.
+The `CharMap` object maps character codes as they appear in the `ABV` elements to positions in the `TileMap` object.
+For example, if an 'E' is encountered, this maps to the 4th position in the `TileMap` array.
 
-When the `ABV` entry maps to a position in the `TileMap` table, the `Type` filed indicates whether it is a heterozygous, homozygous or non-simple variant and which tile variant to use when consulting the tile libarary.
-For example, should the entry be `D`, this maps to the fourth position in the `TileMap` JSON object (as indicated by the `CharMap` table), which indicates that for the path and step, tile variant 0 should be used for the 'A' allele and tile variant 1 should be used for the 'B' allele.
+The `CharMap` maps many characters to a single value.  It is an error if a character maps to multiple values in the `CharMap` object.
+Multiple mapping is done to allow for different character mappings at ABV positions while keeping a path to compatibility
+with the base64 encoding.
+Any character that appears in the keys of the `CharMap` object may appear in the `ABV` element values.
 
-If a hash is encountered (`#`), there will be an appropriate entry in the `OverflowMap` JSON object where the key is utf8 encoded hexademial step and position concatenated with the colon character (`:`).
-For example, if at decimal path 175 and at decimal position 31 a hash (`#`) is encounted in the `ABV` string, the entry `af:1e` should be referenced in the `OverflowMap` JSON object.
 
+Non negative mapped values (that is, not `#` and not `*`) at Positions in the entries of the `ABV` JSON object encode a position into the `TileMap' JSON object.
+
+When the `ABV` entry maps to a position in the `TileMap` table, the `Type` filed indicates whether it is a heterozygous, homozygous or
+non-simple variant and which tile variant to use when consulting the tile library.
+For example, should the entry be `D`, this maps to the fourth position in the `TileMap` JSON object (as indicated by the `CharMap` table),
+which indicates that for the path and step, tile variant 0 should be used for the 'A' allele and tile variant 1 should be used for the 'B' allele.
+
+If a mapped value of `-1` is encountered (that is, a `#` in the above mapping), the appropriate entry can be looked up in either the
+`OverflowMap` JSON object or `FinalOverflowMap` JSON object.
+The key into the `OverflowMap` or `FinalOverflowMap` object is utf8 encoded hexadecimal step and position concatenated with the colon character (`:`).
+For example, if at decimal path 175 and at decimal position 31 a hash (`#`) is encountered in the `ABV` string, the entry `af:1e` should be referenced in the `OverflowMap` JSON object.
 For that entry in the above example, the `Type` field is `Map` and the `Data` field is `5`, so this references the `TileMap` entry of 5.
+
+If the key is not found in the `OverflowMap`, the `FinalOverflowMap` should be consulted.  It is an error if an overflowed tile does not appear
+in either the `OverflowMap` or `FinalOverflowMap` object.
 
 If the entry does not appear in the `OverflowMap` JSON object, then the `FinalOverflowMap` JSON object should be consulted.
 
-For now, the only option for the `FinalOverflowMap` JSON object entry is `FastJ` and, in this case, the `Data` field will be a JSON encoded string of a FastJ tile corresponding to that entry.
+For now, the only option for the `FinalOverflowMap` JSON object entry is `FastJ`.
+In this case the `Data` field will be a JSON encoded string of a FastJ tile corresponding to that entry.
 This is included in case the CGF file has a novel tile that is not included in the tile library referenced.
 
+A non-simple variant is indicated in the `ABV` string as a mapped `-2` value (i.e. `*`).
+In the case of a non-simple variant, this is interpreted as a tile that spans multiple default tiles.
+The first non negative mapped value before the contiguous list of mapped `-2` values indicates the position in the `TileMap` (or
+if the overflow objects should be consulted).
 
-A non-simple variant is indicated in the `ABV` string as a star (`*`).
-In the case of a non-simple vairant (that is a star (`*`) is encountered), this is interpreted as a tile that spans multiple default tiles.
-This tile is still referenced in the tile libarary, as pointed to by the `TileMap` object.
-The number of default tiles it spans is indicated by the number of contiguous stars plus one.
-For example, if the string `--.D**f..-` is encountered, this is a tile that spans 3 default tiles.
-The first non star character encoutered is the encoded position into the `TileMap` JSON object.
-If the first non star character is a hash (`#`), the `OverflowMap` JSON object table (or `FinalOverflowMap` if it doesn't exist
-in the `OverflowMap` table) should be consulted to determine the mapped variant type.
+This tile is still referenced in the tile library, as pointed to by the `TileMap` object.
+The number of default tiles it spans is indicated by the number of contiguous mapped `-2` values (i.e. `*`s) plus one.
+For example, if the string `--.D**f..-` is encountered, this is a tile that spans 3 default tiles and maps to `TileMap` element 3 (from the `D`).
 
-In the non-simple case, each of the alleles has the list of tiles encoded in the `VariantA` and `VariantB` field.  Note
+In the non-simple case, each of the alleles has the list of tiles encoded in the `Variant` array.  Note
 that the tiles in either of these lists can be of varying default tile lengths.
 
-For exapmle, if 'A' allele spans 3 default tiles and the 'B' allele has nothing but default tiles, this would be indicated as:
+For example, if the first allele spans 3 default tiles and the second allele has nothing but default tiles, this could be indicated as:
 
-    ...**J...
+    ...J**...
 
     ...
-    { "Type" : "non-simple", "VariantA" : [ 54 ], "VariantB" : [ 0, 0, 0 ], ... }
+    { "Type" : "non-simple", "Variant" : [ [ 54 ], [ 0, 0, 0 ] ], ... }
     ...
 
 The non-simple case can have 'interleaved' tiles of varying default tile length.
-For example, allele 'A' could have a non-simple tile of default tile length 3 followed by two default tiles, whereas allele 'B' could have a
+For example, the first allele could have a non-simple tile of default tile length 3 followed by two default tiles, whereas
+the second allele could have a
 default tile followed by a non-simple tile that spans 4 default tiles.
 In this case, the maximum default tile length that spans the entire non-simple region is taken which, in this case, is 5.
 Here is an example of the what the portion of the `ABV` string might look like along with the entry in the `TileMap` lookup table:
 
-    ...****Z...
+    ...Z****...
 
-    { "Type" : "non-simple", "VariantA" : [ 101, 0, 0 ], "VariantB" : [ 0, 122 ], ... }
+    { "Type" : "non-simple", "Variant" : [ [ 101, 0, 0 ], [ 0, 122 ] ], ... }
 
 Where again, in this example, tile variant 101 spans 3 default tiles whereas tile variant 122 spans 4 default tiles.
 
 
+The `PhaseLoci` object attempts to capture phased groupings.  Each element in the `PhaseLoci` object maps to an array of tile intervals
+represented as ASCII encode path and step (separated by a ':').
 
 
 
@@ -130,9 +162,10 @@ Notes
 -----
 
   - The `FinalOverflowMap` was added instead of making each value a structure in the `OverflowMap` for simplicity.
-  - It's unclear how many values the `CharMap` field should have (64, 65, 66?).  For now, 64 values are chosen in the case we want to go to a binary represtation.
-  - A possible choice of the `TileMap` structure is to have the `VariantA` and `VariantB` conditionally be lists if the `Type` field indicates it (with a '+' character, for example).
-    This was not done for simplicites sake.  In addition the length field is also provided, even though it can be derived from the array to ease viewability.
+  - It's unclear how many values the `CharMap` field should have (64, 65, 66?).  For now, 64 values are chosen in the case we want to go to a binary representation.
+  - The `CharMap` is a many to one mapping in an attempt to be able to recover the base64 encoding easily.
+  - Should the `ABV` ever need to be base64 encoded, one can take the convention that negative numbers are relative to 64.  That is, a `-1` could map to
+    the value `63` (mapped to a `/` character) and a `-2` value could map to value `62` (mapped to a `+` character).
 
 
 
