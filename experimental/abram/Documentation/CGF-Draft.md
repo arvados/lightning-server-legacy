@@ -41,6 +41,7 @@ structure describing the parameters of the file.  Here is an example:
       },
 
       "CharMap" : { "A":0, ".":0, "B":1, "-" : 1, "C":2, "D":3, "E":4, ... , "+":62, "*":-2, "#":-1 },
+      "CanonicalCharMap" : ".-CDEFGHIJKLNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789*#",
 
       "TileMap" : [
         { "Type" : "hom",  "Ploidy" : 2, "Variant" : [ [0], [0] ], 1, "VariantLength" : [1,1] },
