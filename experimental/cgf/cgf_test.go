@@ -5,7 +5,9 @@ import "os"
 import "testing"
 import "io/ioutil"
 
-var test_cgf []byte = []byte(`{
+var test_cgf []byte = []byte(`#!cgf a
+
+    {
       "CGFVersion" : "0.1",
 
       "Encoding" : "utf8",
@@ -19,16 +21,16 @@ var test_cgf []byte = []byte(`{
       "TotalStep" : 108,
 
       "TileMap" : [
-        { "Type" : "hom", "VariantALength" : 1, "VariantA" : [0], "VariantBLength" : 1, "VariantB" : [0] },
-        { "Type" : "hom*", "VariantALength" : 1, "VariantA" : [0], "VariantBLength" : 1, "VariantB" : [0] },
-        { "Type" : "het", "VariantALength" : 1, "VariantA" : [1], "VariantBLength" : 1, "VariantB" : [0] },
-        { "Type" : "het", "VariantALength" : 1, "VariantA" : [0], "VariantBLength" : 1, "VariantB" : [1] },
-        { "Type" : "het*", "VariantALength" : 1, "VariantA" : [1], "VariantBLength" : 1, "VariantB" : [0] },
-        { "Type" : "het*", "VariantALength" : 1, "VariantA" : [0], "VariantBLength" : 1, "VariantB" : [1] },
-        { "Type" : "hom", "VariantALength" : 1, "VariantA" : [1], "VariantBLength" : 1, "VariantB" : [1] },
-        { "Type" : "hom", "VariantALength" : 1, "VariantA" : [1], "VariantBLength" : 1, "VariantB" : [1] },
-        { "Type" : "het", "VariantALength" : 2, "VariantA" : [2,5], "VariantBLength" : 1, "VariantB" : [3] },
-        { "Type" : "het*", "VariantALength" : 1, "VariantA" : [35], "VariantBLength" : 1, "VariantB" : [128] }
+        { "Type" : "hom", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[0] ] },
+        { "Type" : "hom*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[0] ] },
+        { "Type" : "het", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [1],[0] ] },
+        { "Type" : "het", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[1] ] },
+        { "Type" : "het*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [1],[0] ] },
+        { "Type" : "het*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[1] ] },
+        { "Type" : "hom", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [1],[1] ] },
+        { "Type" : "hom", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [1],[1] ] },
+        { "Type" : "het", "VariantLength" : [2,1], "Ploidy":2, "Variant" : [[2,5],[3]] },
+        { "Type" : "het*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [[35],[128]] }
       ],
 
       "CharMap" : { "." :  0,
@@ -65,6 +67,74 @@ var test_cgf []byte = []byte(`{
       }
 }`)
 
+func TestNew( t *testing.T ) {
+  cg := New()
+  _ = cg
+
+  if cg.PathCount != len(cg.StepPerPath) {
+    t.Error( fmt.Errorf("PathCount (%d) != len(cg.StepPerPath) (%d)\n", cg.PathCount, len(cg.StepPerPath) ) )
+  }
+
+  s := 0
+  for i:=0; i<len(cg.StepPerPath); i++ {
+    s += cg.StepPerPath[i]
+    if s != cg.StepPerPathSum[i] {
+      t.Error( fmt.Errorf("StepPerPathSum[%d] (%d)!= sum(cg.StepPerPath[0:%d]) (%d)\n", i, cg.StepPerPathSum[i], i, s ) )
+    }
+  }
+
+  if s != cg.TotalStep {
+    t.Error( fmt.Errorf("TotalStep (%d) != sum(cg.StepPerPath) (%d)\n", cg.TotalStep, s ) )
+  }
+
+}
+
+func TestDefaultTileMap( t *testing.T ) {
+  z := DefaultTileMap()
+
+  if len(z) == 0 { t.Error( fmt.Errorf("zero default tile map") ) }
+
+  for i:=0; i<len(z); i++ {
+    if z[i].Ploidy != 2 {
+      t.Error( fmt.Errorf("Ploidy of default tile map not 2 (element:%d, value:%v)\n", i, z) )
+    }
+
+    for j:=0; j<len(z[i].Variant); j++ {
+      if len(z[i].Variant[0]) != z[i].VariantLength[0] {
+        t.Error( fmt.Errorf("Variant %d length mismatch (%d != %d)\n", len(z[i].Variant[0]), z[i].VariantLength[0] ) )
+      }
+    }
+
+  }
+
+}
+
+func TestLookups( t *testing.T ) {
+  lookup := [][]int{ []int{0}, []int{0} }
+  _ = lookup
+
+  f,err := ioutil.TempFile( "", "" )
+  if err != nil { t.Error( err ) }
+
+  f.Write( test_cgf )
+  f.Close()
+
+  cg,ee := Load( f.Name() )
+  if ee != nil { t.Error(ee) }
+
+  ee = os.Remove( f.Name() )
+  if ee != nil { t.Error(ee) }
+
+  p := cg.LookupTileMapVariant( "hom", lookup )
+
+  if p!=0 {
+    t.Error( fmt.Errorf("Variant %v length failure (got %d, expected 0)\n", lookup, p ) )
+  }
+
+  s,found := cg.LookupABVCharCode( p )
+  _ = s
+  _ = found
+}
 
 func TestLoad( t *testing.T ) {
   f,err := ioutil.TempFile( "", "" )
