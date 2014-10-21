@@ -215,6 +215,9 @@ import "../recache"
 import "../tile"
 import "../bioenv"
 
+import "runtime/pprof"
+
+
 var VERSION_STR string = "0.1, AGPLv3.0"
 
 var gBioEnvWriter bioenv.BioEnvHandle
@@ -244,6 +247,9 @@ var g_verboseFlag bool
 
 var g_referenceTileSet *tile.TileSet
 
+
+var gProfileFlag bool
+var gProfileFile string
 
 
 type TileHeader struct {
@@ -287,7 +293,7 @@ type GffScanState struct {
   phase string
 
   variantOnTag bool
-  defaultTileLength int
+  seedTileLength int
 
   VariantId int
 
@@ -430,7 +436,6 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   gOutputWriter.WriteString("> { ")
   gOutputWriter.WriteString( fmt.Sprintf("\"tileID\" : \"%s\"", newTileId ) )
 
-
   gss.md5sum = md5.Sum( gss.gffCurSeq )
 
   gOutputWriter.WriteString(", \"md5sum\":\"")
@@ -441,9 +446,15 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
 
   gOutputWriter.WriteString("\"")
 
+  //copyNum := 0
+  //if gss.phase == "A" { copyNum = 0
+  //} else if gss.phase == "B" { copyNum = 1
+  //}
+
   gOutputWriter.WriteString( fmt.Sprintf(", \"locus\":[{\"build\":\"%s\"}]", header.Locus[0]["build"] ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"n\":%d", len(gss.gffCurSeq) ) )
-  gOutputWriter.WriteString( fmt.Sprintf(", \"copy\":%d", 0 ) )
+  //gOutputWriter.WriteString( fmt.Sprintf(", \"copy\":%d", copyNum ) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"seedTileLength\":%d", gss.seedTileLength ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"startSeq\":\"%s\"", gss.gffLeftTagSeqActual) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"endSeq\":\"%s\""  , gss.gffRightTagSeq) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"startTag\":\"%s\"", refTcc.StartTag ) )
@@ -501,7 +512,7 @@ func (gss *GffScanState) AdvanceState() {
 
 
     gss.variantOnTag = false
-    gss.defaultTileLength += 1
+    gss.seedTileLength += 1
 
     gss.gffRightTagSeq = gss.gffRightTagSeq[0:0]
 
@@ -590,7 +601,7 @@ func (gss *GffScanState) AdvanceState() {
   gss.nextTagStart = gss.startPos[ gss.startPosIndex ]
 
   gss.variantOnTag = false
-  gss.defaultTileLength = 1
+  gss.seedTileLength = 1
 
   if (gss.refStartVirtual + gss.refLenVirtual) != (gss.refStartActual + gss.refLenActual) {
     fmt.Printf(" (B) %d + %d (%d) != %d + %d (%d)\n",
@@ -1300,6 +1311,9 @@ func initCommandLineOptions( c *cli.Context ) {
 
   gOutputWriter = gBioEnvWriter.Writer
 
+
+  gProfileFlag = c.Bool("profile")
+  gProfileFile = c.String("profile-file")
 }
 
 func main() {
@@ -1312,7 +1326,7 @@ func main() {
   app.Email = "info@curoverse.com"
   app.Action = func( c *cli.Context ) {
     initCommandLineOptions(c)
-    _main_phased(c)
+    _main(c)
   }
 
   app.Flags = []cli.Flag{
@@ -1353,6 +1367,15 @@ func main() {
     cli.BoolFlag{
       Name: "verbose, V",
       Usage: "Verbose flag" },
+
+    cli.BoolFlag{
+      Name: "profile",
+      Usage: "Profile flag" },
+
+    cli.StringFlag{
+      Name: "profile-file",
+      Value: "gff2fj.pprof",
+      Usage: "Output profile file" },
 
   }
 
@@ -1402,7 +1425,18 @@ func processRegexLine( gss *GffScanState,
 
 }
 
-func _main_phased( c *cli.Context ) {
+func _main( c *cli.Context ) {
+
+  if gProfileFlag {
+    prof_f,err := os.Create( gProfileFile )
+    if err != nil {
+      fmt.Fprintf( os.Stderr, "Could not open profile file %s: %v\n", gProfileFile, err )
+      os.Exit(2)
+    }
+
+    pprof.StartCPUProfile( prof_f )
+    defer pprof.StopCPUProfile()
+  }
 
   g_rand = rand.New( rand.NewSource(g_randomSeed) )
 
@@ -1457,6 +1491,7 @@ func _main_phased( c *cli.Context ) {
   gss0.refStartActual, gss0.refLenActual = -1, 0
   gss0.TagLen = tagLen
   gss0.carryOverNotes = make( []string, 0, 10 )
+  gss0.seedTileLength = 1
 
   gss0.generateTileStartPositions( referenceTileSet, "hg19" )
 
@@ -1467,6 +1502,7 @@ func _main_phased( c *cli.Context ) {
   gss1.refStartActual, gss1.refLenActual = -1, 0
   gss1.TagLen = tagLen
   gss1.carryOverNotes = make( []string, 0, 10 )
+  gss1.seedTileLength = 1
 
   gss1.generateTileStartPositions( referenceTileSet, "hg19" )
 
