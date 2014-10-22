@@ -8,7 +8,7 @@ import "strconv"
 import "strings"
 
 var VERSION_STR string = "1.0"
-var CGF_VERSION string = "0.1"
+var CGF_VERSION string = "0.2"
 
 type TileMapEntry struct {
   Type string
@@ -96,24 +96,8 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
   fmt.Fprintf( ofp, "  \"Notes\" : \"%s\",\n", cgf.Notes)
   fmt.Fprintf( ofp, "  \"TileLibraryVersion\" : \"%s\",\n", cgf.TileLibraryVersion)
 
-  fmt.Fprintf( ofp, "  \"PathCount\" : %d,\n", cgf.PathCount )
 
-  fmt.Fprintf( ofp, "  \"StepPerPath\" : [\n    ")
-  spp_lf := 10
-  for i:=0; i<len(cgf.StepPerPath); i++ {
-    if i>0 { fmt.Fprintf( ofp, ",") }
-    if (i>0) && ((i%spp_lf)==0) { fmt.Fprintf( ofp, "\n   " ) }
-    if i>0 { fmt.Fprintf( ofp, " ") }
-    fmt.Fprintf( ofp, "%d", cgf.StepPerPath[i])
-  }
-  fmt.Fprintf( ofp, "\n    ],\n")
-  fmt.Fprintf( ofp, "  \"TotalStep\" : %d,\n", cgf.TotalStep)
-
-  fmt.Fprintln( ofp, "")
-
-  count:=0
-
-  count = 0
+  count := 0
   fmt.Fprintf( ofp, "  \"ABV\":{\n    ")
   for k,v := range cgf.ABV {
     if count>0 { fmt.Fprintf( ofp, ",\n    ") }
@@ -131,6 +115,21 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
   }
   fmt.Fprintf( ofp, "\n  },\n")
 
+
+  fmt.Fprintf( ofp, "  \"PathCount\" : %d,\n", cgf.PathCount )
+
+  fmt.Fprintf( ofp, "  \"StepPerPath\" : [\n    ")
+  spp_lf := 10
+  for i:=0; i<len(cgf.StepPerPath); i++ {
+    if i>0 { fmt.Fprintf( ofp, ",") }
+    if (i>0) && ((i%spp_lf)==0) { fmt.Fprintf( ofp, "\n   " ) }
+    if i>0 { fmt.Fprintf( ofp, " ") }
+    fmt.Fprintf( ofp, "%d", cgf.StepPerPath[i])
+  }
+  fmt.Fprintf( ofp, "\n    ],\n")
+  fmt.Fprintf( ofp, "  \"TotalStep\" : %d,\n", cgf.TotalStep)
+
+  fmt.Fprintln( ofp, "")
 
   fmt.Fprintf( ofp, "  \"CanonicalCharMap\" : \"%s\",\n", cgf.CanonicalCharMap )
 
