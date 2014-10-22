@@ -339,6 +339,7 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   //
   phaseVariant := [][]int{ []int{}, []int{} }
   phaseVariantSeedTileLength := []int{ 0, 0 }
+  phaseVariantPrevBaseId := []uint64{ 0, 0 }
 
   gapFlag := false
 
@@ -380,16 +381,22 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
     fjBaseId,e := tileIdToBaseId( fjHeaderList[fjpos].O["tileID"].S )
     if e!=nil { return e }
-    if firstPass { fjSaveBase = fjBaseId ; firstPass = false }
+    if firstPass {
+      fjSaveBase = fjBaseId
+      firstPass = false
+      phaseVariantPrevBaseId[0] = fjBaseId
+      phaseVariantPrevBaseId[1] = fjBaseId
+    }
 
+    // Notice this tile has a GAP on it
+    //
     if hasGap( fjHeaderList[fjpos] ) { gapFlag = true }
 
+    // Bring the tile library scanner up to date
+    //
     for (recentBaseTileId == 0) || (recentBaseTileId < fjBaseId) {
       t := &(TileLibraryElement{})
       t.ScanBaseTile( lib_h.Scanner )
-
-      //DEBUG
-      //fmt.Printf(">>> adding to tleCache %d\n", t.BaseId )
 
       tleCache[ t.BaseId ] = t
       recentBaseTileId = t.BaseId
@@ -402,12 +409,11 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       seedTileLength = int( fjHeaderList[fjpos].O["seedTileLength"].P + 0.5 )
     }
 
-    //DEBUG
-    //fmt.Printf(">>> looking up tleCache %d\n", fjBaseId )
-
     variantPos := -2
     if pos,ok := tleCache[ fjBaseId ].Md5sumPosMap[md5s] ; ok {
       variantPos = pos
+    } else {
+      fmt.Fprintf( os.Stderr, "WARNING: %d %s not found in tleCache!\n", fjBaseId, md5s )
     }
 
 
@@ -423,10 +429,28 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
     if phase == "A" {
       walkTile += seedTileLength
       phaseVariantSeedTileLength[0] += seedTileLength
+
+      for x:=phaseVariantPrevBaseId[0]; (x+uint64(seedTileLength)) < fjBaseId; x++ {
+
+        fmt.Printf("ADDING '-' to allele A (x%d: %d+%d)\n", x, fjBaseId, seedTileLength)
+
+        phaseVariant[0] = append( phaseVariant[0], '-' )
+      }
+      phaseVariantPrevBaseId[0] = fjBaseId + uint64(seedTileLength)
+
       phaseVariant[0] = append( phaseVariant[0], variantPos )
     } else if phase == "B" {
       walkTile -= seedTileLength
       phaseVariantSeedTileLength[1] += seedTileLength
+
+      for x:=phaseVariantPrevBaseId[1]; (x+uint64(seedTileLength)) < fjBaseId; x++ {
+
+        fmt.Printf("ADDING '-' to allele B (x%d: %d+%d)\n", x, fjBaseId, seedTileLength)
+
+        phaseVariant[1] = append( phaseVariant[1], '-' )
+      }
+      phaseVariantPrevBaseId[1] = fjBaseId + uint64(seedTileLength)
+
       phaseVariant[1] = append( phaseVariant[1], variantPos )
     } else {
       return fmt.Errorf("invalid phase '%s' (fjpos %d, md5sum %s)", phase, fjpos, fjHeaderList[fjpos].O["md5sum"].S)
@@ -449,11 +473,20 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
       _ = found
 
+      /*
       if (step-prev_step) > uint64(abv_snip_len) {
+
         for ii:=prev_step; ii<(step-uint64(abv_snip_len)); ii++ {
+
+          //DEBUG
+          fmt.Printf(" ADDING '-' prev_step %d, step %d (step-prev_step %d), abv_snip_len %d\n",
+            step, prev_step, step-prev_step, abv_snip_len )
+
+
           abv = append( abv, '-' )
         }
       }
+      */
 
       abv = append( abv, abv_char_code... )
       for ii:=0; ii<(abv_snip_len-1); ii++ {
@@ -472,7 +505,8 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
       //DEBUG
       //ll := len(abv)
-      //fmt.Printf(" fjBaseId %d, %s:%v (tile map pos %d) abv snip : '%s' (found %v)\n", fjBaseId, variantType, phaseVariant, tile_map_pos, abv[ll-abv_snip_len:ll], found )
+      //fmt.Printf(" fjBaseId %d, %s:%v (tile map pos %d) abv snip : '%s' (found %v)\n",
+      //  fjBaseId, variantType, phaseVariant, tile_map_pos, abv[ll-abv_snip_len:ll], found )
 
       // Remove un-needed elements in the cache
       //
@@ -710,6 +744,4 @@ func main() {
 
 
 }
-
-
 
