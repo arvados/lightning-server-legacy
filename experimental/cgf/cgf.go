@@ -47,31 +47,6 @@ type CGF struct {
 }
 
 
-func DefaultCanonicalCharMap() string {
-  return ".BCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678*#-"
-}
-
-func DefaultCharMap() map[string]int {
-  m := make( map[string]int )
-  default_base_str := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-  for i:=0; i<len(default_base_str); i++ { m[ default_base_str[i:i+1] ] = i }
-  m["."] = 0
-  m["-"] = -1
-  m["#"] = -2
-  m["*"] = -3
-  return m
-}
-
-func DefaultReverseCharMap() map[int]string {
-  m := make( map[int]string )
-  default_base_str := ".BCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678*#-"
-  for i:=0; i<len(default_base_str); i++ { m[ i ] = default_base_str[i:i+1] }
-  m[-1] = "-"
-  m[-2] = "#"
-  m[-3] = "*"
-  return m
-}
-
 func ConstructReverseCharMap( charMap map[string]int ) map[int]string {
   m := make( map[int]string )
   for k,v := range( charMap ) { m[v] = k }
