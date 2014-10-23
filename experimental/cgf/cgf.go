@@ -7,6 +7,8 @@ import "bufio"
 import "strconv"
 import "strings"
 
+import "sort"
+
 var VERSION_STR string = "1.0"
 var CGF_VERSION string = "0.2"
 
@@ -85,6 +87,16 @@ func (cgf *CGF) Print() {
   cgf.PrintFile( os.Stdout )
 }
 
+type ByAsciiHex []string
+
+func (t ByAsciiHex) Len() int { return len(t) }
+func (t ByAsciiHex) Swap(i,j int) {t[i],t[j] = t[j],t[i] }
+func (t ByAsciiHex) Less(i,j int) bool {
+  x,_ := strconv.ParseInt( t[i], 16, 64 )
+  y,_ := strconv.ParseInt( t[j], 16, 64 )
+  return x<y
+}
+
 func (cgf *CGF) PrintFile( ofp *os.File ) {
 
   fmt.Fprintln( ofp, "#!cgf a\n" )
@@ -99,11 +111,31 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
 
   count := 0
   fmt.Fprintf( ofp, "  \"ABV\":{\n    ")
+
+
+  /*
   for k,v := range cgf.ABV {
     if count>0 { fmt.Fprintf( ofp, ",\n    ") }
     fmt.Fprintf( ofp, "  \"%s\" : \"%s\"", k,v)
     count += 1
   }
+  */
+
+  // Output contents of ABV in sorted order
+  //
+  abv_key := []string{}
+  for k,_ := range cgf.ABV {
+    abv_key = append( abv_key, k )
+  }
+  sort.Sort( ByAsciiHex(abv_key) )
+
+  for i:=0; i<len(abv_key); i++ {
+    if count>0 { fmt.Fprintf( ofp, ",\n    ") }
+    fmt.Fprintf( ofp, "  \"%s\" : \"%s\"", abv_key[i],cgf.ABV[abv_key[i]])
+    count += 1
+  }
+
+
   fmt.Fprintf( ofp, "\n  },\n")
 
   fmt.Fprintf( ofp, "  \"CharMap\" : {")
