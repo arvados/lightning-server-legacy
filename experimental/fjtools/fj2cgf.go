@@ -315,16 +315,6 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   //---------------
 
 
-
-  //DEBUG
-  //fmt.Printf("???\n")
-  //for i:=0; i<len(fjHeaderList); i++ {
-  //  fmt.Printf("  [%d] %s\n", i, fjHeaderList[i].O["tileID"].S )
-  //  if i>= 10 { break }
-  //}
-
-
-
   var fjSaveBase uint64
   var recentBaseTileId uint64 = 0
   walkTile := 0
@@ -473,21 +463,6 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
       _ = found
 
-      /*
-      if (step-prev_step) > uint64(abv_snip_len) {
-
-        for ii:=prev_step; ii<(step-uint64(abv_snip_len)); ii++ {
-
-          //DEBUG
-          fmt.Printf(" ADDING '-' prev_step %d, step %d (step-prev_step %d), abv_snip_len %d\n",
-            step, prev_step, step-prev_step, abv_snip_len )
-
-
-          abv = append( abv, '-' )
-        }
-      }
-      */
-
       abv = append( abv, abv_char_code... )
       for ii:=0; ii<(abv_snip_len-1); ii++ {
         abv = append( abv, '*' )
@@ -502,11 +477,6 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
         k := cg.CreateTileMapCacheKey( variantType, phaseVariant )
         cg.FinalOverflowMap[ step_pos_key ] = cgf.OverflowMapEntry{ Type : "message", Data: "{ \"Message\" : \"not implemented yet\", \"VarKey\":\"" + k + "\" }" }
       }
-
-      //DEBUG
-      //ll := len(abv)
-      //fmt.Printf(" fjBaseId %d, %s:%v (tile map pos %d) abv snip : '%s' (found %v)\n",
-      //  fjBaseId, variantType, phaseVariant, tile_map_pos, abv[ll-abv_snip_len:ll], found )
 
       // Remove un-needed elements in the cache
       //
@@ -538,10 +508,10 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
 }
 
-var gProfileFlag bool = true
+var gProfileFlag bool
 var gProfileFile string = "fj2cgf.pprof"
 
-var gMemProfileFlag bool = true
+var gMemProfileFlag bool
 var gMemProfileFile string = "fj2cgf.mprof"
 
 
@@ -559,6 +529,8 @@ func _main( c *cli.Context ) {
   }
 
   g_verboseFlag = c.Bool("Verbose")
+  gProfileFlag = c.Bool("pprof")
+  gMemProfileFlag = c.Bool("mprof")
 
 
   if len( c.String("input-fastj")) == 0 {
@@ -573,25 +545,6 @@ func _main( c *cli.Context ) {
     os.Exit(1)
   }
 
-  scanner,err := bioenv.OpenScanner( c.String("input-fastj") )
-  if err != nil {
-    fmt.Fprintf( os.Stderr, "%v", err )
-    os.Exit(1)
-  }
-  defer scanner.Close()
-
-
-
-  //tileSet := tile.NewTileSet( 24 )
-
-  /*
-  err = tileSet.FastjScanner( scanner.Scanner )
-  if err != nil {
-    fmt.Fprintf( os.Stderr, "%v\n", err )
-    os.Exit(1)
-  }
-  */
-
 
   if len(c.String("cgf-file")) > 0 {
     var err error
@@ -604,92 +557,30 @@ func _main( c *cli.Context ) {
     gCGF = cgf.New()
   }
 
-  //_,e := UpdateABV( gCGF, c.String("tile-library"), c.String("input-fastj") )
 
-  //e := UpdateABV( gCGF, c.String("tile-library"), c.String("input-fastj") )
-  //fmt.Println("err", e)
+  tile_lib_fns := strings.Split( c.String("tile-library"), "," )
+  fastj_fns := strings.Split( c.String("input-fastj"), "," )
 
-  e := UpdateABV( gCGF, c.String("tile-library"), c.String("input-fastj") )
-  if e != nil { fmt.Println("err", e) }
-
-  gCGF.Print()
-
-  return
-
-
-  s := []string{ "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band0_s0_e4500000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band10_s32200000_e34000000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band11_s34000000_e35500000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band12_s35500000_e40100000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band13_s40100000_e45200000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band14_s45200000_e45800000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band15_s45800000_e47300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band16_s47300000_e50900000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band17_s50900000_e55300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band18_s55300000_e59600000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band19_s59600000_e62300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band1_s4500000_e10000000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band20_s62300000_e65700000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band21_s65700000_e68600000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band22_s68600000_e73300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band23_s73300000_e75400000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band24_s75400000_e77200000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band25_s77200000_e79000000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band26_s79000000_e87700000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band27_s87700000_e90000000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band28_s90000000_e95000000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band29_s95000000_e98200000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band2_s10000000_e16300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band30_s98200000_e99300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band31_s99300000_e101700000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band32_s101700000_e104800000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band33_s104800000_e107000000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band34_s107000000_e110300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band35_s110300000_e115169878.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band3_s16300000_e17900000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band4_s17900000_e19500000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band5_s19500000_e23300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band6_s23300000_e25500000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band7_s25500000_e27800000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band8_s27800000_e28900000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr13_band9_s28900000_e32200000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band0_s0_e3300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band10_s38400000_e40900000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band11_s40900000_e44900000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band12_s44900000_e47400000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band13_s47400000_e50200000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band14_s50200000_e57600000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band15_s57600000_e58300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band16_s58300000_e61100000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band17_s61100000_e62600000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band18_s62600000_e64200000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band19_s64200000_e67100000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band1_s3300000_e6500000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band20_s67100000_e70900000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band21_s70900000_e74800000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band22_s74800000_e75300000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band23_s75300000_e81195210.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band2_s6500000_e10700000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band3_s10700000_e16000000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band4_s16000000_e22200000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band5_s22200000_e24000000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band6_s24000000_e25800000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band7_s25800000_e31800000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band8_s31800000_e38100000.fj.gz",
-    "/scratch/pgp174.gff/hu011C57/chr13_chr17.fj/chr17_band9_s38100000_e38400000.fj.gz" }
-
-
-  for i:=0; i<len(s); i++ {
-    e := UpdateABV( gCGF, c.String("tile-library"), s[i] )
-    if e != nil { fmt.Println("err", e) }
-
-
+  if len(tile_lib_fns) != len(fastj_fns) {
+    fmt.Fprintf( os.Stderr, "tile library list length (%d) does not match fastj input list length (%d)\n",
+      len(tile_lib_fns), len(fastj_fns) )
+    os.Exit(1)
   }
 
-  fmt.Printf("...%d\n", len(s))
+  for i:=0; i<len(tile_lib_fns); i++ {
 
+    if g_verboseFlag {
+      fmt.Fprintf( os.Stderr, ">>> %s %s\n", tile_lib_fns[i], fastj_fns[i])
+    }
 
-  //gCGF.Print()
+    e := UpdateABV( gCGF, tile_lib_fns[i], fastj_fns[i] )
+    if e!=nil {
+      fmt.Fprintf( os.Stderr, "ERROR: processing %s %s: %v\n", tile_lib_fns[i], fastj_fns[i], e)
+      os.Exit(1)
+    }
+  }
+
+  gCGF.Print()
 
 }
 
@@ -729,6 +620,16 @@ func main() {
     cli.BoolFlag{
       Name: "Verbose, V",
       Usage: "Verbose flag",
+    },
+
+    cli.BoolFlag{
+      Name: "pprof",
+      Usage: "Profile usage",
+    },
+
+    cli.BoolFlag{
+      Name: "mprof",
+      Usage: "Profile memory usage",
     },
 
   }
