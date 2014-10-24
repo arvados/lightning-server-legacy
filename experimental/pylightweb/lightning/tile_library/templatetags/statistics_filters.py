@@ -10,6 +10,7 @@ def get_reference_length(position):
 
 @register.simple_tag
 def url_replace(request, field, value):
+    """request expected to be request.GET """
     dict_ = request.copy()
     dict_[field] = value
     return urllib.urlencode(dict_)

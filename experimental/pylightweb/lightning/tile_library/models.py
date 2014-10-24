@@ -1,17 +1,15 @@
 from django.db import models
 import string 
 
+import tile_library.basic_functions as fns
+
 #No population data for these models: all of that should be dealt with using the human models or npy file manipulation
 #   Population data includes:
 #       png representation of the tile
 #       Color each variant is associated with
-#       size of the population
+#       Size of the population
 #
 #Annotations that span multiple tiles should be in loadgenes
-#
-#
-#TODO: Add lift-over information/function for Tile?
-#TODO: Check that all tilevariants for each tile have the same loci
 
 class TileManage(models.Manager):
     """
@@ -55,12 +53,7 @@ class Tile(models.Model):
     
     def getTileString(self):
         """Displays hex indexing for tile """
-        strTilename = hex(self.tilename).lstrip('0x').rstrip('L')
-        strTilename = strTilename.zfill(9)
-        path = strTilename[:3]
-        version = strTilename[3:5]
-        step = strTilename[5:]
-        return string.join([path, version, step], ".")
+        return fns.get_position_string_from_position_int(int(self.tilename))
     getTileString.short_description='Tile Name'
     def __unicode__(self):
         return self.getTileString()
@@ -109,16 +102,10 @@ class TileVariant(models.Model):
     
     def getString(self):
         """Displays hex indexing for tile variant"""
-        strTilename = hex(self.tile_variant_name).lstrip('0x').rstrip('L')
-        strTilename = strTilename.zfill(12)
-        path = strTilename[:3]
-        version = strTilename[3:5]
-        step = strTilename[5:9]
-        var = strTilename[9:]
-        return string.join([path, version, step, var], ".")
+        return fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_name))
     getString.short_description='Variant Name'
     def isReference(self):
-        return self.variant_value == 0
+        return int(self.variant_value) == 0
     def __unicode__(self):
         return self.getString()
     class Meta:
@@ -271,6 +258,7 @@ class TileLocusAnnotation(models.Model):
     class Meta:
         #Ensures ordering by tilename
         ordering = ['tile']
+        unique_together = ("tile", "assembly")
 
 
 class GenomeStatistic(models.Model):
@@ -332,11 +320,11 @@ class GenomeStatistic(models.Model):
         (CHR_X, 'chrX'),
         (CHR_Y, 'chrY'),
         (CHR_M, 'chrM'),
-        (CHR_OTHER, 'Other Chromosome'),
-        (PATH, 'path'),
+        (CHR_OTHER, 'Other Chromosomes'),
+        (PATH, 'Path'),
     )
 
-    statistics_type = models.PositiveSmallIntegerField(db_index=True)
+    statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=NAME_CHOICES)
     
     path_name = models.PositiveIntegerField(db_index=True, blank=True, null=True)
 
@@ -354,6 +342,15 @@ class GenomeStatistic(models.Model):
     max_annotations_per_position = models.PositiveIntegerField(blank=True, null=True)
     avg_annotations_per_tile = models.DecimalField(blank=True, null=True, max_digits=15, decimal_places=3)
     max_annotations_per_tile = models.PositiveIntegerField(blank=True, null=True)
+    def __unicode__(self):
+        if self.statistics_type < 27:
+            name_index = [i for i,j in self.NAME_CHOICES]
+            humanReadable = self.NAME_CHOICES[name_index.index(self.statistics_type)][1]
+            return humanReadable + " Statistics"
+        else:
+            return "Path " + str(self.path_name) + " Statistics"
+    class Meta:
+        unique_together = ("statistics_type", "path_name")
 
   
 

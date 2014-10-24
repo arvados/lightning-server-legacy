@@ -1,19 +1,12 @@
-{% extends "base.html" %}
+{% extends "path_base.html" %}
 {% load staticfiles %}
 {% load statistics_filters %}
 
 {% block title %}Lightning: Tile Library Statistics for Gene {{ gene.gene_aliases }}{% endblock %}
 
-{% block breadcrumbs %}
-	<li><a href="{% url 'home:index' %}">Home</a></li>
-	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
-	<li><a href="{% url 'tile_library:chr_statistics' position_info.chr_int %}">{{ position_info.chr_name }}</a></li>
-	<li class="active"><a href="#">Gene {{ gene.gene_aliases }}</a></li>
-{% endblock %}
+{% block breadcrumb_name %}Gene {{ gene.gene_aliases }}{% endblock %}
 
-
-{% block content %}
-<div class="container-fluid">
+{% block page_header %}
 	<div class="page-header">
 		<h1>Tile Library Statistics: Gene {{ gene.gene_aliases }}</h1>
 		<div class="btn-group">
@@ -28,65 +21,13 @@
 		<p>Gene {{ gene.gene_aliases }} is in path {{ position_info.end_path_hex }} ({{ position_info.chr_name }}{{position_info.end_path_name}}).
 	{% endif %}
 		If an exon exists in the tile, the table row is highlighted in green.</p>
+{% endblock %}
 
-		<ul class="pagination">
-			{% if positions.has_previous %}
-			<li><a href="?{% url_replace request.GET 'page' positions.previous_page_number %}">&laquo;</a></li>
-			{% endif %}
-			<li class="active"><a href="#">Page {{ positions.number }} of {{ positions.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
-			{% if positions.has_next %}
-			<li><a href="?{% url_replace request.GET 'page' positions.next_page_number %}">&raquo;</a></li>
-			{% endif %}
-		</ul>
-	<div class="table-responsive">
-		<table class="table table-striped">
-			<thead>
-				<tr>
-					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Tile Position <span class="caret"></span></button>
-							<ul class="dropdown-menu" role="menu">
-								<li><a href="?{% url_replace request.GET 'ordering' 'desc_tile' %}">Descending</a></li>
-								<li><a href="?{% url_replace request.GET 'ordering' 'asc_tile' %}">Ascending</a></li>
-							</ul>
-						</div>
-					</th>
-					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"> Number of Tile Variants <span class="caret"></span></button>
-							<ul class="dropdown-menu" role="menu">
-								<li><a href="?{% url_replace request.GET 'ordering' 'desc_var' %}">Descending</a></li>
-								<li><a href="?{% url_replace request.GET 'ordering' 'asc_var' %}">Ascending</a></li>
-							</ul>
-						</div>
-					</th>
-					<th>Reference tile length (in bases)</th>
-					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Minimum Tile Length (in bases) <span class="caret"></span></button>
-							<ul class="dropdown-menu" role="menu">
-								<li><a href="?{% url_replace request.GET 'ordering' 'desc_min_len' %}">Descending</a></li>
-								<li><a href="?{% url_replace request.GET 'ordering' 'asc_min_len' %}">Ascending</a></li>
-							</ul>
-						</div>
-					</th>
-					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Average Tile Length (in bases) <span class="caret"></span></button>
-							<ul class="dropdown-menu" role="menu">
-								<li><a href="?{% url_replace request.GET 'ordering' 'desc_avg_len' %}">Descending</a></li>
-								<li><a href="?{% url_replace request.GET 'ordering' 'asc_avg_len' %}">Ascending</a></li>
-							</ul>
-						</div>
-					</th>
-					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Maximum Tile Length (in bases) <span class="caret"></span></button>
-							<ul class="dropdown-menu" role="menu">
-								<li><a href="?{% url_replace request.GET 'ordering' 'desc_max_len' %}">Descending</a></li>
-								<li><a href="?{% url_replace request.GET 'ordering' 'asc_max_len' %}">Ascending</a></li>
-							</ul>
-						</div>
-					</th>
-				</tr>
-			</thead>
-			<tbody>
-				{% for position in positions %}
+{% block show_upper_pagination %}{% if not positions or positions|length == 0 %}hidden{% endif %}{% endblock %}
+{% block show_table %}{% if not positions or positions|length == 0 %}hidden{%endif%}{% endblock %}
+
+{% block tbody %}
+			{% for position in positions %}
 				{% if position.has_exon %}
 				<tr class="success">
 				{% else %}
@@ -105,18 +46,8 @@
 					<td>{{ position.max_len }}</td>
 					{% endif %}
 				</tr>
-				{% endfor %}
-			</tbody>
-		</table>
-	</div>
-	<ul class="pagination">
-		{% if positions.has_previous %}
-		<li><a href="?{% url_replace request.GET 'page' positions.previous_page_number %}">&laquo;</a></li>
-		{% endif %}
-		<li class="active"><a href="#">Page {{ positions.number }} of {{ positions.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
-		{% if positions.has_next %}
-		<li><a href="?{% url_replace request.GET 'page' positions.next_page_number %}">&raquo;</a></li>
-		{% endif %}
-	</ul>
-</div>
+			{% endfor %}
 {% endblock %}
+
+{% block show_lower_pagination %}{% if not positions or positions|length == 0 %}hidden{%endif%}{% endblock %}
+
