@@ -64,7 +64,7 @@ def manipulateList(inpList, num_to_keep=None):
 now = datetime.datetime.now()
 now = str(now)
 
-input_file = 'entire.fj'
+input_file = 'brca2.fj'
 
 CHR_CHOICES = {
     'chr1': 1,
@@ -214,26 +214,26 @@ with open(input_file, 'r') as f:
                                   toSaveData['sequence'], toSaveData['start_seq'], toSaveData['end_seq'], tile, population_incr])
         annotations_to_write.extend(annotations)  
 
-with open('hide/chrM/tile.csv', 'wb') as f:
+with open('hide/tile.csv', 'wb') as f:
     f.writelines(manipulateList(tiles_to_write))
-with open('hide/chrM/tilevariant.csv', 'w') as f:
+with open('hide/tilevariant.csv', 'w') as f:
     f.writelines(manipulateList(tilevars_to_write, 10))
-with open('hide/chrM/tilelocusannotation.csv', 'w') as f:
+with open('hide/tilelocusannotation.csv', 'w') as f:
     f.writelines(manipulateList(loci_to_write))
-with open('hide/chrM/varannotation.csv', 'w') as f:
+with open('hide/varannotation.csv', 'w') as f:
     f.writelines(manipulateList(annotations_to_write))
-with open('hide/chrM/Library.csv', 'w') as f:
-    # for tile_library_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population
-    for l in tilevars_to_write:
-        tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population_size = l
-        #tilevarname, popul, md5sum
-        tile_var_hex = hex(tile_variant_name)[2:]
-        tile_var_hex = tile_var_hex.zfill(12)
-        path = tile_var_hex[:3]
-        version = tile_var_hex[3:5]
-        step = tile_var_hex[5:9]
-        var = tile_var_hex[9:]
-        tile_var_period_sep = string.join([path, version, step, var], '.') 
-        f.write(string.join([tile_var_period_sep, str(tile_variant_name), str(tile_id), str(population_size), md5sum+'\n'], sep=','))
+##with open('hide/chrM/Library.csv', 'w') as f:
+##    # for tile_library_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population
+##    for l in tilevars_to_write:
+##        tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, population_size = l
+##        #tilevarname, popul, md5sum
+##        tile_var_hex = hex(tile_variant_name)[2:]
+##        tile_var_hex = tile_var_hex.zfill(12)
+##        path = tile_var_hex[:3]
+##        version = tile_var_hex[3:5]
+##        step = tile_var_hex[5:9]
+##        var = tile_var_hex[9:]
+##        tile_var_period_sep = string.join([path, version, step, var], '.') 
+##        f.write(string.join([tile_var_period_sep, str(tile_variant_name), str(tile_id), str(population_size), md5sum+'\n'], sep=','))
 
 

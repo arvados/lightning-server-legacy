@@ -35,6 +35,12 @@ How to Set-up a local lightning cluster:
 		```
   * For further instructions on proper installation of django, see <https://docs.djangoproject.com/en/1.7/topics/install/>
 
+3. Install selenium (for testing)
+
+		```
+		$ sudo pip install selenium
+		```
+
 3.	Ensure checkout of the development branch (code that runs on a localhost): 
 
 		$ git checkout --track -b development origin/development
