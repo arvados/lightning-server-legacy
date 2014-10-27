@@ -255,12 +255,15 @@ func hasGap( fjHeader *sloppyjson.SloppyJSON ) bool {
       if strings.HasPrefix( fjHeader.O["notes"].L[i].S, "gapOnTag ") {
         v := strings.Split( fjHeader.O["notes"].L[i].S, " " )
         s,ee := strconv.Atoi(v[3])
-        if ee !=nil { fmt.Fprintf( os.Stderr, "s conversion %v\n", err ) }
+        if ee !=nil { fmt.Fprintf( os.Stderr, "s conversion %v\n", ee ) }
 
         e,ee := strconv.Atoi(v[4])
-        if ee!=nil { fmt.Fprintf( os.Stderr, "e conversion %v\n", err ) }
+        if ee!=nil { fmt.Fprintf( os.Stderr, "e conversion %v\n", ee ) }
 
         if (e < hg19_s) || (s > hg19_e) { continue }
+
+        //fmt.Printf( "s%d, e%d (hg19 s%d,e%d)\n", s, e, hg19_s, hg19_e )
+
         return true
       } else { return true }
     }
@@ -422,7 +425,7 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
       for x:=phaseVariantPrevBaseId[0]; (x+uint64(seedTileLength)) < fjBaseId; x++ {
 
-        fmt.Printf("ADDING '-' to allele A (x%d: %d+%d)\n", x, fjBaseId, seedTileLength)
+        //fmt.Printf("ADDING '-' to allele A (x%d: %d+%d)\n", x, fjBaseId, seedTileLength)
 
         phaseVariant[0] = append( phaseVariant[0], '-' )
       }
@@ -435,7 +438,7 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
       for x:=phaseVariantPrevBaseId[1]; (x+uint64(seedTileLength)) < fjBaseId; x++ {
 
-        fmt.Printf("ADDING '-' to allele B (x%d: %d+%d)\n", x, fjBaseId, seedTileLength)
+        //fmt.Printf("ADDING '-' to allele B (x%d: %d+%d)\n", x, fjBaseId, seedTileLength)
 
         phaseVariant[1] = append( phaseVariant[1], '-' )
       }
@@ -528,8 +531,8 @@ func _main( c *cli.Context ) {
     defer pprof.StopCPUProfile()
   }
 
-  g_verboseFlag = c.Bool("Verbose")
-  gProfileFlag = c.Bool("pprof")
+  g_verboseFlag   = c.Bool("Verbose")
+  gProfileFlag    = c.Bool("pprof")
   gMemProfileFlag = c.Bool("mprof")
 
 
@@ -580,7 +583,20 @@ func _main( c *cli.Context ) {
     }
   }
 
-  gCGF.Print()
+  var ofp *os.File
+  if ( (c.String("output-cgf")=="") || (c.String("output-cgf")=="-")) {
+    ofp = os.Stdout
+  } else {
+    ofp,err := os.Create( c.String("output-cgf") )
+    if err!=nil {
+      fmt.Fprintf( os.Stderr, "%v", err )
+      os.Exit(1)
+    }
+    defer ofp.Close()
+  }
+
+  gCGF.PrintFile(ofp)
+
 
 }
 
