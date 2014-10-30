@@ -229,6 +229,7 @@ var gDebugString string
 var gRefGenome string = "hg19"
 
 var gAllowVariantOnTag bool = false
+var gPlaceNoCallInSeq bool = true
 
 var gLineNo int = 0
 
@@ -444,30 +445,62 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
     gOutputWriter.WriteString( fmt.Sprintf("%02x", gss.md5sum[i]) )
   }
 
-  gOutputWriter.WriteString("\"")
 
-  //copyNum := 0
-  //if gss.phase == "A" { copyNum = 0
-  //} else if gss.phase == "B" { copyNum = 1
-  //}
+  nocallCount:=0
+  nocall_note := make( []string, 0, 8 )
+  if gPlaceNoCallInSeq {
+    nocall_run:=0
+    n := len(gss.gffCurSeq)
+    seq := gss.gffCurSeq
+    for i:=0; i<n; i++ {
+
+      s := i
+      for ; (i<n) && ((seq[i] == 'n') || (seq[i] == 'N')); i++ {
+        nocall_run++
+      }
+
+      nocallCount += nocall_run
+      if nocall_run > 0 {
+        nocall_note = append( nocall_note, fmt.Sprintf("nocall %d %d", s, nocall_run) )
+        nocall_run=0
+      }
+
+    }
+
+  }
+
+  gOutputWriter.WriteString("\"")
 
   gOutputWriter.WriteString( fmt.Sprintf(", \"locus\":[{\"build\":\"%s\"}]", header.Locus[0]["build"] ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"n\":%d", len(gss.gffCurSeq) ) )
-  //gOutputWriter.WriteString( fmt.Sprintf(", \"copy\":%d", copyNum ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"seedTileLength\":%d", gss.seedTileLength ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"startSeq\":\"%s\"", gss.gffLeftTagSeqActual) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"endSeq\":\"%s\""  , gss.gffRightTagSeq) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"startTag\":\"%s\"", refTcc.StartTag ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"endTag\":\"%s\""  , refTcc.EndTag ) )
 
+  if gPlaceNoCallInSeq {
+    gOutputWriter.WriteString( fmt.Sprintf(", \"nocallCount\":%d"  , nocallCount ) )
+  }
+
   gss.notes = append( gss.notes, fmt.Sprintf("Phase (%s) %s", g_variantPolicy, gss.phase ) )
 
   if len(gss.notes) > 0 {
     gOutputWriter.WriteString(", \"notes\":[")
+
+    note_count := 0
     for i:=0; i<len(gss.notes); i++ {
       if i>0 { gOutputWriter.WriteString(", ") }
       gOutputWriter.WriteString( fmt.Sprintf("\"%s\"", gss.notes[i]) )
+      note_count++
     }
+
+    for i:=0; i<len(nocall_note); i++ {
+      if note_count>0 { gOutputWriter.WriteString(", ") }
+      gOutputWriter.WriteString( fmt.Sprintf("\"%s\"", nocall_note[i]) )
+      note_count++
+    }
+
     gOutputWriter.WriteString("]")
   }
 
@@ -617,6 +650,35 @@ func (gss *GffScanState) AdvanceState() {
 
 }
 
+func fill_no_call( s []byte, ds int ) []byte {
+  for i:=0; i<ds; i++ { s = append( s, "n"... ) }
+  return s
+}
+
+func append_with_ref_and_nocall( s, ref []byte, gapEndPos, spos, epos int) []byte {
+  dpos := epos - spos
+  if dpos < 0 {
+    fmt.Fprintf( os.Stderr, "ERROR: append_with_ref_and_nocall epos (%d) < spos (%d)\n", epos, spos )
+    fmt.Fprintf( os.Stdout, "ERROR: append_with_ref_and_nocall epos (%d) < spos (%d)\n", epos, spos )
+    panic( fmt.Errorf("ERROR: append_with_ref_and_nocall epos (%d) < spos (%d)\n", epos, spos ) )
+  }
+
+  if dpos==0 {
+    //fmt.Fprintf( os.Stderr, "ERROR: append_with_ref_and_nocall epos (%d) == spos (%d)\n", epos, spos )
+    //fmt.Fprintf( os.Stdout, "ERROR: append_with_ref_and_nocall epos (%d) == spos (%d)\n", epos, spos )
+    return s
+  }
+
+  if gapEndPos < spos {
+    s = append( s, ref[ spos : spos + dpos ]... )
+  } else if gapEndPos < (spos+dpos) {
+    s = fill_no_call( s, gapEndPos - spos )
+    s = append( s, ref[ gapEndPos : spos + dpos ]... )
+  } else {
+    s = fill_no_call( s, dpos )
+  }
+  return s
+}
 
 
 func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
@@ -636,10 +698,24 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
   gapNote := ""
 
   if (gss.refStartVirtual + gss.refLenVirtual) < refStartPos {
-    gss.notes = append( gss.notes , fmt.Sprintf("%s %s %d %d GAP %d %d", gRefGenome, gss.curChrom, gss.refStartActual + gss.refLenActual, refStartPos-1, gss.refLenActual, gapLen) )
-    gapNote = fmt.Sprintf("gapOnTag %s %s %d %d GAP - %d", gRefGenome, gss.curChrom, gss.refStartActual + gss.refLenActual, refStartPos-1, gapLen)
+    gss.notes = append( gss.notes,
+                        fmt.Sprintf("%s %s %d %d GAP %d %d",
+                                    gRefGenome,
+                                    gss.curChrom,
+                                    gss.refStartActual + gss.refLenActual,
+                                    refStartPos-1,
+                                    gss.refLenActual,
+                                    gapLen) )
+
+    gapNote = fmt.Sprintf("gapOnTag %s %s %d %d GAP - %d",
+                          gRefGenome,
+                          gss.curChrom,
+                          gss.refStartActual + gss.refLenActual,
+                          refStartPos-1,
+                          gapLen)
   }
 
+  if gapLen < 0 { gapLen = 0 }
 
   // The refStartPos + entryLen (end of the reference sequence) has shot past the current tag
   // end boundary.  We want to peel off the head of the sequence, adding it to the finalTileSet
@@ -649,18 +725,83 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
 
     if gss.refStartVirtual == gss.startPos[ gss.startPosIndex-1 ] {
 
-      fa := chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.nextTagStart + gss.TagLen ]
+      refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStartVirtual + gss.refLenVirtual)
+      //dGapLen := gapLen
+      //if dGapLen > refLenRemain { dGapLen = refLenRemain }
+
+      var fa []byte
+
+      // Update the current sequence, placing 'no-calls' as appropriate.
+      //
+      if gPlaceNoCallInSeq {
+
+        fa = append_with_ref_and_nocall( fa, chromFa, gapEndPos, gss.refStartVirtual + gss.refLenVirtual, gss.nextTagStart + gss.TagLen )
+
+        /*
+        spos := gss.refStartVirtual + gss.refLenVirtual
+        epos := gss.nextTagStart + gss.TagLen
+        dpos := epos - spos
+
+        if gapEndPos < spos {
+          fa = append( fa, chromFa[ spos : spos + dpos ] )
+        } else if gapEndPos < (spos+dpos) {
+          fa = fill_no_call( fa, gapEndPos - spos )
+          fa = append( fa, chromFa[ gapEndPos : spos + dpos ] )
+        } else {
+          fa = fill_no_call( fa, dpos )
+        }
+        */
+
+      } else {
+        fa = chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.nextTagStart + gss.TagLen ]
+      }
       gss.gffCurSeq = append( gss.gffCurSeq, fa... )
+
 
       // Update the tag with the remainder of it's sequence, either the full ref or a partial
       // subsequence of the ref if the right tag sequence already partially filled in.
       //
-      refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStartVirtual + gss.refLenVirtual)
       if refLenRemain > gss.TagLen {
         gss.gffRightTagSeq = gss.gffRightTagSeq[0:0]
-        gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gss.nextTagStart : gss.nextTagStart + gss.TagLen ]... )
+
+        if gPlaceNoCallInSeq {
+
+          gss.gffRightTagSeq = append_with_ref_and_nocall( gss.gffRightTagSeq, chromFa, gapEndPos, gss.nextTagStart, gss.nextTagStart + gss.TagLen )
+
+          /*
+          spos := gss.nextTagStart
+          epos := gss.nextTagStart + gss.TagLen
+          dpos := gss.TagLen
+
+          if gapEndPos < spos {
+            gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ spos : spos + dpos ] )
+          } else if gapEndPos < (spos+dpos) {
+            gss.gffRightTagSeq = fill_no_call( gss.gffRightTagSeq, gapEndPos - spos )
+            gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gapEndPos : spos + dpos ] )
+          } else {
+            gss.gffRightTagSeq = fill_no_call( gss.gffRightTagSeq, dpos )
+          }
+          */
+
+        } else {
+          gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gss.nextTagStart : gss.nextTagStart + gss.TagLen ]... )
+        }
+
+
       } else {
-        gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.nextTagStart + gss.TagLen ]... )
+
+        if gPlaceNoCallInSeq {
+
+          gss.gffRightTagSeq = append_with_ref_and_nocall( gss.gffRightTagSeq,
+                                                       chromFa,
+                                                       gapEndPos,
+                                                       gss.refStartVirtual + gss.refLenVirtual,
+                                                       gss.nextTagStart + gss.TagLen )
+
+        } else {
+          gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.nextTagStart + gss.TagLen ]... )
+        }
+
       }
 
       if gAllowVariantOnTag || !gss.variantOnTag {
@@ -684,7 +825,18 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
   // Finally, append trailing reference sequence to gffCurSeq.
   //
   dn := (refStartPos + entryLen) - (gss.refStartVirtual + gss.refLenVirtual)
-  gss.gffCurSeq = append( gss.gffCurSeq, chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.refStartVirtual + gss.refLenVirtual + dn ]... )
+
+  if gPlaceNoCallInSeq {
+
+    gss.gffCurSeq = append_with_ref_and_nocall( gss.gffCurSeq,
+                                            chromFa,
+                                            gapEndPos,
+                                            gss.refStartVirtual + gss.refLenVirtual,
+                                            gss.refStartVirtual + gss.refLenVirtual + dn )
+
+  } else {
+    gss.gffCurSeq = append( gss.gffCurSeq, chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.refStartVirtual + gss.refLenVirtual + dn ]... )
+  }
 
 
   // The "reference" right tag length is not necessarily the length of the right
@@ -700,7 +852,18 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
   refLenTagOverflow -= refLenRightTag
   if refLenTagOverflow > 0 {
     begRightTag := gss.nextTagStart + refLenRightTag
-    gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ begRightTag : begRightTag + refLenTagOverflow ]... )
+
+    if gPlaceNoCallInSeq {
+
+      gss.gffRightTagSeq = append_with_ref_and_nocall( gss.gffRightTagSeq,
+                                                       chromFa,
+                                                       gapEndPos,
+                                                       begRightTag,
+                                                       begRightTag + refLenTagOverflow )
+
+    } else {
+      gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ begRightTag : begRightTag + refLenTagOverflow ]... )
+    }
 
     if gapEndPos > begRightTag {
       gss.carryOverNotes = append( gss.carryOverNotes, gapNote )
@@ -710,7 +873,6 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
 
   gss.refLenVirtual += dn
   gss.refLenActual += dn
-
 
 }
 
@@ -1264,8 +1426,13 @@ func initCommandLineOptions( c *cli.Context ) {
 
   g_variantPolicy = c.String("variant-policy")
 
-
   gAllowVariantOnTag = c.Bool("allow-variant-on-tag")
+
+  // Default is to place 'n' for no-called regions
+  // in the sequence.  Enableing this flag will
+  // fill the tile with reference.
+  //
+  gPlaceNoCallInSeq = !c.Bool("fill-no-call-with-ref")
 
   ts := time.Now().UnixNano()
   _ = ts
@@ -1359,6 +1526,10 @@ func main() {
     cli.BoolFlag{
       Name: "allow-variant-on-tag, T",
       Usage: "Allow variants on tags (by default, tiles are extended to not allow variants on tags)" },
+
+    cli.BoolFlag{
+      Name: "fill-no-call-with-ref",
+      Usage: "Fill in regions that weren't called with the reference provided (default places 'n' in sequence)" },
 
     cli.IntFlag{
       Name: "seed, S",
