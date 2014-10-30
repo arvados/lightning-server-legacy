@@ -360,7 +360,7 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       //Tie off the abv vector and add it to the cgf structure
       //
       n := uint64(cg.StepPerPath[ prev_path ])
-      for i:=prev_step; i<n; i++ {
+      for i:=prev_step; i<(n-1); i++ {
         abv = append( abv, '-' )
       }
 
@@ -502,7 +502,7 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   //Tie off the final abv vector and add it to the cgf structure
   //
   n := uint64(cg.StepPerPath[ prev_path ])
-  for i:=prev_step; i<n; i++ {
+  for i:=prev_step; i<(n-1); i++ {
     abv = append( abv, '-' )
   }
   cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
