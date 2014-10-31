@@ -2,11 +2,13 @@ from django.test import TestCase
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.urlresolvers import reverse
 from selenium.webdriver.firefox.webdriver import WebDriver
+from selenium import webdriver
 
 class TestViewBreadcrumbs(StaticLiveServerTestCase):
     @classmethod
     def setUpClass(cls):
-        cls.selenium = WebDriver()
+        #cls.selenium = WebDriver()
+        cls.selenium = webdriver.PhantomJS()
         super(TestViewBreadcrumbs, cls).setUpClass()
 
     @classmethod
@@ -44,6 +46,7 @@ class TestViewBase(StaticLiveServerTestCase):
     @classmethod
     def setUpClass(cls):
         cls.selenium = WebDriver()
+        #cls.selenium = webdriver.PhantomJS()
         super(TestViewBase, cls).setUpClass()
 
     @classmethod
