@@ -14,6 +14,11 @@
 	<div class="page-header">
 		<h1>Tile Library Statistics: Chromosomes</h1>
 	</div>
+	{% if stats|length == 0 %}
+	<div class="alert alert-danger" role="alert">
+		No statistics for this Tile Library are available. Use tile_library.generate_stats.initialize() to generate statistics for this tile library.
+	</div>
+	{% else %}
 	<div class="table-responsive">
 		<table id="StatTable"class="table table-striped">
 			<thead>
@@ -49,6 +54,7 @@
 			</tbody>
 		</table>
 	</div>
+	{% endif %}
 </div>
 {% endblock %}
 

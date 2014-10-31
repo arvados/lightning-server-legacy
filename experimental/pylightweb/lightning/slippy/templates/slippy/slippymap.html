@@ -225,6 +225,21 @@
 				curr_gene_i = 0;
 				setTimeout(displayOneGene,200);
 			{% endif %}
+			{% if overlapping %}
+				var responseText = "";
+				{% for gene_group in overlapping %}
+					responseText += "{{gene_group.4.gene_aliases}}-Locus-{{forloop.counter}},{{gene_group.2}},{{gene_group.3}},{{gene_group.4.gene_review_URLs}}|";
+				{% endfor %}
+				jQuery("#progress-bar").attr('aria-valuenow', '0');
+				jQuery("#progress-bar").text('0%');
+				jQuery("#progress-bar").css("width", "0%");
+				jQuery("#modal-loading-genes").modal('show');
+				genesToDisplay = responseText.replace(/\s/g, '').split('|');
+				max_val_genes = genesToDisplay.length;
+				keepAddingOverlays = true;
+				curr_gene_i = 0;
+				setTimeout(displayOneGene,200);
+			{% endif %}
 		});
 	</script>
 {% endblock %}
