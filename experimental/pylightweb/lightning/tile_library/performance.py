@@ -30,16 +30,16 @@ def run(silent=False):
     max_path_pos -= 1
     max_path_tile -= 1
     if not silent:
-        print "Entire Genome:"
-        print "\tTile count()", timeitarg(Tile.objects.count)
-        print "\tTile count via aggregate", timeitarg(Tile.objects.aggregate, Count('tilename'))
-        print "\tTile maxvar", timeitarg(Tile.objects.annotate(num_variants=Count('variants')).aggregate, Max('num_variants'))
-        print "\tTile avgvar", timeitarg(Tile.objects.annotate(num_variants=Count('variants')).aggregate, Avg('num_variants'))
-        print "\tTile aggregate", timeitarg(Tile.objects.annotate(num_variants=Count('variants')).aggregate, Count('tilename'), Avg('num_variants'), Max('num_variants'))
-        print "\tTileVar minlen", timeitarg(TileVariant.objects.aggregate, Min('length'))
-        print "\tTileVar avglen", timeitarg(TileVariant.objects.aggregate, Avg('length'))
-        print "\tTileVar maxlen", timeitarg(TileVariant.objects.aggregate, Max('length'))
-        print "\tTileVar aggregate", timeitarg(TileVariant.objects.aggregate, Count('tile_variant_name'), Avg('length'), Min('length'), Avg('length'))
+        print "Biggest Path:"
+        print "\tTile count()", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).count)
+        print "\tTile count via aggregate", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).aggregate, Count('tilename'))
+        print "\tTile maxvar", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).annotate(num_variants=Count('variants')).aggregate, Max('num_variants'))
+        print "\tTile avgvar", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).annotate(num_variants=Count('variants')).aggregate, Avg('num_variants'))
+        print "\tTile aggregate", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).annotate(num_variants=Count('variants')).aggregate, Count('tilename'), Avg('num_variants'), Max('num_variants'))
+        print "\tTileVar minlen", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate, Min('length'))
+        print "\tTileVar avglen", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate, Avg('length'))
+        print "\tTileVar maxlen", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate, Max('length'))
+        print "\tTileVar aggregate", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate, Avg('length'), Min('length'), Max('length'))
         print ""
         print "Biggest Chromosome:"
         print "\tTile count()", timeitarg(Tile.objects.filter(tilename__range=(min_pos, max_pos)).count)
@@ -52,17 +52,17 @@ def run(silent=False):
         print "\tTileVar maxlen", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_tile, max_tile)).aggregate, Max('length'))
         print "\tTileVar aggregate", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_tile, max_tile)).aggregate, Avg('length'), Min('length'), Max('length'))
         print ""
-        print "Biggest Path:"
-        print "\tTile count()", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).count)
-        print "\tTile count via aggregate", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).aggregate, Count('tilename'))
-        print "\tTile maxvar", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).annotate(num_variants=Count('variants')).aggregate, Max('num_variants'))
-        print "\tTile avgvar", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).annotate(num_variants=Count('variants')).aggregate, Avg('num_variants'))
-        print "\tTile aggregate", timeitarg(Tile.objects.filter(tilename__range=(min_path_pos, max_path_pos)).annotate(num_variants=Count('variants')).aggregate, Count('tilename'), Avg('num_variants'), Max('num_variants'))
-        print "\tTileVar minlen", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate, Min('length'))
-        print "\tTileVar avglen", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate, Avg('length'))
-        print "\tTileVar maxlen", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate, Max('length'))
-        print "\tTileVar aggregate", timeitarg(TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)).aggregate, Avg('length'), Min('length'), Max('length'))
-
+        print "Entire Genome:"
+        print "\tTile count()", timeitarg(Tile.objects.count)
+        print "\tTile count via aggregate", timeitarg(Tile.objects.aggregate, Count('tilename'))
+        print "\tTile maxvar", timeitarg(Tile.objects.annotate(num_variants=Count('variants')).aggregate, Max('num_variants'))
+        print "\tTile avgvar", timeitarg(Tile.objects.annotate(num_variants=Count('variants')).aggregate, Avg('num_variants'))
+        print "\tTile aggregate", timeitarg(Tile.objects.annotate(num_variants=Count('variants')).aggregate, Count('tilename'), Avg('num_variants'), Max('num_variants'))
+        print "\tTileVar minlen", timeitarg(TileVariant.objects.aggregate, Min('length'))
+        print "\tTileVar avglen", timeitarg(TileVariant.objects.aggregate, Avg('length'))
+        print "\tTileVar maxlen", timeitarg(TileVariant.objects.aggregate, Max('length'))
+        print "\tTileVar aggregate", timeitarg(TileVariant.objects.aggregate, Count('tile_variant_name'), Avg('length'), Min('length'), Avg('length'))
+        
 def run_chr1(silent=False):
     chrom = 1
     min_pos, min_tile = fns.get_min_position_and_tile_variant_from_chromosome_int(chrom)
@@ -124,18 +124,3 @@ def run_chr1(silent=False):
         print "Average time spent on TileVariant aggr:", total_count/float(len(times))
         print "Minimum time spent on TileVariant aggr:", min_count[1], "on path", min_count[2]
         print "Total time spent on TileVariant aggr:", total_aggr
-        
-
-#run_chr()
-
-
-
-
-
-
-
-
-
-
-
-
