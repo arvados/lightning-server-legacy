@@ -15,7 +15,7 @@ var VERSION_STR string = "0.1, AGPLv3.0"
 var g_verboseFlag bool
 
 var gMemProfileFlag bool = false
-var gMemProfileFile string = "cgf_helper.mprof"
+var gMemProfileFile string = "cgfpeek.mprof"
 
 func parseIntOption( istr string, base int ) ([][]int64, error) {
   r := make( [][]int64, 0, 8 )
@@ -87,6 +87,13 @@ func parseIntOption( istr string, base int ) ([][]int64, error) {
 }
 
 func _abv_peek( c *cli.Context ) {
+
+  if len(c.String("cgf-file"))==0 {
+    fmt.Fprintf( os.Stderr, "provide cgf-file\n" )
+    cli.ShowAppHelp( c )
+    os.Exit(1)
+  }
+
   cg,ee := cgf.Load( c.String("cgf-file") ) ; _ = cg
   if ee!=nil { fmt.Fprintf( os.Stderr, "%s: %v\n", c.String("cgf-file"), ee) ; os.Exit(1) }
 
@@ -186,7 +193,7 @@ func _main( c *cli.Context ) {
 func main() {
 
   app := cli.NewApp()
-  app.Name  = "cgf_helper"
+  app.Name  = "cgfpeek"
   app.Usage = "Helper program to examine cgf files"
   app.Version = VERSION_STR
   app.Author = "Curoverse Inc."
