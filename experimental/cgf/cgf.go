@@ -3,6 +3,7 @@ package cgf
 import "fmt"
 import "os"
 import "encoding/json"
+import "crypto/md5"
 import "bufio"
 import "strconv"
 import "strings"
@@ -24,6 +25,31 @@ type OverflowMapEntry struct {
   Data string
 }
 
+type CGFLean struct {
+  CGFVersion string
+  Encoding string
+  Notes string
+  TileLibraryVersion string
+
+  PathCount int
+  StepPerPath []int
+  StepPerPathSum []int
+  TotalStep int
+
+  TileMapString string
+  TileMapStringMd5Sum string
+
+  CharMap map[string]int
+  ReverseCharMap map[int]string
+  CanonicalCharMap string
+
+  ABV map[string]string
+  OverflowMap map[string]int
+  FinalOverflowMap map[string]OverflowMapEntry
+
+  TileMapLookupCache map[string]int
+}
+
 type CGF struct {
   CGFVersion string
   Encoding string
@@ -36,6 +62,8 @@ type CGF struct {
   TotalStep int
 
   TileMap []TileMapEntry
+  TileMapString string
+  TileMapStringMd5Sum string
 
   CharMap map[string]int
   ReverseCharMap map[int]string
@@ -62,6 +90,10 @@ func New() *CGF {
   cg.TileLibraryVersion = ""
 
   cg.TileMap = DefaultTileMap()
+
+  cg.TileMapString = string(cg.CreateNormalizedTileMap())
+  cg.TileMapStringMd5Sum = cg.NormalizedTileMapMd5SumString()
+
   cg.CharMap = DefaultCharMap()
   cg.ReverseCharMap = DefaultReverseCharMap()
   cg.CanonicalCharMap = DefaultCanonicalCharMap()
@@ -112,15 +144,6 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
   count := 0
   fmt.Fprintf( ofp, "  \"ABV\":{\n    ")
 
-
-  /*
-  for k,v := range cgf.ABV {
-    if count>0 { fmt.Fprintf( ofp, ",\n    ") }
-    fmt.Fprintf( ofp, "  \"%s\" : \"%s\"", k,v)
-    count += 1
-  }
-  */
-
   // Output contents of ABV in sorted order
   //
   abv_key := []string{}
@@ -165,6 +188,8 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
 
   fmt.Fprintf( ofp, "  \"CanonicalCharMap\" : \"%s\",\n", cgf.CanonicalCharMap )
 
+  fmt.Fprintf( ofp, "  \"TileMapStringMd5Sum\":\"%s\",\n", cgf.TileMapStringMd5Sum )
+  fmt.Fprintf( ofp, "  \"TileMapString\":\"%s\",\n", cgf.TileMapString )
 
   fmt.Fprintf( ofp, "  \"TileMap\" : [\n    ")
   for i:=0; i<len(cgf.TileMap); i++ {
@@ -230,6 +255,25 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
 }
 
 
+func LoadLean( fn string ) ( cgl *CGFLean, err error ) {
+  fp,err := os.Open( fn )
+  if err != nil { return nil, err }
+  defer fp.Close()
+
+  reader := bufio.NewReader(fp)
+
+  cgl = &(CGFLean{})
+
+  dec := json.NewDecoder(reader)
+
+  err = dec.Decode( cgl )
+  if err != nil { return nil, err }
+
+  cgl.ReverseCharMap = ConstructReverseCharMap( cgl.CharMap )
+
+  return cgl, nil
+}
+
 func Load( fn string ) ( cgf *CGF, err error ) {
   fp,err := os.Open( fn )
   if err != nil { return nil, err }
@@ -237,16 +281,8 @@ func Load( fn string ) ( cgf *CGF, err error ) {
 
   reader := bufio.NewReader(fp)
 
-  header,err := reader.ReadString('\n')
-  if err != nil { return nil, err }
-
-  if !strings.HasPrefix( header, "#!cgf" ) {
-    return nil, fmt.Errorf("Invalid CGF header, expected '#!cgf', got '%s'", header )
-  }
-
   cgf = &(CGF{})
 
-  //dec := json.NewDecoder(fp)
   dec := json.NewDecoder(reader)
 
   err = dec.Decode( cgf )
@@ -255,6 +291,49 @@ func Load( fn string ) ( cgf *CGF, err error ) {
   cgf.ReverseCharMap = ConstructReverseCharMap( cgf.CharMap )
 
   return cgf, nil
+}
+
+func ( cgf *CGF ) CreateNormalizedTileMap() ( []byte ) {
+  typeMap := map[string][2]byte{
+    "het": [2]byte{ '_', '.' },
+    "hom": [2]byte{'_', '.'} ,
+    "het*": [2]byte{'x','*'},
+    "hom*": [2]byte{'x','*'} }
+  b := []byte{}
+
+  for i:=0; i<len(cgf.TileMap); i++ {
+    if i>0 { b = append( b, ';' ) }
+
+    if v,ok := typeMap[ cgf.TileMap[i].Type ] ; ok {
+      //xx := typeMap[ cgf.TileMap[i].Type ]
+      b = append( b, v[:]... )
+    } else {
+      b = append(b, []byte( cgf.TileMap[i].Type )... )
+    }
+
+    for v:=0; v<len(cgf.TileMap[i].Variant); v++ {
+      if v>0 { b = append(b, ':') }
+      for k:=0; k<len(cgf.TileMap[i].Variant[v]); k++ {
+        if k>0 { b = append(b, ',') }
+        b = append(b, []byte( fmt.Sprintf("%x", cgf.TileMap[i].Variant[v][k]) )... )
+      }
+    }
+  }
+  return b
+}
+
+func ( cgf *CGF ) NormalizedTileMapMd5SumString() string {
+  b := cgf.CreateNormalizedTileMap()
+  m5 := md5.Sum( b )
+
+  s := ""
+
+  for i:=0; i<len(m5); i++ {
+    s += fmt.Sprintf("%02x", m5[i])
+  }
+
+  return s
+
 }
 
 // Create s key for lookup into the TileMapLookupCache.

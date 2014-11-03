@@ -5,9 +5,7 @@ import "os"
 import "testing"
 import "io/ioutil"
 
-var test_cgf []byte = []byte(`#!cgf a
-
-    {
+var test_cgf []byte = []byte(`{"#!cgf":"a",
       "CGFVersion" : "0.1",
 
       "Encoding" : "utf8",
