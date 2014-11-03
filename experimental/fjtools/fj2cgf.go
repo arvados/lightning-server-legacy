@@ -478,7 +478,10 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
         step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_snip_len-1) )
 
         k := cg.CreateTileMapCacheKey( variantType, phaseVariant )
-        cg.FinalOverflowMap[ step_pos_key ] = cgf.OverflowMapEntry{ Type : "message", Data: "{ \"Message\" : \"not implemented yet\", \"VarKey\":\"" + k + "\" }" }
+
+        cg.FinalOverflowMap[ step_pos_key ] = cgf.OverflowMapEntry{
+            Type : "message",
+            Data: "{ \"Message\" : \"not implemented yet\", \"VariantKey\":\"" + k + "\" }" }
       }
 
       // Remove un-needed elements in the cache
