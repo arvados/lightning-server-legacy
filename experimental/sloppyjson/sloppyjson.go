@@ -328,6 +328,7 @@ func parseobject( dat string, k int, n int ) (*SloppyJSON, int) {
   k = skipspace(dat,k,n)
   if k<0 { return nil, k }
 
+  if dat[k] == '}' { return obj,k+1 }
   if dat[k] != '"' { return nil, -k }
 
   str,k = parsesimplestring(dat,k+1,n)
@@ -405,9 +406,28 @@ func Loads( dat string ) (*SloppyJSON,error) {
 
   if dat[k] == '['        { v,k = parselist( dat, k+1, n )
   } else if dat[k] == '{' { v,k = parseobject( dat, k+1 , n )
-  } else { return nil,fmt.Errorf("Parse error at character %d (1)", -k) }
+  } else {
+    return nil,fmt.Errorf("Parse error at character %d (1)", -k)
 
-  if k<0 { return nil,fmt.Errorf("Parse error at character %d (2)", k) }
+    st := k-10 ; if st<0 { st = 0 }
+    en := k+10 ; if en>n { en = n }
+
+    z := fmt.Sprintf("%s(*)%s", dat[st:k], dat[k:en] )
+
+
+    return nil,fmt.Errorf("Parse error at character %d (1) (%s)", -k, z )
+  }
+
+  if k<0 {
+    return nil,fmt.Errorf("Parse error at character %d (2))", k)
+
+    st := -k-10 ; if st<0 { st = 0 }
+    en := -k+10 ; if en>n { en = n }
+
+    z := fmt.Sprintf("%s(*)%s", dat[st:-k], dat[-k:en] )
+
+    return nil,fmt.Errorf("Parse error at character %d (2) (%s)", k, z)
+  }
   if k==n { return v,nil }
 
   for ; k<n; k++ {
