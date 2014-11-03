@@ -391,6 +391,34 @@ func ( cg *CGF ) LookupTileMapVariant( variantType string, variantId [][]int ) i
   return -2
 }
 
+// Given a double array of variants, find the position int he TileMap
+// it corresponds to.
+// A cache is maintained so that a linear search doesn't need to
+// happen every query.
+//
+// Returns the position in the TileMap if found, -2 otherwise.
+//
+func ( cg *CGF ) LookupABVTileMapVariant( path, step int ) ( variant int, err error ) {
+
+  key := fmt.Sprintf("%x:%x", path, step)
+
+  abv,abv_ok := cg.ABV[key]
+  if !abv_ok { return 0, fmt.Errorf("Could not find '%s'", key) }
+  if (step<0) || (step>=len(abv)) { return 0, fmt.Errorf("Could not find '%s'", key) }
+
+  ch := string(abv[step])
+  code := cg.CharMap[ch]
+
+  if code >= 0 { return code,nil }
+  if code != -2 { return code,nil }
+
+  overflow_val,oflow_ok := cg.OverflowMap[key]
+  if !oflow_ok { return 0, fmt.Errorf("Tile variant not trivial, consult FinalOverflowMap") }
+
+  return overflow_val,nil
+
+}
+
 // Returns character code as implied by the CharMap (and ReverseCharMap).
 // The flag will return true if the variant was found in the TileMap, false
 // otherwise.
