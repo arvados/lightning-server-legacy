@@ -1,3 +1,8 @@
+Warning:
+=======================
+We provide a few fixtures for testing and installation of genes of interest. Adding multiple fixtures at once will create edge cases and unexpected behavior of the application. To interact with a complete installation of data, visit http://lightning-dev3.curoverse.com
+
+
 Folders
 =======================
 
@@ -29,6 +34,12 @@ How to Set-up a local lightning cluster:
 		$ sudo pip install django
 		```
   * For further instructions on proper installation of django, see <https://docs.djangoproject.com/en/1.7/topics/install/>
+
+3. Install selenium (for testing)
+
+		```
+		$ sudo pip install selenium
+		```
 
 3.	Ensure checkout of the development branch (code that runs on a localhost): 
 

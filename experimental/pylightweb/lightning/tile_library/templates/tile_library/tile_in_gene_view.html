@@ -2,37 +2,36 @@
 {% load staticfiles %}
 {% load tile_filters %}
 
-
-
-{% block title %}Lightning: Tile Library - Position {{ position }}{% endblock %}
+{% block title %}Lightning: Tile Library - Position {{ position_name }}{% endblock %}
 
 {% block breadcrumbs %}
 	<li><a href="{% url 'home:index' %}">Home</a></li>
 	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
 	<li><a href="{% url 'tile_library:chr_statistics' chr_int %}">{{ chr_name }}</a></li>
 	<li><a href="{% url 'tile_library:gene_view' gene.id %}">Gene {{gene.gene_aliases}}</a></li>
-	<li class="active"><a href="#">Tile {{ position }}</a></li>
+	<li class="active"><a href="#">Tile {{ position_name }}</a></li>
 {% endblock %}
 
 
 {% block content %}
 <div class="container-fluid">
 	<div class="page-header">
-		<h1>Tile Position {{ position }} <small>(Path {{ path_hex }}, {{chr_name}}{{path_name}}, Gene {{gene.gene_aliases}})</small></h1>
-		{% if gene_ends.min_tile < position.tilename %}	
-		<a class="btn btn-default" href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename|add:'-1' %}">&laquo; Previous Tile Position</a>
+		<h1>Tile Position {{ position_name }} <small>(Path {{ path_hex }}, {{chr_name}}{{path_name}}, Gene {{gene.gene_aliases}})</small></h1>
+		{% if gene_ends.min_tile < position_int %}	
+		<a class="btn btn-default" href="{% url 'tile_library:tile_in_gene_view' gene.id position_int|add:'-1' %}">&laquo; Previous Tile Position</a>
 		{% else %}	
-		<a class="btn btn-default disabled" href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename|add:'-1' %}">&laquo; Previous Tile Position</a>
+		<a class="btn btn-default disabled" href="#">&laquo; Previous Tile Position</a>
 		{% endif %}
-		{% if gene_ends.max_tile > position.tilename %}			
-		<a class="btn btn-default" href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename|add:'1' %}">Next Tile Position &raquo;</a>
+		{% if gene_ends.max_tile > position_int %}			
+		<a class="btn btn-default" href="{% url 'tile_library:tile_in_gene_view' gene.id position_int|add:'1' %}">Next Tile Position &raquo;</a>
 		{% else %}	
-		<a class="btn btn-default disabled" href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename|add:'1' %}">Next Tile Position &raquo;</a>
+		<a class="btn btn-default disabled" href="#">Next Tile Position &raquo;</a>
 		{% endif %}
 	</div>
-	<div class="alert alert-info" role="alert">
-		Note that annotations can be shared between tiles. 
-	</div>
+{% if position %}
+		<div class="alert alert-info" role="alert">
+			Note that annotations can be shared between tiles. 
+		</div>
 	{% if in_exon %}
 	<h3>Exon Splicing Within Tile</h3>
 	<div class="table-responsive">
@@ -152,8 +151,13 @@
 		{% endfor %}
 		<li>{{ position.end_tag }}</li>
 	</ul>
+	{% else %}
 <!-- TODO: md5sums and sequences for the non-reference tile should probably be placed here, giving the table more room for references, etc
 	 TODO: sort the annotations?-->
+		<div class="alert alert-danger" role="alert">
+			This position (tile) has not been loaded into the Tile Library. 
+		</div>
+	{% endif %}
 </div>
 {% endblock %}
 
