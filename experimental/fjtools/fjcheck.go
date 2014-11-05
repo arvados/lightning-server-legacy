@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 import "os"
-import _ "strings"
+import "strings"
 import _ "errors"
 import "crypto/md5"
 
@@ -17,6 +17,38 @@ var VERSION_STR string = "0.1, AGPLv3.0"
 var g_verboseFlag bool
 
 func init() {
+}
+
+func check_meta_tags( tileSet *tile.TileSet ) (err error) {
+
+  for _,tcc := range tileSet.TileCopyCollectionMap {
+    for copyNum,j := range tcc.MetaJson {
+
+      if len( j.StartTag ) != len( j.StartSeq ) {
+        return fmt.Errorf("%s %d: len(StartTag) (%d) != len(StartSeq) (%d)",
+          j.TileID, copyNum, len(j.StartTag), len(j.StartSeq) )
+      }
+
+      if len( j.EndTag ) != len( j.EndSeq ) {
+        return fmt.Errorf("%s %d: len(EndTag) (%d) != len(EndSeq) (%d)",
+          j.TileID, copyNum, len(j.EndTag), len(j.EndSeq) )
+      }
+
+      if strings.ToLower( j.StartTag ) != strings.ToLower( j.StartSeq ) {
+        return fmt.Errorf("%s %d: StartTag (%s) != StartSeq (%s)",
+          j.TileID, copyNum, j.StartTag, j.StartSeq )
+      }
+
+      if strings.ToLower( j.EndTag ) != strings.ToLower( j.EndSeq ) {
+        return fmt.Errorf("%s %d: EndTag (%s) != EndSeq (%s)",
+          j.TileID, copyNum, j.EndTag, j.EndSeq )
+      }
+
+    }
+  }
+
+  return nil
+
 }
 
 func check_copy_num_consistency( tileSet *tile.TileSet ) (err error) {
@@ -133,6 +165,11 @@ func _main( c *cli.Context ) {
   }
 
   if err := check_md5sum( tileSet ) ; err != nil {
+    fmt.Fprintf( os.Stderr, "%v\n", err )
+    os.Exit(1)
+  }
+
+  if err := check_meta_tags( tileSet ) ; err != nil {
     fmt.Fprintf( os.Stderr, "%v\n", err )
     os.Exit(1)
   }
