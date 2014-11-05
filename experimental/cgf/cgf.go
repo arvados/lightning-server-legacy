@@ -131,9 +131,9 @@ func (t ByAsciiHex) Less(i,j int) bool {
 
 func (cgf *CGF) PrintFile( ofp *os.File ) {
 
-  fmt.Fprintln( ofp, "#!cgf a\n" )
 
   fmt.Fprintln( ofp, "{")
+  fmt.Fprintln( ofp, "\"#!cgf\":\"a\",\n" )
 
   fmt.Fprintf( ofp, "  \"CGFVersion\" : \"%s\",\n", cgf.CGFVersion)
   fmt.Fprintf( ofp, "  \"Encoding\" : \"%s\",\n", cgf.Encoding)
@@ -400,11 +400,11 @@ func ( cg *CGF ) LookupTileMapVariant( variantType string, variantId [][]int ) i
 //
 func ( cg *CGF ) LookupABVTileMapVariant( path, step int ) ( variant int, err error ) {
 
-  key := fmt.Sprintf("%x:%x", path, step)
+  path_key := fmt.Sprintf("%x", path)
 
-  abv,abv_ok := cg.ABV[key]
-  if !abv_ok { return 0, fmt.Errorf("Could not find '%s'", key) }
-  if (step<0) || (step>=len(abv)) { return 0, fmt.Errorf("Could not find '%s'", key) }
+  abv,abv_ok := cg.ABV[path_key]
+  if !abv_ok { return 0, fmt.Errorf("Could not find '%s'", path_key) }
+  if (step<0) || (step>=len(abv)) { return 0, fmt.Errorf("Could not find '%s'", path_key) }
 
   ch := string(abv[step])
   code := cg.CharMap[ch]
@@ -412,7 +412,8 @@ func ( cg *CGF ) LookupABVTileMapVariant( path, step int ) ( variant int, err er
   if code >= 0 { return code,nil }
   if code != -2 { return code,nil }
 
-  overflow_val,oflow_ok := cg.OverflowMap[key]
+  path_step_key := fmt.Sprintf("%x:%x", path, step)
+  overflow_val,oflow_ok := cg.OverflowMap[path_step_key]
   if !oflow_ok { return 0, fmt.Errorf("Tile variant not trivial, consult FinalOverflowMap") }
 
   return overflow_val,nil
