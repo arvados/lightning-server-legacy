@@ -1000,6 +1000,8 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
   // (gss.refStart + gss.refLen == refStartPos) from the above 'gss.processREF' call.
   //
 
+  subvarAlreadyNoted := false
+
   lastNote := ""
   for ; (refStartPos + entryLen) >= (gss.nextTagStart + gss.TagLen) ; {
 
@@ -1018,14 +1020,28 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
           gss.notes = append( gss.notes, lastNote )
         }
 
-        curNote := fmt.Sprintf("%s %s %d %d %s %s %d %d",
-            gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.TagLen-1,
-            subType, subvar, posInSeq, refLenRemain)
-        gss.notes = append( gss.notes, curNote )
+        if gAllowVariantOnTag {
 
-        lastNote = fmt.Sprintf("ltag: %s %s %d %d %s %s %d %d",
-            gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.TagLen-1,
-            subType, subvar, posInSeq - len(gss.gffCurSeq) + gss.TagLen, refLenRemain)
+          curNote := fmt.Sprintf("%s %s %d %d %s %s %d %d",
+              gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.TagLen-1,
+              subType, subvar, posInSeq, refLenRemain)
+          gss.notes = append( gss.notes, curNote )
+
+          lastNote = fmt.Sprintf("ltag: %s %s %d %d %s %s %d %d",
+              gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.TagLen-1,
+              subType, subvar, posInSeq - len(gss.gffCurSeq) + gss.TagLen, refLenRemain)
+        } else {
+
+          if !subvarAlreadyNoted {
+            curNote := fmt.Sprintf("%s %s %d %d %s %s %d %d",
+                gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.TagLen-1,
+                subType, subvar, posInSeq, len(subvar) )
+            gss.notes = append( gss.notes, curNote )
+          }
+
+          subvarAlreadyNoted = true
+
+        }
 
 
       }
@@ -1041,11 +1057,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
         gss.variantOnTag = true
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[ dbeg : dbeg + gss.TagLen ]... )
 
-        //DEBUG
-        //fmt.Printf("\n\n")
-        //fmt.Printf("VARIANT ON TAG (a): %d\n", refStartPos )
-        //gss.DebugPrint( referenceTileSet )
-
         if noteFlag {
           subNote := fmt.Sprintf("ltag: %s %s %d %d %s %s %d %d",
             gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.TagLen-1,
@@ -1057,11 +1068,6 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
 
         gss.variantOnTag = true
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[ 0 : refLenRemain ]... )
-
-        //DEBUG
-        //fmt.Printf("\n\n")
-        //fmt.Printf("VARIANT ON TAG (b): %d\n", refStartPos )
-        //gss.DebugPrint( referenceTileSet )
 
         if noteFlag {
           subNote := fmt.Sprintf("ltag: %s %s %d %d %s %s %d %d",
@@ -1109,15 +1115,19 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
   gss.gffCurSeq = append( gss.gffCurSeq, subvar[0:dn]... )
 
   if noteFlag {
-    gss.notes = append( gss.notes ,fmt.Sprintf("%s %s %d %d %s %s %d %d",
-                                               gRefGenome,
-                                               gss.curChrom,
-                                               gss.refStartActual+gss.refLenActual,
-                                               refStartPos+entryLen-1,
-                                               subType,
-                                               subvar,
-                                               posInSeq,
-                                               dn) )
+
+    if gAllowVariantOnTag || !subvarAlreadyNoted {
+      gss.notes = append( gss.notes ,fmt.Sprintf("%s %s %d %d %s %s %d %d",
+                                                 gRefGenome,
+                                                 gss.curChrom,
+                                                 gss.refStartActual+gss.refLenActual,
+                                                 refStartPos+entryLen-1,
+                                                 subType,
+                                                 subvar,
+                                                 posInSeq,
+                                                 dn) )
+    }
+
   }
 
 
@@ -1132,18 +1142,15 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
     gss.variantOnTag = true
     gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[subvarOffset:]... )
 
-    //DEBUG
-    //fmt.Printf("\n\n")
-    //fmt.Printf("VARIANT ON TAG (c): %d\n", refStartPos )
-    //gss.DebugPrint( referenceTileSet )
-
-    if noteFlag {
-      t := refStartPos - gss.nextTagStart
-      subNote := fmt.Sprintf("%s %s %d %d %s %s %d %d",
-        gRefGenome, gss.curChrom,
-        gss.refStartActual+gss.refLenActual, refStartPos+entryLen-1,
-        subType, subvar, t, dn)
-      gss.carryOverNotes = append( gss.carryOverNotes, subNote )
+    if gAllowVariantOnTag || !subvarAlreadyNoted {
+      if noteFlag {
+        t := refStartPos - gss.nextTagStart
+        subNote := fmt.Sprintf("%s %s %d %d %s %s %d %d",
+          gRefGenome, gss.curChrom,
+          gss.refStartActual+gss.refLenActual, refStartPos+entryLen-1,
+          subType, subvar, t, dn)
+        gss.carryOverNotes = append( gss.carryOverNotes, subNote )
+      }
     }
 
   }
@@ -1192,7 +1199,10 @@ func (gss *GffScanState) processDEL( finalTileSet *tile.TileSet, referenceTileSe
     gss.processREF( finalTileSet, referenceTileSet, chromFa, refStartPos, 0 )
   }
 
+  if (refStartPos + del_len) >= gss.nextTagStart { gss.variantOnTag = true }
+
   for ; (refStartPos + del_len) >= (gss.nextTagStart + gss.TagLen) ; {
+    gss.variantOnTag = true
 
     if gss.refStartVirtual == gss.startPos[ gss.startPosIndex-1 ] {
 
