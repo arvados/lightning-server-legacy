@@ -462,20 +462,20 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
       tile_map_pos        := cg.LookupTileMapVariant( variantType, phaseVariant )
       abv_char_code,found := cg.LookupABVCharCode( tile_map_pos )
-      abv_snip_len        := maxvi( phaseVariantSeedTileLength )
+      abv_skip_len        := maxvi( phaseVariantSeedTileLength )
 
       _ = found
 
       abv = append( abv, abv_char_code... )
-      for ii:=0; ii<(abv_snip_len-1); ii++ {
+      for ii:=0; ii<(abv_skip_len-1); ii++ {
         abv = append( abv, '*' )
       }
 
       if found && (abv_char_code=="#") {
-        step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_snip_len-1) )
+        step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_skip_len-1) )
         cg.OverflowMap[ step_pos_key ] = tile_map_pos
       } else if !found {
-        step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_snip_len-1) )
+        step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_skip_len-1) )
 
         k := cg.CreateTileMapCacheKey( variantType, phaseVariant )
 
@@ -497,7 +497,7 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       phaseVariantSeedTileLength[1] = 0
       gapFlag = false
 
-      prev_step = step
+      prev_step = step + uint64(abv_skip_len-1)
     }
 
   }
@@ -590,7 +590,8 @@ func _main( c *cli.Context ) {
   if ( (c.String("output-cgf")=="") || (c.String("output-cgf")=="-")) {
     ofp = os.Stdout
   } else {
-    ofp,err := os.Create( c.String("output-cgf") )
+    var err error
+    ofp,err = os.Create( c.String("output-cgf") )
     if err!=nil {
       fmt.Fprintf( os.Stderr, "%v", err )
       os.Exit(1)
@@ -599,7 +600,6 @@ func _main( c *cli.Context ) {
   }
 
   gCGF.PrintFile(ofp)
-
 
 }
 
