@@ -3,6 +3,17 @@ package sloppyjson
 import "testing"
 
 var json_tests []string = []string{
+  "{}",
+  "\n\n\n{}",
+  "\n\n\n{\n\n}",
+  "\n\n\n{ }",
+  "\n\n\n{}\n",
+  "\n\n\n{}      ",
+  "[]",
+  "  []",
+  "[]  ",
+  "[ ]",
+  "\n\n[ ]\n\n   ",
   "[ \"str\", \"ing\" ] ",
   "\n[ \"str\", \"in\", \"g\" ] ",
   "[ \"str\" ] ",
