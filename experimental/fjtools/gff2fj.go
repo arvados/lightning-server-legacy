@@ -912,11 +912,13 @@ func (gss *GffScanState) processRegexSNP( finalTileSet *tile.TileSet,
 
   gss.gffCurSeq = append( gss.gffCurSeq, regexSNP... )
 
+  // End is inclusive, as per GFF convention (though still 0 referenced)
+  //
   posInSeq := len(gss.gffCurSeq)
-  commentString := fmt.Sprintf("%s %s %d %d SNP (%d) %s => %s",
+  commentString := fmt.Sprintf("%s %s %d %d SNP %d %s => %s",
     gRefGenome, gss.curChrom,
-    gss.refStartVirtual + gss.refLenVirtual,  gss.refStartVirtual + gss.refLenVirtual + 1,
-    posInSeq,
+    gss.refStartVirtual + gss.refLenVirtual,  gss.refStartVirtual + gss.refLenVirtual,
+    posInSeq - len(regexSNP),
     ref_seq, regexSNP )
 
   gss.notes = append( gss.notes, comment )
@@ -926,8 +928,11 @@ func (gss *GffScanState) processRegexSNP( finalTileSet *tile.TileSet,
   refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStartVirtual + gss.refLenVirtual)
   if refLenRemain < gss.TagLen {
     gss.gffRightTagSeq = append( gss.gffRightTagSeq, regexSNP... )
-    gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", comment) )
-    gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", commentString) )
+
+    if gAllowVariantOnTag {
+      gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", comment) )
+      gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", commentString) )
+    }
 
     gss.variantOnTag = true
   }
@@ -1034,7 +1039,7 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
 
           if !subvarAlreadyNoted {
             curNote := fmt.Sprintf("%s %s %d %d %s %s %d %d",
-                gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.TagLen-1,
+                gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.refStartVirtual+gss.refLenVirtual+len(subvar)-1,
                 subType, subvar, posInSeq, len(subvar) )
             gss.notes = append( gss.notes, curNote )
           }
@@ -1057,7 +1062,7 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
         gss.variantOnTag = true
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[ dbeg : dbeg + gss.TagLen ]... )
 
-        if noteFlag {
+        if noteFlag && gAllowVariantOnTag {
           subNote := fmt.Sprintf("ltag: %s %s %d %d %s %s %d %d",
             gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.TagLen-1,
             subType, subvar[dbeg:dbeg+gss.TagLen], gss.refLenVirtual, len(subvar[dbeg:dbeg+gss.TagLen]))
@@ -1069,7 +1074,7 @@ func (gss *GffScanState) processSUB( finalTileSet *tile.TileSet,
         gss.variantOnTag = true
         gss.gffRightTagSeq = append( gss.gffRightTagSeq, subvar[ 0 : refLenRemain ]... )
 
-        if noteFlag {
+        if noteFlag && gAllowVariantOnTag {
           subNote := fmt.Sprintf("ltag: %s %s %d %d %s %s %d %d",
             gRefGenome, gss.curChrom, gss.refStartVirtual+gss.refLenVirtual, gss.nextTagStart+gss.refLenVirtual+refLenRemain,
             subType, subvar[0:refLenRemain], gss.refLenVirtual, len(subvar[0:refLenRemain]))
@@ -1337,12 +1342,16 @@ func (gss *GffScanState) processRegexAlteration( finalTileSet *tile.TileSet,
   prettyRefSeq := ref_seq
   if len(prettyRefSeq) == 0 { prettyRefSeq = "-" }
 
+  prettyIndelRegexSeq := indelRegex
+  if len(indelRegex) == 0 { prettyIndelRegexSeq = "-" }
+
   commentString := fmt.Sprintf("%s %s %d %d %s %d %s => %s",
     gRefGenome, gss.curChrom,
-    gss.refStartVirtual + gss.refLenVirtual,  gss.refStartVirtual + gss.refLenVirtual + len(ref_seq),
+    gss.refStartVirtual + gss.refLenVirtual,  gss.refStartVirtual + gss.refLenVirtual + len(ref_seq) - 1,
     varType,
-    gss.refStartVirtual + gss.refLenVirtual - startPos,
-    prettyRefSeq, indelRegex )
+    len(gss.gffCurSeq)-1,
+    prettyRefSeq,
+    prettyIndelRegexSeq )
 
   gss.notes = append( gss.notes, comment )
   gss.notes = append( gss.notes, commentString )
@@ -1351,8 +1360,11 @@ func (gss *GffScanState) processRegexAlteration( finalTileSet *tile.TileSet,
   refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStartVirtual + gss.refLenVirtual)
   if refLenRemain < gss.TagLen {
     gss.gffRightTagSeq = append( gss.gffRightTagSeq, indelRegex... )
-    gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", comment) )
-    gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", commentString) )
+
+    if gAllowVariantOnTag {
+      gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", comment) )
+      gss.carryOverNotes = append( gss.carryOverNotes, fmt.Sprintf("ltag: %s", commentString) )
+    }
 
     gss.variantOnTag = true
   }
