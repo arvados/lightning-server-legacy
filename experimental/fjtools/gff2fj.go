@@ -1781,7 +1781,7 @@ func _main( c *cli.Context ) {
           gss0.processREF( finalTileSet, referenceTileSet, chromFa, s, len(ref_seq) )
         } else {
           gss0.notes = append( gss0.notes, condensed_comment )
-          gss0.processINDEL( finalTileSet, referenceTileSet, chromFa, s, indelvar1, ref_seq, comment )
+          gss0.processINDEL( finalTileSet, referenceTileSet, chromFa, s, indelvar0, ref_seq, comment )
         }
 
         if indelvar1 == ref_seq {
