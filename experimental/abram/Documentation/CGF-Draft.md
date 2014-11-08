@@ -15,16 +15,15 @@ are a bit more involved as the mapping is against an internal table that describ
 represent the sequence at a particular genomic location.  This mapping allows for genomic regions to account
 for heterozygous and homozygous mutations.
 
-The ASCII CGF (aCGF) header consists of the string `#!cgf a` followed by a string encoded JSON
+The ASCII CGF (aCGF) header consists of the string `{"#!cgf":"a",` followed by a string encoded JSON
 structure describing the parameters of the file.  Here is an example:
 
-    #!cgf a
-    {
+    {"#!cgf":"a",
       "CGFVersion" : "0.1",
       "Encoding" : "utf8",
       "Notes" : "ABV Version 0.1",
 
-      "TileLibraryVersion" : "0.1.2",
+      "TileLibraryVersion" : "4743efb3fe7c46208aedaf6e0816ad12",
       "ABV" : {
         "0" : "----------....----D--..#.. ... DD-----",
         "1" : "-----***1-....-A--#--..#.. ... ..3---",
@@ -84,6 +83,8 @@ structure describing the parameters of the file.  Here is an example:
       }
 
     }
+
+The `TileLibraryVersion` is an md5sum of the canonical tile library listing.
 
 The `CharMap` object maps character codes as they appear in the `ABV` elements to positions in the `TileMap` object.
 For example, if an 'E' is encountered, this maps to the 4th position in the `TileMap` array.
