@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 # We only want the annotations to be modifiable by the admin, not the tiles
-from tile_library.models import Tile, TileVariant, VarAnnotation, TileLocusAnnotation
+from tile_library.models import Tile, TileVariant, VarAnnotation, TileLocusAnnotation   
 
 class AnnotationAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'annotation_type', 'created', 'last_modified')
