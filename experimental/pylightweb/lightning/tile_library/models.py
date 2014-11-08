@@ -1,5 +1,8 @@
 from django.db import models
-import string 
+from django.core.validators import RegexValidator
+from django.core.exceptions import ValidationError
+import string
+import json
 
 import tile_library.basic_functions as fns
 
@@ -10,6 +13,13 @@ import tile_library.basic_functions as fns
 #       Size of the population
 #
 #Annotations that span multiple tiles should be in loadgenes
+
+def validate_json(text):
+    try:
+        json.loads(text)
+    except ValueError:
+        raise ValidationError("Expects json-formatted text")
+    
 
 class TileManage(models.Manager):
     """
@@ -323,7 +333,7 @@ class GenomeStatistic(models.Model):
         (CHR_OTHER, 'Other Chromosomes'),
         (PATH, 'Path'),
     )
-
+    
     statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=NAME_CHOICES)
     
     path_name = models.PositiveIntegerField(db_index=True, blank=True, null=True)
