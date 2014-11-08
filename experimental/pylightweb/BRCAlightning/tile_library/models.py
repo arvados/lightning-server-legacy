@@ -187,7 +187,7 @@ class GenomeVariant(models.Model):
     info = models.TextField(
         help_text="Json-formatted. Known keys are 'source': [what generated the variant],\
                    'phenotype': [phenotypes associated with this annotation], 'amino_acid': [predicted amino-acid changes],\
-                   'ucsc_trans': [UCSC translation (picked up from GFF files), and 'other': [Other GFF-file related annotations]"
+                   'ucsc_trans': [UCSC translation (picked up from GFF files), and 'other': [Other GFF-file related annotations]",
         validators=[validate_json],
         )
     created = models.DateTimeField(auto_now_add=True)
