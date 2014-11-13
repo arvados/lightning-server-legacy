@@ -11,7 +11,7 @@ import "strings"
 import "sort"
 
 var VERSION_STR string = "1.0"
-var CGF_VERSION string = "0.2"
+var CGF_VERSION string = "0.3"
 
 type TileMapEntry struct {
   Type string
@@ -36,8 +36,8 @@ type CGFLean struct {
   StepPerPathSum []int
   TotalStep int
 
-  TileMapString string
-  TileMapStringMd5Sum string
+  EncodedTileMap string
+  EncodedTileMapMd5Sum string
 
   CharMap map[string]int
   ReverseCharMap map[int]string
@@ -62,8 +62,8 @@ type CGF struct {
   TotalStep int
 
   TileMap []TileMapEntry
-  TileMapString string
-  TileMapStringMd5Sum string
+  EncodedTileMap string
+  EncodedTileMapMd5Sum string
 
   CharMap map[string]int
   ReverseCharMap map[int]string
@@ -91,8 +91,41 @@ func New() *CGF {
 
   cg.TileMap = DefaultTileMap()
 
-  cg.TileMapString = string(cg.CreateNormalizedTileMap())
-  cg.TileMapStringMd5Sum = cg.NormalizedTileMapMd5SumString()
+  //cg.EncodedTileMap = string(cg.CreateEncodedTileMap())
+  cg.EncodedTileMap = string(CreateEncodedTileMap(cg.TileMap))
+  cg.EncodedTileMapMd5Sum = cg.EncodedTileMapMd5SumString()
+
+  cg.CharMap = DefaultCharMap()
+  cg.ReverseCharMap = DefaultReverseCharMap()
+  cg.CanonicalCharMap = DefaultCanonicalCharMap()
+  cg.ABV = make( map[string]string )
+  cg.OverflowMap = make( map[string]int )
+  cg.FinalOverflowMap = make( map[string]OverflowMapEntry )
+
+  cg.PathCount = DefaultPathCount()
+  cg.StepPerPath = DefaultStepPerPath()
+  cg.TotalStep = 0
+
+  cg.StepPerPathSum = make( []int, len(cg.StepPerPath) )
+  for i:=0 ; i<len(cg.StepPerPath) ; i++ {
+    cg.TotalStep += cg.StepPerPath[i]
+    cg.StepPerPathSum[i] = cg.StepPerPath[i]
+    if i>0 { cg.StepPerPathSum[i] += cg.StepPerPathSum[i-1] }
+  }
+
+  return cg
+}
+
+func NewUnphased() *CGF {
+  cg := &(CGF{})
+  cg.CGFVersion = CGF_VERSION
+  cg.Encoding = "utf8"
+  cg.TileLibraryVersion = ""
+
+  cg.TileMap = DefaultTileMapUnphased()
+
+  cg.EncodedTileMap = string(CreateEncodedTileMap(cg.TileMap))
+  cg.EncodedTileMapMd5Sum = cg.EncodedTileMapMd5SumString()
 
   cg.CharMap = DefaultCharMap()
   cg.ReverseCharMap = DefaultReverseCharMap()
@@ -188,9 +221,10 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
 
   fmt.Fprintf( ofp, "  \"CanonicalCharMap\" : \"%s\",\n", cgf.CanonicalCharMap )
 
-  fmt.Fprintf( ofp, "  \"TileMapStringMd5Sum\":\"%s\",\n", cgf.TileMapStringMd5Sum )
-  fmt.Fprintf( ofp, "  \"TileMapString\":\"%s\",\n", cgf.TileMapString )
+  fmt.Fprintf( ofp, "  \"EncodedTileMapMd5Sum\":\"%s\",\n", cgf.EncodedTileMapMd5Sum )
+  fmt.Fprintf( ofp, "  \"EncodedTileMap\":\"%s\",\n", cgf.EncodedTileMap )
 
+  /*
   fmt.Fprintf( ofp, "  \"TileMap\" : [\n    ")
   for i:=0; i<len(cgf.TileMap); i++ {
     if i>0 { fmt.Fprintf( ofp, ",\n    ") }
@@ -219,6 +253,7 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
 
   }
   fmt.Fprintf( ofp, "\n    ],\n")
+  */
 
 
   count = 0
@@ -274,31 +309,55 @@ func LoadLean( fn string ) ( cgl *CGFLean, err error ) {
   return cgl, nil
 }
 
-func Load( fn string ) ( cgf *CGF, err error ) {
+func Load( fn string ) ( cg *CGF, err error ) {
   fp,err := os.Open( fn )
   if err != nil { return nil, err }
   defer fp.Close()
 
   reader := bufio.NewReader(fp)
 
-  cgf = &(CGF{})
+  cg = &(CGF{})
 
   dec := json.NewDecoder(reader)
 
-  err = dec.Decode( cgf )
+  err = dec.Decode( cg )
   if err != nil { return nil, err }
 
-  cgf.ReverseCharMap = ConstructReverseCharMap( cgf.CharMap )
+  cg.ReverseCharMap = ConstructReverseCharMap( cg.CharMap )
+  cg.TileMap,err = CreateTileMapFromEncodedTileMap( cg.EncodedTileMap )
+  if err!=nil { return nil, err }
 
-  return cgf, nil
+  return cg, nil
 }
 
-func ( cgf *CGF ) CreateNormalizedTileMap() ( []byte ) {
+func LoadNoMap( fn string ) ( cg *CGF, err error ) {
+  fp,err := os.Open( fn )
+  if err != nil { return nil, err }
+  defer fp.Close()
+
+  reader := bufio.NewReader(fp)
+
+  cg = &(CGF{})
+
+  dec := json.NewDecoder(reader)
+
+  err = dec.Decode( cg )
+  if err != nil { return nil, err }
+
+  cg.ReverseCharMap = ConstructReverseCharMap( cg.CharMap )
+  //cg.TileMap,err = CreateTileMapFromEncodedTileMap( cg.EncodedTileMap )
+  if err!=nil { return nil, err }
+
+  return cg, nil
+}
+
+/*
+func ( cgf *CGF ) CreateEncodedTileMap() ( []byte ) {
   typeMap := map[string][2]byte{
-    "het": [2]byte{ '_', '.' },
+    "het": [2]byte{ 'x', '.' },
     "hom": [2]byte{'_', '.'} ,
     "het*": [2]byte{'x','*'},
-    "hom*": [2]byte{'x','*'} }
+    "hom*": [2]byte{'_','*'} }
   b := []byte{}
 
   for i:=0; i<len(cgf.TileMap); i++ {
@@ -319,15 +378,88 @@ func ( cgf *CGF ) CreateNormalizedTileMap() ( []byte ) {
       }
     }
   }
+
+  return b
+}
+*/
+
+func CreateEncodedTileMap( TileMap []TileMapEntry ) ( []byte ) {
+  typeMap := map[string][2]byte{
+    "het": [2]byte{ 'x', '.' },
+    "hom": [2]byte{'_', '.'} ,
+    "het*": [2]byte{'x','*'},
+    "hom*": [2]byte{'_','*'} }
+  b := []byte{}
+
+  for i:=0; i<len(TileMap); i++ {
+    if i>0 { b = append( b, ';' ) }
+
+    if v,ok := typeMap[ TileMap[i].Type ] ; ok {
+      b = append( b, v[:]... )
+    } else {
+      b = append(b, []byte( TileMap[i].Type )... )
+    }
+
+    for v:=0; v<len(TileMap[i].Variant); v++ {
+      if v>0 { b = append(b, ':') }
+      for k:=0; k<len(TileMap[i].Variant[v]); k++ {
+        if k>0 { b = append(b, ',') }
+        b = append(b, []byte( fmt.Sprintf("%x", TileMap[i].Variant[v][k]) )... )
+      }
+    }
+  }
   return b
 }
 
-func ( cgf *CGF ) NormalizedTileMapMd5SumString() string {
-  b := cgf.CreateNormalizedTileMap()
+
+func CreateTileMapFromEncodedTileMap( s string ) ( []TileMapEntry, error ) {
+  n_ele := 0
+  //var freq map[string]int
+
+  type_map := map[string]string{ "_." : "hom", "_*":"hom*", "x.":"het", "x*":"het*" }
+
+  for i:=0; i<len(s); i++ {
+    if s[i] == ';' { n_ele++ }
+  }
+
+  tmap := make( []TileMapEntry, n_ele+1 )
+
+  s_entry_list := strings.Split( s, ";" )
+
+  for i:=0; i<len(s_entry_list); i++ {
+
+    tmap[i].Type = type_map[ s_entry_list[i][0:2] ]
+
+    tile_allele_class := strings.Split( s_entry_list[i][2:], ":" )
+
+    tmap[i].Ploidy = len(tile_allele_class)
+    tmap[i].Variant = make( [][]int, tmap[i].Ploidy )
+
+    for j:=0; j<len(tile_allele_class); j++ {
+      tile_var_list := strings.Split( tile_allele_class[j], "," )
+
+      tmap[i].VariantLength = append( tmap[i].VariantLength, len(tile_var_list) )
+
+      for k:=0; k<len(tile_var_list); k++ {
+        variant,e := strconv.ParseInt( tile_var_list[k], 16, 64 )
+        if e!=nil { return nil, e }
+
+        tmap[i].Variant[j] = append( tmap[i].Variant[j], int(variant) )
+      }
+    }
+
+  }
+
+  return tmap,nil
+
+}
+
+func ( cg *CGF ) EncodedTileMapMd5SumString() string {
+  //b := cg.CreateEncodedTileMap()
+  b := CreateEncodedTileMap( cg.TileMap )
   m5 := md5.Sum( b )
 
   s := ""
-
   for i:=0; i<len(m5); i++ {
     s += fmt.Sprintf("%02x", m5[i])
   }
@@ -353,7 +485,7 @@ func ( cgf *CGF ) CreateTileMapCacheKey( variantType string, variantId [][]int )
   return key
 }
 
-// Given a double array of variants, find the position int he TileMap
+// Given a double array of variants, find the position in the TileMap
 // it corresponds to.
 // A cache is maintained so that a linear search doesn't need to
 // happen every query.
