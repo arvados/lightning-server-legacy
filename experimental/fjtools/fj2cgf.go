@@ -27,6 +27,8 @@ var VERSION_STR string = "0.1, AGPLv3.0"
 var g_verboseFlag bool
 var gCGF *cgf.CGF
 
+var gPloidy int
+
 var ABV_VERSION string = "0.1"
 
 func init() {
@@ -57,10 +59,9 @@ type FastJHeader struct {
 */
 
 type TileLibraryElement struct {
-  BaseName string
+  //BaseName string
   BaseId uint64
   TileId []uint64
-  TileSId []string
   Md5sum []string
   Freq []int
 
@@ -68,12 +69,12 @@ type TileLibraryElement struct {
 }
 
 func PrintTileLibraryElement( tle *TileLibraryElement ) {
-  fmt.Println("BaseName:", tle.BaseName)
+  //fmt.Println("BaseName:", tle.BaseName)
   fmt.Println("BaseId:", tle.BaseId)
 
   for i:=0; i<len(tle.TileId); i++ {
-    fmt.Printf("[%d] %d %s %s freq:%d\n", i,
-      tle.TileId[i], tle.TileSId[i], tle.Md5sum[i], tle.Freq[i])
+    fmt.Printf("[%d] %d %s freq:%d\n", i,
+      tle.TileId[i], tle.Md5sum[i], tle.Freq[i])
   }
 
   fmt.Printf("[")
@@ -85,15 +86,48 @@ func PrintTileLibraryElement( tle *TileLibraryElement ) {
 
 var cacheLibLine []string
 
+/*
+func  parseTileAndBaseTile( tileId string ) ( int64, int64, error ) {
+  x := strings.Split( tileId, "." )
+  if len(x) != 4 { return 0,0,fmt.Errorf("Invalid tileId %v", tileId) }
+
+  path,e := strconv.ParseInt( x[0], 16, 64 )
+  if e!=nil { return 0,0,e }
+
+  version,e := strconv.ParseInt( x[1], 16, 64 )
+  if e!=nil { return 0,0,e }
+
+  step,e := strconv.ParseInt( x[2], 16, 64 )
+  if e!=nil { return 0,0,e }
+
+  variant,e := strconv.ParseInt( x[3], 16, 64 )
+  if e!=nil { return 0,0,e }
+
+  ibaseTile := path
+  ibaseTile = (ibaseTile<<8) + (version)
+  ibaseTile = (ibaseTile<<16) + step
+
+  itileId := path
+  itileId = (itileId<<12) + (version)
+  itileId = (itileId<<8) + (step)
+  itileId = (itileId<<16) + (variant)
+
+  return itileId,ibaseTile,nil
+
+}
+*/
+
 func ( tle *TileLibraryElement) ScanBaseTile( scanner *bufio.Scanner ) error {
 
   var g_err error
 
-  curBase := ""
-  origBase := ""
+  //curBase := ""
+  //origBase := ""
+
+  var curBase uint64 = 0
+  var origBase uint64 = 0
 
   tle.TileId = nil
-  tle.TileSId = nil
   tle.Md5sum = nil
   tle.Freq = nil
 
@@ -118,30 +152,35 @@ func ( tle *TileLibraryElement) ScanBaseTile( scanner *bufio.Scanner ) error {
     lib_line := cacheLibLine[ len(cacheLibLine)-1 ]
 
     line_ele := strings.Split(lib_line, `,` )
-    curBase = line_ele[2]
+    strTileId := line_ele[0]
+    strFreq := line_ele[1]
+    strMd5Sum := line_ele[2]
 
-    if len(origBase) == 0 {
-      origBase = line_ele[2]
-    }
+    id,er := tileIdToUInt64( strTileId )
+    if er != nil { return er }
+
+    curBase,g_err = tileIdToBaseId( strTileId )
+    if g_err != nil { return g_err }
+
+    //DEBUG
+    //fmt.Printf("curBase %x %d\n", curBase, curBase )
+
+    if origBase == 0 { origBase = curBase }
 
     if curBase == origBase {
-      tle.BaseName = curBase
+      tle.BaseId = curBase
 
-      tle.BaseId,g_err = strconv.ParseUint( curBase, 10, 64 )
-      if g_err != nil { return g_err }
-
-      id,e := strconv.ParseUint( line_ele[1], 16, 64 )
-      if e != nil { return e }
-
-      f,e := strconv.Atoi( line_ele[3] )
+      f,e := strconv.Atoi( strFreq )
       if e != nil { return e }
 
       tle.TileId = append( tle.TileId, id )
-      tle.Md5sum = append( tle.Md5sum, line_ele[4] )
-      tle.TileSId = append( tle.TileSId, line_ele[0] )
+      tle.Md5sum = append( tle.Md5sum, strMd5Sum )
       tle.Freq = append( tle.Freq, f )
 
-      tle.Md5sumPosMap[ line_ele[4] ] = len(tle.TileId)-1
+      //DEBUG
+      //fmt.Printf("ADDING %x %s\n", tle.BaseId, strMd5Sum )
+
+      tle.Md5sumPosMap[ strMd5Sum ] = len(tle.TileId)-1
     } else {
       continue
     }
@@ -152,9 +191,7 @@ func ( tle *TileLibraryElement) ScanBaseTile( scanner *bufio.Scanner ) error {
     for (len(peek_line)==0) || (peek_line[0]=='\n') || (peek_line[0]=='#') {
       if scanner.Scan() {
         peek_line = scanner.Text()
-      } else {
-        break
-      }
+      } else { break }
     }
 
     cacheLibLine = append( cacheLibLine, peek_line )
@@ -166,6 +203,7 @@ func ( tle *TileLibraryElement) ScanBaseTile( scanner *bufio.Scanner ) error {
     cacheLibLine = nil
     cacheLibLine = append( cacheLibLine, trail_line )
   }
+
 
   return nil
 }
@@ -209,6 +247,31 @@ func tileIdToBaseId( tileId string ) (uint64, error) {
   if e!=nil { return 0,e }
 
   return uint64(uint(c) + ((1<<16) * uint(b) ) + ((1<<(16+8))*uint(a)) ), nil
+}
+
+func tileIdToUInt64( tileId string ) (uint64, error) {
+  s := strings.Split( tileId,  `.` )
+  if len(s)!=4 { return 0,fmt.Errorf("invalid TileId") }
+
+  a,e := strconv.ParseUint( s[0], 16, 64 )
+  if e!=nil { return 0,e }
+
+  b,e := strconv.ParseUint( s[1], 16, 64 )
+  if e!=nil { return 0,e }
+
+  c,e := strconv.ParseUint( s[2], 16, 64 )
+  if e!=nil { return 0,e }
+
+  d,e := strconv.ParseUint( s[3], 16, 64 )
+  if e!=nil { return 0,e }
+
+  var r uint64
+  r = uint64(a)
+  r = (r<<12) + uint64(b)
+  r = (r<<8) + uint64(c)
+  r = (r<<16) + uint64(d)
+
+  return r,nil
 }
 
 // Find phase information from 'notes' list.  Phase string
@@ -290,7 +353,203 @@ func maxvi( v []int ) int {
 // We make minimal assumptions about how the FastJ appears, but we assume the tile library
 // is in sorted order.
 //
-func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
+func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
+
+  tile_id_is_het := make( map[string]bool )
+  tile_id_has_gap := make( map[string]bool )
+
+  //---------------
+  //
+  // Process the FastJ headers and sort
+  //
+  fjHeaderList := []*sloppyjson.SloppyJSON{}
+
+  fastj_h,err := bioenv.OpenScanner( fastjFn )
+  if err != nil { return err }
+
+  cur_tile_id := ""
+  for fastj_h.Scanner.Scan() {
+    fastj_line := fastj_h.Scanner.Text()
+    if (len(fastj_line) == 0) { continue }
+    if (fastj_line[0] != '>') {
+
+      for i:=0; i<len(fastj_line); i++ {
+        if (fastj_line[i] == '(') || (fastj_line[i] == ')') ||
+           (fastj_line[i] == '[') || (fastj_line[i] == ']') ||
+           (fastj_line[i] == '|') {
+          tile_id_is_het[cur_tile_id] = true
+        }
+
+        if (fastj_line[i] == 'n') || (fastj_line[i] == 'N') {
+          tile_id_has_gap[cur_tile_id] = true
+        }
+      }
+
+      continue
+    }
+
+    fastjHeader,e := sloppyjson.Loads( fastj_line[1:] )
+    if e != nil { return e }
+
+    fjHeaderList = append( fjHeaderList, fastjHeader )
+
+    cur_tile_id = fastjHeader.O["tileID"].S
+
+  }
+  fastj_h.Close()
+
+  sort.Sort(ByTileId(fjHeaderList))
+  //
+  //
+  //---------------
+
+
+  var fjSaveBase uint64
+  var recentBaseTileId uint64 = 0
+  firstPass := true
+
+  abv := make( []byte, 0, 1024) ; _ = abv
+  tleCache := make( map[uint64]*TileLibraryElement )
+
+
+  // Hold the variant ids and the seed tile lengths of each
+  // phase.  We add/update to these as we process the FastJ
+  // headers.
+  //
+  phaseVariant := [][]int{ []int{} }
+  phaseVariantSeedTileLength := []int{ 0 }
+  phaseVariantPrevBaseId := []uint64{ 0 }
+
+
+  // We assume the tile library is in tileID sorted order
+  //
+  lib_h,err := bioenv.OpenScanner(tileLibFn)
+  if err != nil { return err }
+  defer lib_h.Close()
+
+  var prev_path uint64
+  var prev_step uint64
+
+  for fjpos:=0; fjpos<len( fjHeaderList ); fjpos++ {
+    tile_id := fjHeaderList[fjpos].O["tileID"].S
+
+    path,step,e := tileIdPathStep( fjHeaderList[fjpos].O["tileID"].S )
+    if e != nil { return e }
+
+    if fjpos==0 { prev_path = path }
+    if path != prev_path {
+
+
+      //Tie off the abv vector and add it to the cgf structure
+      //
+      n := uint64(cg.StepPerPath[ prev_path ])
+      for i:=prev_step; i<(n-1); i++ {
+        abv = append( abv, '-' )
+      }
+
+      cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
+
+      abv = make( []byte, 0, 1024)
+      prev_step = 0
+
+    }
+
+
+    //fjBaseId,e := tileIdToBaseId( fjHeaderList[fjpos].O["tileID"].S )
+    fjBaseId,e := tileIdToBaseId( tile_id )
+    if e!=nil { return e }
+    if firstPass {
+      fjSaveBase = fjBaseId
+      firstPass = false
+      phaseVariantPrevBaseId[0] = fjBaseId
+    }
+
+    // Bring the tile library scanner up to date
+    //
+    for (recentBaseTileId == 0) || (recentBaseTileId < fjBaseId) {
+      t := &(TileLibraryElement{})
+      e := t.ScanBaseTile( lib_h.Scanner )
+      if e!=nil { return e }
+
+      tleCache[ t.BaseId ] = t
+      recentBaseTileId = t.BaseId
+    }
+
+    md5s := fjHeaderList[fjpos].O["md5sum"].S
+
+    seedTileLength := 1
+    if _,ok := fjHeaderList[fjpos].O["seedTileLength"] ; ok {
+      seedTileLength = int( fjHeaderList[fjpos].O["seedTileLength"].P + 0.5 )
+    }
+
+    variantPos := -2
+    if pos,ok := tleCache[ fjBaseId ].Md5sumPosMap[md5s] ; ok {
+      variantPos = pos
+    } else {
+      fmt.Fprintf( os.Stderr, "WARNING: %d %x %s not found in tleCache!\n", fjBaseId, fjBaseId, md5s )
+    }
+
+    phaseVariant[0] = append( phaseVariant[0], variantPos )
+
+    variantType := ""
+    if tile_id_is_het[tile_id] {
+      if tile_id_has_gap[tile_id] { variantType = "het*"
+      } else                      { variantType = "het" }
+    } else {
+      if tile_id_has_gap[tile_id] { variantType = "hom*"
+      } else                      { variantType = "hom" }
+    }
+
+    tile_map_pos        := cg.LookupTileMapVariant( variantType, phaseVariant )
+    abv_char_code,found := cg.LookupABVCharCode( tile_map_pos )
+
+    _ = found
+
+    abv = append( abv, abv_char_code... )
+    for ii:=0; ii<(seedTileLength-1); ii++ {
+      abv = append( abv, '*' )
+    }
+
+    if found && (abv_char_code=="#") {
+      step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(seedTileLength-1) )
+      cg.OverflowMap[ step_pos_key ] = tile_map_pos
+    } else if !found {
+      step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(seedTileLength-1) )
+
+      k := cg.CreateTileMapCacheKey( variantType, phaseVariant )
+
+      cg.FinalOverflowMap[ step_pos_key ] = cgf.OverflowMapEntry{
+          Type : "message",
+          Data: "{ \"Message\" : \"not implemented yet\", \"VariantKey\":\"" + k + "\" }" }
+    }
+
+    // Remove un-needed elements in the cache
+    //
+    for ; fjSaveBase < fjBaseId ; fjSaveBase++ { tleCache[ fjSaveBase ] = nil }
+
+    // Reset state
+    //
+    phaseVariant[0] = phaseVariant[0][0:0]
+    phaseVariantSeedTileLength[0] = 0
+    prev_step = step + uint64(seedTileLength-1)
+  }
+
+  //Tie off the final abv vector and add it to the cgf structure
+  //
+  n := uint64(cg.StepPerPath[ prev_path ])
+  for i:=prev_step; i<(n-1); i++ {
+    abv = append( abv, '-' )
+  }
+  cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
+
+  return nil
+
+}
+
+// We make minimal assumptions about how the FastJ appears, but we assume the tile library
+// is in sorted order.
+//
+func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
   //---------------
   //
@@ -325,6 +584,7 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
   abv := make( []byte, 0, 1024) ; _ = abv
   tleCache := make( map[uint64]*TileLibraryElement )
+
 
   // Hold the variant ids and the seed tile lengths of each
   // phase.  We add/update to these as we process the FastJ
@@ -389,10 +649,13 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
     //
     for (recentBaseTileId == 0) || (recentBaseTileId < fjBaseId) {
       t := &(TileLibraryElement{})
-      t.ScanBaseTile( lib_h.Scanner )
+      e := t.ScanBaseTile( lib_h.Scanner )
+      if e!=nil { return e }
+
 
       tleCache[ t.BaseId ] = t
       recentBaseTileId = t.BaseId
+
     }
 
     md5s := fjHeaderList[fjpos].O["md5sum"].S
@@ -406,7 +669,7 @@ func UpdateABV( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
     if pos,ok := tleCache[ fjBaseId ].Md5sumPosMap[md5s] ; ok {
       variantPos = pos
     } else {
-      fmt.Fprintf( os.Stderr, "WARNING: %d %s not found in tleCache!\n", fjBaseId, md5s )
+      fmt.Fprintf( os.Stderr, "WARNING: %d %x %s not found in tleCache!\n", fjBaseId, fjBaseId, md5s )
     }
 
 
@@ -538,6 +801,7 @@ func _main( c *cli.Context ) {
   gProfileFlag    = c.Bool("pprof")
   gMemProfileFlag = c.Bool("mprof")
 
+  gPloidy = c.Int("ploidy")
 
   if len( c.String("input-fastj")) == 0 {
     fmt.Fprintf( os.Stderr, "Provide input FastJ file\n" )
@@ -560,7 +824,13 @@ func _main( c *cli.Context ) {
       os.Exit(1)
     }
   } else {
-    gCGF = cgf.New()
+
+    if gPloidy == 1 {
+      gCGF = cgf.NewUnphased()
+    } else {
+      gCGF = cgf.New()
+    }
+
   }
 
 
@@ -579,11 +849,21 @@ func _main( c *cli.Context ) {
       fmt.Fprintf( os.Stderr, ">>> %s %s\n", tile_lib_fns[i], fastj_fns[i])
     }
 
-    e := UpdateABV( gCGF, tile_lib_fns[i], fastj_fns[i] )
-    if e!=nil {
-      fmt.Fprintf( os.Stderr, "ERROR: processing %s %s: %v\n", tile_lib_fns[i], fastj_fns[i], e)
-      os.Exit(1)
+
+    if gPloidy == 1 {
+      e := UpdateABVPloidy1( gCGF, tile_lib_fns[i], fastj_fns[i] )
+      if e!=nil {
+        fmt.Fprintf( os.Stderr, "ERROR: processing %s %s: %v\n", tile_lib_fns[i], fastj_fns[i], e)
+        os.Exit(1)
+      }
+    } else if gPloidy == 2 {
+      e := UpdateABVPloidy2( gCGF, tile_lib_fns[i], fastj_fns[i] )
+      if e!=nil {
+        fmt.Fprintf( os.Stderr, "ERROR: processing %s %s: %v\n", tile_lib_fns[i], fastj_fns[i], e)
+        os.Exit(1)
+      }
     }
+
   }
 
   var ofp *os.File
@@ -629,6 +909,12 @@ func main() {
     cli.StringFlag{
       Name: "cgf-file, f",
       Usage: "CGF file (optional)",
+    },
+
+    cli.IntFlag{
+      Name: "ploidy",
+      Value: 2,
+      Usage: "Ploidy of input FastJ files (default 2)",
     },
 
     cli.StringFlag{
