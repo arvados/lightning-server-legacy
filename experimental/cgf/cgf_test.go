@@ -18,6 +18,9 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
       "StepPerPath" : [ 35, 32, 38 ],
       "TotalStep" : 108,
 
+      "EncodedTileMap":"_.0:0;_*0:0;x.1:0;x.0:1;x*1:0;x*0:1;_.1:1;_.1:1;x.2,5:3;x*35:128",
+      "EncodedTileMapMd5Sum":"1813f1d7d917cf520d3ad2a8b24231a4",
+
       "TileMap" : [
         { "Type" : "hom", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[0] ] },
         { "Type" : "hom*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[0] ] },
@@ -64,6 +67,143 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
                 }
       }
 }`)
+
+func TestDefaultEncodings( t *testing.T ) {
+
+  a := string( CreateEncodedTileMap( DefaultTileMap() ) )
+  b := DefaultEncodedTileMap()
+
+  if a!=b {
+    t.Error( fmt.Errorf("Default TileMap and EncodedTileMap don't match!\n" ) )
+  }
+
+}
+
+func _cmp_tile_map( tile_map_entry_a, tile_map_entry_b []TileMapEntry ) error {
+
+  if len(tile_map_entry_a) != len(tile_map_entry_b) {
+    return fmt.Errorf("Lengths of tile map entries do not match (%d != %d)\n", len(tile_map_entry_a), len(tile_map_entry_b) )
+  }
+
+  for i:=0; i<len(tile_map_entry_a); i++ {
+
+    if tile_map_entry_a[i].Type != tile_map_entry_b[i].Type {
+      return fmt.Errorf("TileMap[%d] Type entries do not match (%s != %s)\n",
+        i, tile_map_entry_a[i].Type, tile_map_entry_b[i].Type )
+    }
+
+    if tile_map_entry_a[i].Ploidy != tile_map_entry_b[i].Ploidy {
+      return fmt.Errorf("TileMap[%d] Ploidy entries do not match (%d != %d)\n",
+        i, tile_map_entry_a[i].Ploidy , tile_map_entry_b[i].Ploidy )
+    }
+
+    if len(tile_map_entry_a[i].Variant) != len(tile_map_entry_b[i].Variant) {
+      return fmt.Errorf("TileMap[%d] Variant lengths do not match (%d != %d)\n",
+        i, len(tile_map_entry_a[i].Variant), len(tile_map_entry_b[i].Variant))
+    }
+
+    m:=len(tile_map_entry_a[i].Variant)
+
+    for j:=0; j<m; j++ {
+
+      if len(tile_map_entry_a[i].Variant[j]) != len(tile_map_entry_b[i].Variant[j]) {
+        return fmt.Errorf("TileMap[%d] Variant[%d] lengths do not match (%d != %d)\n",
+          i, j, len(tile_map_entry_a[i].Variant[j]), len(tile_map_entry_b[i].Variant[j]) )
+      }
+
+      for k:=0; k<len(tile_map_entry_a[i].Variant[j]); k++ {
+        if tile_map_entry_a[i].Variant[j][k] != tile_map_entry_b[i].Variant[j][k] {
+          return fmt.Errorf("TileMap[%d] Variant[%d][%d] entries do not match (%d != %d)\n",
+            i, j, k, tile_map_entry_a[i].Variant[j][k], tile_map_entry_b[i].Variant[j][k] )
+        }
+      }
+
+    }
+
+  }
+
+  return nil
+
+}
+
+func TestTileMapConversion( t *testing.T ) {
+  f,err := ioutil.TempFile( "", "" )
+  if err != nil { t.Error( err ) }
+
+  f.Write( test_cgf )
+  f.Close()
+
+  cg,ee := Load( f.Name() )
+  if ee != nil { t.Error(ee) }
+
+  ee = os.Remove( f.Name() )
+  if ee != nil { t.Error(ee) }
+
+  //encoded_tile_map_bytes := cg.CreateEncodedTileMap()
+  encoded_tile_map_bytes := CreateEncodedTileMap( cg.TileMap )
+  encoded_tile_map_string := string( encoded_tile_map_bytes )
+
+  //tile_map_entry,e := cg.CreateTileMapFromEncodedTileMap( encoded_tile_map_string )
+  tile_map_entry,e := CreateTileMapFromEncodedTileMap( encoded_tile_map_string )
+  if e!=nil { t.Error(e) }
+
+  e = _cmp_tile_map( tile_map_entry, cg.TileMap )
+  if e!=nil { t.Error( e ) }
+
+
+  unphased_tile_map := DefaultTileMapUnphased()
+  unphased_encoded_tile_map := DefaultEncodedTileMapUnphased()
+  converted_unphased_tile_map,err := CreateTileMapFromEncodedTileMap( unphased_encoded_tile_map )
+  if err!=nil { t.Error(err) }
+
+  e = _cmp_tile_map( unphased_tile_map, converted_unphased_tile_map )
+  if e!=nil { t.Error( e ) }
+
+  /*
+  if len(tile_map_entry) != len(cg.TileMap) {
+    t.Error( fmt.Errorf("Lengths of tile map entries do not match (%d != %d)\n", len(tile_map_entry), len(cg.TileMap) ) )
+  }
+
+  for i:=0; i<len(tile_map_entry); i++ {
+
+    if tile_map_entry[i].Type != cg.TileMap[i].Type {
+      t.Error( fmt.Errorf("TileMap[%d] Type entries do not match (%s != %s)\n",
+        i, tile_map_entry[i].Type, cg.TileMap[i].Type ) )
+    }
+
+    if tile_map_entry[i].Ploidy != cg.TileMap[i].Ploidy {
+      t.Error( fmt.Errorf("TileMap[%d] Ploidy entries do not match (%d != %d)\n",
+        i, tile_map_entry[i].Ploidy , cg.TileMap[i].Ploidy ) )
+    }
+
+    if len(tile_map_entry[i].Variant) != len(cg.TileMap[i].Variant) {
+      t.Error( fmt.Errorf("TileMap[%d] Variant lengths do not match (%d != %d)\n",
+        i, len(tile_map_entry[i].Variant), len(cg.TileMap[i].Variant)) )
+    }
+
+    m:=len(tile_map_entry[i].Variant)
+
+    for j:=0; j<m; j++ {
+
+      if len(tile_map_entry[i].Variant[j]) != len(cg.TileMap[i].Variant[j]) {
+        t.Error( fmt.Errorf("TileMap[%d] Variant[%d] lengths do not match (%d != %d)\n",
+          i, j, len(tile_map_entry[i].Variant[j]), len(cg.TileMap[i].Variant[j]) ) )
+      }
+
+      for k:=0; k<len(tile_map_entry[i].Variant[j]); k++ {
+        if tile_map_entry[i].Variant[j][k] != cg.TileMap[i].Variant[j][k] {
+          t.Error( fmt.Errorf("TileMap[%d] Variant[%d][%d] entries do not match (%d != %d)\n",
+            i, j, k, tile_map_entry[i].Variant[j][k], cg.TileMap[i].Variant[j][k] ) )
+        }
+      }
+
+    }
+
+  }
+  */
+
+
+}
 
 func TestNew( t *testing.T ) {
   cg := New()
@@ -190,15 +330,8 @@ func TestLoad( t *testing.T ) {
 
   }
 
-  //cgf.Print()
-
   of,err := ioutil.TempFile( "", "" )
   if err != nil { t.Error( err ) }
-
-
-  //of,err := os.Create( test_fn )
-  //if err != nil { t.Errorf("could not open output file '/tmp/test.cgf'") }
-  //defer of.Close()
 
   cgf.PrintFile( of )
   of.Close()
