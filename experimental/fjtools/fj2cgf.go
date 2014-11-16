@@ -428,7 +428,7 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   defer lib_h.Close()
 
   var prev_path uint64
-  var prev_step uint64
+  var beg_step uint64
 
   for fjpos:=0; fjpos<len( fjHeaderList ); fjpos++ {
     tile_id := fjHeaderList[fjpos].O["tileID"].S
@@ -443,14 +443,14 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       //Tie off the abv vector and add it to the cgf structure
       //
       n := uint64(cg.StepPerPath[ prev_path ])
-      for i:=prev_step; i<(n-1); i++ {
+      for i:=beg_step; i<(n-1); i++ {
         abv = append( abv, '-' )
       }
 
       cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
 
       abv = make( []byte, 0, 1024)
-      prev_step = 0
+      beg_step = 0
 
     }
 
@@ -511,10 +511,12 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
     }
 
     if found && (abv_char_code=="#") {
-      step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(seedTileLength-1) )
+      //step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(seedTileLength-1) )
+      step_pos_key := fmt.Sprintf("%x:%x", path, beg_step)
       cg.OverflowMap[ step_pos_key ] = tile_map_pos
     } else if !found {
-      step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(seedTileLength-1) )
+      //step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(seedTileLength-1) )
+      step_pos_key := fmt.Sprintf("%x:%x", path, beg_step)
 
       k := cg.CreateTileMapCacheKey( variantType, phaseVariant )
 
@@ -531,13 +533,14 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
     //
     phaseVariant[0] = phaseVariant[0][0:0]
     phaseVariantSeedTileLength[0] = 0
-    prev_step = step + uint64(seedTileLength-1)
+    //beg_step = step + uint64(seedTileLength-1)
+    beg_step = step + uint64(seedTileLength)
   }
 
   //Tie off the final abv vector and add it to the cgf structure
   //
   n := uint64(cg.StepPerPath[ prev_path ])
-  for i:=prev_step; i<(n-1); i++ {
+  for i:=beg_step; i<(n-1); i++ {
     abv = append( abv, '-' )
   }
   cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
@@ -604,30 +607,33 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   defer lib_h.Close()
 
   var prev_path uint64
-  var prev_step uint64
+  var beg_step uint64
 
   for fjpos:=0; fjpos<len( fjHeaderList ); fjpos++ {
     phase,err := deducePhase( fjHeaderList[fjpos] )
     if err != nil { return err }
 
-    path,step,e := tileIdPathStep( fjHeaderList[fjpos].O["tileID"].S )
+    path,step,e := tileIdPathStep( fjHeaderList[fjpos].O["tileID"].S ) ; _ = step
     if e != nil { return e }
 
+    // Initialization, either we're at the beginning of a new FastJ
+    // file, or the path has changed midway through.  Either way,
+    // initialize state.
+    //
     if fjpos==0 { prev_path = path }
     if path != prev_path {
-
 
       //Tie off the abv vector and add it to the cgf structure
       //
       n := uint64(cg.StepPerPath[ prev_path ])
-      for i:=prev_step; i<(n-1); i++ {
+      for i:=beg_step; i<(n-1); i++ {
         abv = append( abv, '-' )
       }
 
       cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
 
       abv = make( []byte, 0, 1024)
-      prev_step = 0
+      beg_step = 0
 
     }
 
@@ -735,10 +741,12 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       }
 
       if found && (abv_char_code=="#") {
-        step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_skip_len-1) )
+        //step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_skip_len-1) )
+        step_pos_key := fmt.Sprintf("%x:%x", path, beg_step)
         cg.OverflowMap[ step_pos_key ] = tile_map_pos
       } else if !found {
-        step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_skip_len-1) )
+        //step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_skip_len-1) )
+        step_pos_key := fmt.Sprintf("%x:%x", path, beg_step)
 
         k := cg.CreateTileMapCacheKey( variantType, phaseVariant )
 
@@ -760,7 +768,8 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       phaseVariantSeedTileLength[1] = 0
       gapFlag = false
 
-      prev_step = step + uint64(abv_skip_len-1)
+      //beg_step = step + uint64(abv_skip_len-1)
+      beg_step += uint64(abv_skip_len)
     }
 
   }
@@ -768,7 +777,8 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   //Tie off the final abv vector and add it to the cgf structure
   //
   n := uint64(cg.StepPerPath[ prev_path ])
-  for i:=prev_step; i<(n-1); i++ {
+  //for i:=beg_step; i<(n-1); i++ {
+  for i:=beg_step; i<n; i++ {
     abv = append( abv, '-' )
   }
   cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
