@@ -179,14 +179,11 @@ func unpack_tile_list( TileVariantId []string ) ( map[string][][2]int, error ) {
   for i:=0; i<len(TileVariantId); i++ {
     psv := strings.SplitN( TileVariantId[i], ".", 5 )
     if len(psv) != 4 {
-      //resp.Type = "error" ; resp.Message = fmt.Sprintf("Invalid TileGroupVariantId[%d] %s", g, req.TileGroupVariantId[g][i] )
       return nil, fmt.Errorf("Invalid tile %s", TileVariantId[i] )
     }
 
     path_range,e := parseIntOption( psv[0], 16 )
     if e!=nil {
-      //resp.Type = "error" ; resp.Message = fmt.Sprintf("Invalid path in TileGroupVariantId[%d] %s", g, req.TileGroupVariantId[g][i] )
-      //return
       return nil, fmt.Errorf("Invalid path in %s", TileVariantId[i] )
     }
 
@@ -197,15 +194,11 @@ func unpack_tile_list( TileVariantId []string ) ( map[string][][2]int, error ) {
 
     step_range,e := parseIntOption( psv[2], 16 )
     if e!=nil {
-      //resp.Type = "error" ; resp.Message = fmt.Sprintf("Invalid path in TileGroupVariantId[%d] %s", g, req.TileGroupVariantId[g][i] )
-      //return
       return nil, fmt.Errorf("Invalid step in %s", TileVariantId[i] )
     }
 
     variant_range,e := parseIntOption( psv[3], 16 )
     if e!=nil {
-      //resp.Type = "error" ; resp.Message = fmt.Sprintf("Invalid variant in TileGroupVariantId[%d] %s", g, req.TileGroupVariantId[g][i] )
-      //return
       return nil, fmt.Errorf("Invalid variant in %s", TileVariantId[i] )
     }
 
@@ -234,8 +227,6 @@ func unpack_tile_list( TileVariantId []string ) ( map[string][][2]int, error ) {
               ele_count++
 
               if ele_count >= max_elements {
-                //resp.Type = "error" ; resp.Message = fmt.Sprintf("max elements exceeded (max %d)", max_elements)
-                //return
                 return nil, fmt.Errorf("max elements exceeded (max %d)", max_elements)
               }
             }
@@ -1011,6 +1002,12 @@ func _main( c *cli.Context ) {
 
   z := c.StringSlice("input-cgf")
 
+  if len(z)==0 {
+    fmt.Fprintf( os.Stderr, "Provide input-cgf file(s)\n" )
+    cli.ShowAppHelp(c)
+    os.Exit(1)
+  }
+
   cg,e := cgf.Load( z[0] )
   if e != nil {
     fmt.Fprintf( os.Stderr, "ERROR: could not load %s: %v\n", z[0], e )
@@ -1086,7 +1083,7 @@ func _main( c *cli.Context ) {
 func main() {
   app := cli.NewApp()
   app.Name  = "lantern"
-  app.Usage = "Go from FastJ to Compact Genome Format (CGF)"
+  app.Usage = "Lantern server"
   app.Version = VERSION_STR
   app.Author = "Curoverse Inc."
   app.Email = "info@curoverse.com"
@@ -1097,7 +1094,7 @@ func main() {
     cli.StringSliceFlag{
       Name: "input-cgf, i",
       Value: &cli.StringSlice{},
-      Usage: "FastJ file(s)",
+      Usage: "CGF file(s)",
     },
 
     cli.BoolFlag{
