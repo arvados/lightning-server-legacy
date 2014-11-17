@@ -23,7 +23,7 @@ import "github.com/codegangsta/cli"
 import "runtime/pprof"
 
 
-var VERSION_STR string = "0.1, AGPLv3.0"
+var VERSION_STR string = "0.2, AGPLv3.0"
 var g_verboseFlag bool
 var gCGF *cgf.CGF
 
@@ -540,7 +540,7 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   //Tie off the final abv vector and add it to the cgf structure
   //
   n := uint64(cg.StepPerPath[ prev_path ])
-  for i:=beg_step; i<(n-1); i++ {
+  for i:=beg_step; i<n; i++ {
     abv = append( abv, '-' )
   }
   cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
@@ -859,7 +859,6 @@ func _main( c *cli.Context ) {
       fmt.Fprintf( os.Stderr, ">>> %s %s\n", tile_lib_fns[i], fastj_fns[i])
     }
 
-
     if gPloidy == 1 {
       e := UpdateABVPloidy1( gCGF, tile_lib_fns[i], fastj_fns[i] )
       if e!=nil {
@@ -889,6 +888,7 @@ func _main( c *cli.Context ) {
     defer ofp.Close()
   }
 
+  gCGF.TileLibraryVersion = c.String("tile-library-version")
   gCGF.PrintFile(ofp)
 
 }
@@ -913,7 +913,12 @@ func main() {
 
     cli.StringFlag{
       Name: "tile-library, l",
-      Usage: "Tile Library file",
+      Usage: "Tile library file",
+    },
+
+    cli.StringFlag{
+      Name: "tile-library-version, L",
+      Usage: "Tile library version",
     },
 
     cli.StringFlag{

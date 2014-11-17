@@ -42,6 +42,7 @@ type CGFLean struct {
   CharMap map[string]int
   ReverseCharMap map[int]string
   CanonicalCharMap string
+  ReservedCharCount int
 
   ABV map[string]string
   OverflowMap map[string]int
@@ -68,6 +69,7 @@ type CGF struct {
   CharMap map[string]int
   ReverseCharMap map[int]string
   CanonicalCharMap string
+  ReservedCharCount int
 
   ABV map[string]string
   OverflowMap map[string]int
@@ -98,6 +100,7 @@ func New() *CGF {
   cg.CharMap = DefaultCharMap()
   cg.ReverseCharMap = DefaultReverseCharMap()
   cg.CanonicalCharMap = DefaultCanonicalCharMap()
+  cg.ReservedCharCount = DefaultReservedCharCount()
   cg.ABV = make( map[string]string )
   cg.OverflowMap = make( map[string]int )
   cg.FinalOverflowMap = make( map[string]OverflowMapEntry )
@@ -130,6 +133,7 @@ func NewUnphased() *CGF {
   cg.CharMap = DefaultCharMap()
   cg.ReverseCharMap = DefaultReverseCharMap()
   cg.CanonicalCharMap = DefaultCanonicalCharMap()
+  cg.ReservedCharCount = DefaultReservedCharCount()
   cg.ABV = make( map[string]string )
   cg.OverflowMap = make( map[string]int )
   cg.FinalOverflowMap = make( map[string]OverflowMapEntry )
@@ -220,6 +224,7 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
   fmt.Fprintln( ofp, "")
 
   fmt.Fprintf( ofp, "  \"CanonicalCharMap\" : \"%s\",\n", cgf.CanonicalCharMap )
+  fmt.Fprintf( ofp, "  \"ReservedCharCount\" : %d,\n", cgf.ReservedCharCount )
 
   fmt.Fprintf( ofp, "  \"EncodedTileMapMd5Sum\":\"%s\",\n", cgf.EncodedTileMapMd5Sum )
   fmt.Fprintf( ofp, "  \"EncodedTileMap\":\"%s\",\n", cgf.EncodedTileMap )
@@ -556,16 +561,16 @@ func ( cg *CGF ) LookupABVTileMapVariant( path, step int ) ( variant int, err er
 // The flag will return true if the variant was found in the TileMap, false
 // otherwise.
 //
-func ( cgf *CGF ) LookupABVCharCode( tileMapPos int ) (string, bool) {
-  if (tileMapPos < 0) || (tileMapPos >= len(cgf.TileMap)) {
+func ( cg *CGF ) LookupABVCharCode( tileMapPos int ) (string, bool) {
+  if (tileMapPos < 0) || (tileMapPos >= len(cg.TileMap)) {
     return "#", false
   }
 
-  if tileMapPos >= len(cgf.CanonicalCharMap) {
+  if tileMapPos >= (len(cg.CanonicalCharMap)-cg.ReservedCharCount) {
     return "#", true
   }
 
-  return cgf.CanonicalCharMap[tileMapPos:tileMapPos+1], true
+  return cg.CanonicalCharMap[tileMapPos:tileMapPos+1], true
 
 }
 
