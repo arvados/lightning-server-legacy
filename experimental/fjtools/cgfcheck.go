@@ -74,26 +74,26 @@ func _main( c *cli.Context ) {
     for p:=0; p<len(abv); p++ {
       overflow_key := fmt.Sprintf("%x:%x", path, p )
 
+      s := p-10 ; if s < 0 { s = 0 }
+      e := p+10 ; if e > len(abv) { e = len(abv) }
+
       ch := abv[p]
       if ch=='#' {
 
         lookup,found := cg.OverflowMap[ overflow_key ]
         if !found {
-
-          s := p-10
-          if s < 0 { s = 0 }
-          e := p+10
-          if e > len(abv) { e = len(abv) }
-
-
           fmt.Fprintf( os.Stderr, "Could not find %s in overflow table!  [%x,%x,%x) %s(!%s!)%s\n",
             overflow_key, s, p, e, abv[s:p], abv[p:p+1], abv[p+1:e] )
-
         }
 
         if (lookup < 0) || (lookup >= len(cg.TileMap)) {
           fmt.Fprintf( os.Stderr, "lookup out of range lookup %d not in [%d,%d) for overflow key %s\n", lookup, 0, len(cg.TileMap), overflow_key )
         }
+
+      }
+
+      if ch=='-' {
+        fmt.Fprintf( os.Stderr, "Found unmapped position! %s: %s(!%s!)%s\n", overflow_key, abv[s:p], abv[p:p+1], abv[p+1:e] )
 
       }
 
