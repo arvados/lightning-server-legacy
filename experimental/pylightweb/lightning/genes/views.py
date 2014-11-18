@@ -4,7 +4,9 @@ from django.http import Http404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 import string
 
+from django.db.models import Avg, Count, Max, Min
 from genes.models import UCSC_Gene, GeneXRef
+import genes.functions as fns
 
 def current_gene_names(request):
     distinct_genes = GeneXRef.objects.order_by('gene_aliases').distinct('gene_aliases')
@@ -49,10 +51,14 @@ def current_gene_names(request):
 def specific_gene(request, xref_id):
     gene = GeneXRef.objects.get(pk=xref_id)
     alias = gene.gene_aliases
-    genes = GeneXRef.objects.filter(gene_aliases=alias).order_by('description')
+    genes = GeneXRef.objects.filter(gene_aliases=alias).order_by('gene__chrom','description')
+    genes, exons, num_genes, num_non_overlapping_groups = fns.split_exons_and_get_length(genes)
     context = {
         'gene':gene,
         'genes':genes,
+        'exons':exons,
+        'num_genes':num_genes,
+        'num_non_over': num_non_overlapping_groups,
         }
     return render(request, 'genes/gene_view.html', context)
         

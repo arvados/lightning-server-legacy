@@ -5,6 +5,7 @@ from django.template import RequestContext, loader
 
 from django.db.models import Count,Max,Min
 from genes.models import UCSC_Gene, GeneXRef
+import genes.functions as fns
 
 def getTileCoordInt(tile):
     """Returns integer for path, version, and step for tile """
@@ -18,14 +19,22 @@ def getTileCoordInt(tile):
 
 def slippymap(request):
     exact_gene = request.GET.get('exact')
+    many_exact = request.GET.get('multiple-exact')
     gene_filter = request.GET.get('filter')
     pheno_filter = request.GET.get('phenotype')
     reviewed = request.GET.get('reviewed')
-    if exact_gene != None:
-        matching = GeneXRef.objects.filter(gene_aliases=exact_gene)
+    if many_exact != None:
+        matching = GeneXRef.objects.filter(gene_aliases=many_exact).order_by('gene__chrom','description')
+        overlapping_genes = fns.split_genes_into_groups(matching, by_tile=True)
+        context = {'overlapping':overlapping_genes}
+        
+    elif exact_gene != None:
+        matching = GeneXRef.objects.filter(gene_aliases=exact_gene).order_by('gene__chrom','description')
         distinct_genes = GeneXRef.objects.order_by('gene_aliases').distinct('gene_aliases').filter(gene_aliases=exact_gene)
+        context = {'genes':distinct_genes, 'matching':matching}
+
     elif gene_filter != None or pheno_filter != None or reviewed != None:
-        matching = GeneXRef.objects.order_by('gene_aliases')
+        matching = GeneXRef.objects.order_by('gene_aliases').order_by('gene__chrom','description')
         distinct_genes = GeneXRef.objects.order_by('gene_aliases').distinct('gene_aliases')
         if gene_filter != None and gene_filter != 'all':
             matching = matching.filter(gene_aliases__istartswith=gene_filter)
@@ -39,10 +48,10 @@ def slippymap(request):
         if reviewed != None:
             matching = matching.filter(has_gene_review=True)
             distinct_genes = distinct_genes.filter(has_gene_review=True)
+        context = {'genes':distinct_genes, 'matching':matching}
     else:
-        matching = None
-        distinct_genes = None
-    return render(request, 'slippy/slippymap.html', {'genes':distinct_genes, 'matching':matching})
+        context = {}
+    return render(request, 'slippy/slippymap.html', context)
 
 def simplesearch(request):
     def dealWithMatching(matching):

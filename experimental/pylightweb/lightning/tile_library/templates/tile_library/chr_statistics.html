@@ -15,6 +15,7 @@
 	<div class="page-header">
 		<h1>Tile Library Statistics: {{ chromosome_name }}</h1>
 	</div>
+	{% if chromosome_stats %}
 	<p>Note that current paths are chromosomal bands</p>
 	<div class="table-responsive">
 		<table id="StatTable"class="table table-striped">
@@ -47,7 +48,7 @@
 				{% for path_int, path_hex, path_cyto, path in paths %}
 				<tr>
 					<td>{{ path_cyto }}</td>
-					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path_int %}">Path {{ path_hex }}</a></td>
+					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path_int %}">Path {{ path_hex|default:'0' }}</a></td>
 					<td>{{ path.position_num }}</td>
 					<td>{{ path.tile_num }}</td>
 					<td>{{ path.avg_variant_val|floatformat|default:'-' }}</td>
@@ -60,5 +61,10 @@
 			</tbody>
 		</table>
 	</div>
+	{% else %}
+	<div class="alert alert-danger" role="alert">
+		No statistics for this Tile Library are available. Use tile_library.generate_stats.initialize() to generate statistics for this tile library.
+	</div>
+	{% endif %}
 </div>
 {% endblock %}

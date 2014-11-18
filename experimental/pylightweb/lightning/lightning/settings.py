@@ -42,6 +42,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'tile_library',
     'genes',
     'home',
@@ -49,7 +50,14 @@ INSTALLED_APPS = (
     'slippy',
     #'loadgenes',
     'humans',
+    'django_extensions',
 )
+
+GRAPH_MODELS = {
+    'all_applications':True,
+    'group_models':True,
+}
+    
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',

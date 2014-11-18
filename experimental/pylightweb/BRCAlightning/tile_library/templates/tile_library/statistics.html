@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block title %}Lightning: Tile Library Statistics{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li class="active"><a href="#">Library</a></li>
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Tile Library Statistics: Chromosomes</h1>
+	</div>
+	{% if stats|length == 0 %}
+	<div class="alert alert-danger" role="alert">
+		No statistics for this Tile Library are available. Use tile_library.generate_stats.initialize() to generate statistics for this tile library.
+	</div>
+	{% else %}
+	<div class="table-responsive">
+		<table id="StatTable"class="table table-striped">
+			<thead>
+				<tr>
+					<th>Chromosome</th>
+					<th>Total positions</th>
+					<th>Total tiles</th>
+					<th>Average number of variants</th>
+					<th>Maximum number of variants</th>
+					<th>Minimum tile length (in bases)</th>
+					<th>Average tile length (in bases)</th>
+					<th>Maximum tile length (in bases)</th>
+
+				</tr>
+			</thead>
+			<tbody>
+				{% for statistic, chr_name in stats %}
+				<tr>
+					{% if forloop.first %}
+					<td>Entire Genome</td>
+					{% else %}
+					<td><a href="{% url 'tile_library:chr_statistics' statistic.statistics_type %}">{{ chr_name }}</a></td>
+					{% endif %}
+					<td>{{ statistic.position_num }}</td>
+					<td>{{ statistic.tile_num }}</td>
+					<td>{{ statistic.avg_variant_val|floatformat|default:'-' }}</td>
+					<td>{{ statistic.max_variant_val|default:'-' }}</td>
+					<td>{{ statistic.min_length|default:'-' }}</td>
+					<td>{{ statistic.avg_length|floatformat|default:'-' }}</td>
+					<td>{{ statistic.max_length|default:'-' }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	{% endif %}
+</div>
+{% endblock %}
+
