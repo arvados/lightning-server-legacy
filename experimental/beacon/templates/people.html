@@ -5,6 +5,9 @@
   {% for p in people %}
   <a href="https://my.pgp-hms.org/profile/{{p}}">{{p}}</a><br/>
   {% endfor %}
-  
-
+  <br/>
+  In more detail, the following data is searched:<br/><br/>
+  {% for n in npyfnames%}
+  {{ n }}</br>
+  {% endfor %}
 {% endblock %}
