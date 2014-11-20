@@ -99,7 +99,7 @@ class TileVariant(models.Model):
             Depends on tile_variant_name (check if variant is equal to 000) (or variant_value)
     """
     tile_variant_name = models.BigIntegerField(primary_key=True, editable=False, db_index=True)
-    tile = models.ForeignKey(Tile, related_name='variants', db_index=True)
+    tile = models.ForeignKey(Tile, related_name='tile_variants', db_index=True)
     num_positions_spanned = models.PositiveSmallIntegerField()
     variant_value = models.PositiveIntegerField(db_index=True)
     length = models.PositiveIntegerField(db_index=True)
@@ -165,9 +165,9 @@ class GenomeVariant(models.Model):
         GAVariant.calls -> N/A
     """
     id = models.BigIntegerField(primary_key=True, editable=False)
-    start_tile_position = models.ForeignKey(Tile, related_name='genome_variants_starting', db_index=True)
+    start_tile_position = models.ForeignKey(Tile, related_name='starting_genome_variants', db_index=True)
     start_increment = models.PositiveIntegerField()
-    end_tile_position = models.ForeignKey(Tile, related_name='genome_variants_ending', db_index=True)
+    end_tile_position = models.ForeignKey(Tile, related_name='ending_genome_variants', db_index=True)
     end_increment = models.PositiveIntegerField()
     
     tile_variants = models.ManyToManyField(TileVariant, through='GenomeVariantTranslation',
@@ -200,7 +200,7 @@ class GenomeVariant(models.Model):
             humanReadable = 'Deletion'
         else:
             humanReadable = 'SNP'
-        return fns.get_position_string_from_position_int(int(self.tile_position)) + ": " + humanReadable
+        return fns.get_position_string_from_position_int(int(self.start_tile_position.tilename)) + ": " + humanReadable
     class Meta:
         #Ensures ordering by tilename
         ordering = ['start_tile_position', 'start_increment']
@@ -216,7 +216,7 @@ class GenomeVariantTranslation(models.Model):
         end(integer): Positive integer, zero-indexed, exclusive, relative to the start of the TileVariant
     """
     tile_variant = models.ForeignKey(TileVariant, related_name='translation_to_genome_variant')
-    genome_variant = models.ForeignKey(GenomeVariant, related_name='translation_to_tile')
+    genome_variant = models.ForeignKey(GenomeVariant, related_name='translation_to_tilevariant')
     start = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant")
     end = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant. Exclusive")
 
