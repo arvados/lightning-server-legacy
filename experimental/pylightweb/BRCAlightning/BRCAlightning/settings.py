@@ -17,16 +17,20 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'ak+ez7(%_da-ia9l8zccr5ki08(lc9v0c4zzh-394e$bf8^&0_'
+with open('/etc/lightning_key2.txt') as f:
+    SECRET_KEY = f.read().strip()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-TEMPLATE_DEBUG = True
+TEMPLATE_DEBUG = False
 
 TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'templates')]
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '.lightning-dev3.curoverse.com',
+    '.lightning-dev3.curoverse.com.',
+    ]
 
 STATICFILES_DIRS = (
     BASE_DIR + "/static/",
@@ -71,9 +75,10 @@ WSGI_APPLICATION = 'BRCAlightning.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
-
-BRCA_PW = "mypassword"
-ENTIRE_PW = "mypassword"
+with open('/etc/brca_lightning_key.txt') as f:
+    BRCA_PW = f.read().strip()
+with open('/etc/lightning_key.txt') as f:
+    ENTIRE_PW = f.read().strip()
 
 DATABASES = {
     'default': {
