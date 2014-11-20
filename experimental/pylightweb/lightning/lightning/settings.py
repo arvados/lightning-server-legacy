@@ -54,7 +54,14 @@ INSTALLED_APPS = (
     'slippy',
     #'loadgenes',
     'humans',
+    'django_extensions',
 )
+
+GRAPH_MODELS = {
+    'all_applications':True,
+    'group_models':True,
+}
+    
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
