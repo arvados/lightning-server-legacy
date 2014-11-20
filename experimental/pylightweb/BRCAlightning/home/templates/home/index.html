@@ -1,10 +1,16 @@
 {% extends "base.html" %}
 {% load staticfiles %}
 
-{% block title %}Lightning: Fast Interaction with BRCA genes of Personal Genome Project Data{% endblock %}
+{% block title %}Lightning: Fast Interaction the Personal Genome Project Data (chr13 and 17){% endblock %}
 
-{% block breadcrumbs %}
-	<li class="active"><a href="#">Home</a></li>
+{% block additional_scripts %}
+	{% if alert %}
+		<script>
+			jQuery(document).ready(function () {
+				alert("{{alert}}");
+			});
+		</script>
+	{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -16,8 +22,152 @@
 	<p>Our goals include enabling fast analysis of population genetic data as part of the GA4GH BRCA Challenge. We currently use whole genome sequence data (covering chr13q13.1 and chr17q21.31 only) obtained from the Personal Genome Project. To view the entire genomes of a smaller portion of the population, visit the other <a href="http://lightning-dev3.curoverse.com">Lightning page</a>. These sequences have been converted losslessly to Compressed Genome Format, a developmental format enabling simple lift-over, annotation, visualization, and fast analysis of human genomes. </p>
 	<ul>
 		<li>To view the Tile Library, visit the <a href="{% url 'tile_library:statistics' %}">Tile Library Statistics</a> tab. </li>
-		<li>To search for UCSC genes and corresponding Gene Review Articles, visit the <a href="{% url 'genes:names' %}">Known Genes</a> Tab.</li>
+		<li>For more search functionality for UCSC genes and corresponding Gene Review Articles, visit the <a href="{% url 'genes:names' %}">Known Genes</a> Tab.</li>
 	</ul>
+	<div class="panel panel-primary">
+		<div class="panel-heading">
+			<h3 class="panel-title">Search Lightning</h3>
+		</div>
+		<div class="panel-body">
+			<p>A note about the search: If you search for a variant that is not present in the loaded PGP population (regardless of whether it is exists in 1000's Genomes, etc), no results will be returned.</p>
+			<div class="panel panel-primary">
+				<div class="panel-heading">Search for Variant</div>
+				<div class="panel-body">
+					<form role="search" id="searchArea" method="get">
+		    			<input type="text" name="search" id="VariantSearch" class="form-control" placeholder="Search for variant">
+						<div class="form-group">
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="by_location">By variant (using chromosome location)</input>
+									<span class="help-block">First allele is the reference allele. We currently only support assembly hg19. Example: "chr13:32929387:T:C"</span>
+								</label>
+							</div>
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="by_rs_id">By rsID</input>
+									<span class="help-block">Searches for matches <b>containing</b> the rsID. Examples: "dbsnp.120:rs12584802" (returns all variants with an rsID from dbsnp.120 starting with "rs12583802") or "rs4129" (returns all variants with an rsID starting with "rs4129")</span>
+								</label>
+							</div>
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="by_exact_rs_id">By exact rsID</input>
+									<span class="help-block">Searches for matches exactly matching the rsID. Examples: "dbsnp.120:rs12584802" (returns all variants with the rsID "rs12583802" from dbsnp.120) or "rs169547" (returns all variants with the rsID "rs169547")</span>
+								</label>
+							</div>
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="by_protein_affected">By protein affected</input>
+									<span class="help-block">Searches for variants predicted to affect protein sequence. Examples: "" (returns all variants affecting protein sequence) or "BRCA" (returns variants affecting BRCA1 or BRCA2)</span>
+								</label>
+							</div>
+						</div>
+						<p>Response format:</p>
+						<div class="form-group">
+							<div class="radio-inline">
+								<label class="radio-inline">
+									<input type="radio" name="searchtarget" value="tile_library">Tile Library View</input>
+								</label>
+							</div>
+<!--
+							<div class="radio-inline disabled">
+								<label class="radio-inline disabled">
+									<input type="radio" name="searchtarget" value="humans" disabled>Population View</input>
+								</label>
+							</div>
+-->
+						</div>
+						<button type="submit" class="btn btn-default">Search</button>
+					</form>
+				</div>
+			</div>
+		<!------------------------------------------------------------------------------------------------------>
+			<div class="panel panel-primary">
+				<div class="panel-heading">Search for Genome Area (locus)</div>
+				<div class="panel-body">
+					<form role="search" id="searchArea" method="get">
+						<div class="form-group">
+				    		<input type="text" name="search" id="AreaSearch" class="form-control" placeholder="Go to area of the genome">
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="by_location">By chromosome location</input>
+									<span class="help-block">Inclusive search. Example: "chr17:41,196,312-41,277,500" or "chr17:41196312-41277500" or "chr13q11"</span>
+								</label>
+							</div>
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="by_position">By position</input>
+									<span class="help-block">Example: "241.00.002e" or "24100002e"</span>
+								</label>
+							</div>
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="by_path">By path</input>
+									<span class="help-block">Example: "24e"</span>
+								</label>
+							</div>
+						</div>
+						<p>Response format:</p>
+						<div class="form-group">
+							<div class="radio-inline">
+								<label class="radio-inline">
+									<input type="radio" name="searchtarget" value="tile_library">Tile Library View</input>
+								</label>
+							</div>
+<!--							<div class="radio-inline">
+								<label class="radio-inline">
+									<input type="radio" name="searchtarget" value="slippy_map">Slippy Map</input>
+								</label>
+							</div>
+-->
+						</div>
+						<button type="submit" class="btn btn-default">Search</button>
+					</form>
+				</div>
+			</div>
+		<!------------------------------------------------------------------------------------------------------>
+			<div class="panel panel-primary">
+				<div class="panel-heading">Search for Gene</div>
+				<div class="panel-body">
+					<form role="search" id="searchArea" method="get">
+						<div class="form-group">
+		    				<input type="text" name="search" id="GeneSearch" class="form-control" placeholder="Search for Gene">
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="for_gene">By Gene Name</input>
+									<span class="help-block">Searches for genes starting with the search text. If none are found, searches for genes containing the search text. Example: "brca" (returns genes BRCA1 and BRCA2)</span>
+								</label>	
+							</div>
+							<div class="radio">
+								<label class="radio">
+									<input type="radio" name="searchtype" value="for_gene_review">By Gene Review Article Title</input>
+									<span class="help-block">Searches for genes associated with Gene Review Articles with titles containing the search text. Example: "brain"</span>
+								</label>	
+							</div>
+						</div>
+						<p>Response format:</p>
+						<div class="form-group">
+							<div class="radio-inline">
+								<label class="radio-inline">
+									<input type="radio" name="searchtarget" value="tile_library">Tile Library View</input>
+								</label>
+							</div>
+							<div class="radio-inline">
+								<label class="radio-inline">
+									<input type="radio" name="searchtarget" value="slippy_map">Slippy Map</input>
+								</label>
+							</div>
+							<div class="radio-inline">
+								<label class="radio-inline">
+									<input type="radio" name="searchtarget" value="genes">Gene View</input>
+								</label>
+							</div>
+						</div>
+						<button type="submit" class="btn btn-default">Search</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
 	<p>Our team has implemented Beacon for the Personal Genome Project Data. Visit <a href="http://lightning-dev4.curoverse.com/beacon">Beacon</a> to experiment with our preliminary implementation.</p>
 
 	<p> Known Genes data downloaded from the UCSC Human Genome Browser (hg19). Thanks to Hiram Clawson, Brooke Rhead, Pauline Fujita, Ann Zweig, Katrina Learned, Donna Karolchik and Robert Kuhn. </p>

@@ -1,35 +1,30 @@
 {% extends "base.html" %}
+{# Expects window_title, genome_position, query_description, position, queried_genome_variants, all_genome_variants, prev_ref_length (if necessary), spanning_tiles, tiles to be defined #}
+{# Optional: breadcrumb_title (if provided, expects breadcrumb_url and breadcrumb_arg #}
 {% load staticfiles %}
 {% load tile_filters %}
 
-{% block title %}Lightning: Tile Library - Position {{ position_name }}{% endblock %}
+{% block title %}{{ window_title }}{% endblock %}
 
 {% block breadcrumbs %}
-	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
-	<li><a href="{% url 'tile_library:chr_statistics' chr_int %}">{{ chr_name }}</a></li>
-	<li><a href="{% url 'tile_library:path_statistics' chr_int path_int %}">Path {{ path_hex }}</a></li>
-	<li class="active"><a href="#">Tile {{ position_name }}</a></li>
+	{% if breadcrumb_title %}
+	<li><a href="{% url breadcrumb_url breadcrumb_arg %}">{{ breadcrumb_title }}</a></li>
+	{% endif %}
+	<li class="active"><a href="#">Tile {{ position }}</a></li>
 {% endblock %}
 
 
 {% block content %}
 <div class="container-fluid">
 	<div class="page-header">
-		<h1>Tile Position {{ position_name }} <small>(Path {{ path_hex }}, {{chr_name}}{{path_name}})</small></h1>
-<!--
-		<a class="btn btn-default" href="{# url 'tile_library:tile_view' prev_tile.chr_int prev_tile.path_int prev_tile.tile_int #}">&laquo; Previous Tile Position</a>
-		<a class="btn btn-default" href="{# url 'tile_library:tile_view' next_tile.chr_int next_tile.path_int next_tile.tile_int #}">Next Tile Position &raquo;</a> 
--->
+		<h1>Tile Position {{ position }} <small>{{ genome_position }}</small></h1>
+		<h1>Query: <small>{{ query_description }}</small></h1>
 	</div>
-	{% if position %}
-	{% if genome_variants|length != 0 %}
-	<h3>Genome Variants located at this position:</h3>
-	<p>Note: Genome Variants can be located on at most 2 positions (if they are on tags). For clarity, all genome variants are shown at each position. However, the variant ids shown below are relative to the tile position - if genome variant 1 is also on the previous position, it will not necessarily be genome variant 1 on the previous position page. We do not show the ids used by our database for readability.</p>
+	<h3>Genome Variant(s) matching query: </h3>
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
 				<tr>
-					<th>Genome Variant id</th>
 					<th>Start Position within the tile</th>
 					<th>End Position within the tile (Exclusive)</th>
 					<th>dbSNP annotations (if applicable)</th>
@@ -40,9 +35,8 @@
 				</tr>
 			</thead>
 			<tbody>
-				{% for variant in genome_variants %}
+			{% for variant in queried_genome_variants %}
 				<tr>
-					<td>{{ forloop.counter }}</td>
 					{% if variant.start_tile_position == position %}
 						<td>{{ variant.start_increment }}</td>
 					{% else %}
@@ -61,17 +55,15 @@
 					<td>TODO: link to genevieve</td>
 					<td>{{ variant|get_other }}</td>
 				</tr>
-				{% endfor %}
+			{% endfor %}
 			<tbody>
 		</table>
 	</div>
-	{% else %}
-		<div class="alert alert-info" role="alert">
-			<b>No Genome Variants are recorded in this population for this position. All variation is due to uncalled regions</b>
-		</div>
-	{% endif %}
 	{% if spanning_tiles|length != 0 %}
-	<h3>Spanning tile variants touching this position:</h3>
+	<div class="alert alert-info" role="alert">
+		<b>Spanning tile genome variants are reported with starting positions relative to the start of that tile.</b>
+	</div>
+	<h3>Spanning tile variants containing genome variant and touching this position:</h3>
 	<div class="table-responsive">
 		<table id="StatTable" class="table table-striped">
 			<thead>
@@ -96,9 +88,9 @@
 					<td>{{ tilevar.tile_id|add:tilevar.num_positions_spanned|add:"-1"|to_position_string }}</td>
 					<td>{{ tilevar.length }}</td>
 					{% if tilevar.genome_variants %}
-					<td>{{ tilevar.genome_variants|list_variants:genome_variants }}</td>
-					<td>{{ tilevar.genome_variants|get_all_aliases:genome_variants }}</td>
-					<td>{{ tilevar.genome_variants|get_all_protein_changes:genome_variants }}</td>
+					<td>{% get_all_base_changes tilevar.genome_variants tilevar %}</td>
+					<td>{{ tilevar.genome_variants|get_all_aliases:all_genome_variants }}</td>
+					<td>{{ tilevar.genome_variants|get_all_protein_changes:all_genome_variants }}</td>
 					{% else %}
 					<td></td>
 					<td></td>
@@ -111,9 +103,10 @@
 		</table>
 	</div>
 	{% else %}
-	<h3>No spanning tiles exist at this position.</h3>
+	<h3>No spanning tiles matching the query exist at this position.</h3>
 	{% endif %}
-	<h3>Tile variants at this position:</h3>
+	{% if tiles|length != 0 %}
+	<h3>Tile variants containing this genome variant and at this position:</h3>
 	<div class="table-responsive">
 		<table id="StatTable" class="table table-striped">
 			<thead>
@@ -132,38 +125,36 @@
 				{% for tile in tiles %}
 				<tr>
 					<td>{{ tile.variant_value }}</td>
-					{% if forloop.first %}
-						<td>{{ position.start_tag }}</td>
+					{% if tile.start_tag|length == 0 %}
+						<td>(Same as hg19) {{ position.start_tag|upper }}</td>
 					{% else %}
-						<td>{{ tile.start_tag|upper }}</td>
+						<td>(Different from hg19) {{ tile.start_tag|upper }}</td>
 					{% endif %}
 					<td>{{ tile.length }}</td>
 					{% if tile.genome_variants %}
-					<td>{{ tile.genome_variants|list_variants:genome_variants }}</td>
-					<td>{{ tile.genome_variants|get_all_aliases:genome_variants }}</td>
-					<td>{{ tile.genome_variants|get_all_protein_changes:genome_variants }}</td>
+					<td>{% get_all_base_changes tile.genome_variants tile %}</td>
+					<td>{{ tile.genome_variants|get_all_aliases:all_genome_variants }}</td>
+					<td>{{ tile.genome_variants|get_all_protein_changes:all_genome_variants }}</td>
 					{% else %}
 					<td></td>
 					<td></td>
 					<td></td>
 					{% endif %}
 					<td>TODO: link to genevieve</td>
-					{% if forloop.first %}
-						<td>{{ position.end_tag }}</td>
+					{% if tile.end_tag|length == 0 %}
+						<td>(Same as hg19) {{ position.end_tag }}</td>
 					{% else %}
-						<td>{{ tile.end_tag|upper }}</td>
+						<td>(Different from hg19) {{ tile.end_tag|upper }}</td>
 					{% endif %}
 				</tr>
 				{% endfor %}
 			<tbody>
 		</table>
+	{% else %}
+	<h3>No tiles matching this query exist at this position.</h3>
+	{% endif %}
 	</div>
 <!-- TODO: md5sums and sequences for the non-reference tile should probably be placed here, giving the table more room for references, etc
 	 TODO: sort the annotations?-->
-	{% else %}
-	<div class="alert alert-danger" role="alert">
-		This position (tile) is not populated in the current Tile Library.
-	</div>
-	{% endif %}
 </div>
 {% endblock %}

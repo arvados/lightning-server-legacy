@@ -1,6 +1,7 @@
-{% extends "path_base.html" %}
+{% extends "positions_view_base.html" %}
 {% load staticfiles %}
 {% load statistics_filters %}
+{% load humanize %}
 
 {% block title %}Lightning: Tile Library Statistics for Path {{ path_hex|default:'0' }}{% endblock %}
 
@@ -20,9 +21,15 @@
 					<th>hg19 Cytomap Band</th>
 					<th>Path</th>
 					<th>Total positions</th>
-					<th>Total tiles</th>
-					<th>Average number of variants</th>
-					<th>Maximum number of variants</th>
+					<th>Average number of Genomic variants at one position</th>
+					<th>Maximum number of Genomic variants at one position</th>
+					<th>Average number of Tile variants at one position</th>
+					<th>Maximum number of Tile variants at one Position</th>
+					<th>Total Tile variants</th>
+					<th>Average number of positions spanned</th>
+					<th>Maximum number of positions spanned</th>
+					<th>Average number of Genomic variants per tile variant</th>
+					<th>Maximum number of Genomic variants per tile variant</th>
 					<th>Minimum tile length (in bases)</th>
 					<th>Average tile length (in bases)</th>
 					<th>Maximum tile length (in bases)</th>
@@ -32,13 +39,19 @@
 				<tr>
 					<td>{{ path_cyto }}</td>
 					<td>Path {{ path_hex|default:'0' }}</td>
-					<td>{{ path.position_num|default:'0' }}</td>
-					<td>{{ path.tile_num|default:'0' }}</td>
+					<td>{{ path.position_num|intcomma }}</td>
+					<td>{{ path.avg_annotations_per_position|floatformat|default:'-' }}</td>
+					<td>{{ path.max_annotations_per_position|default:'-'|intcomma }}</td>
 					<td>{{ path.avg_variant_val|floatformat|default:'-' }}</td>
-					<td>{{ path.max_variant_val|default:'-' }}</td>
-					<td>{{ path.min_length|default:'-' }}</td>
+					<td>{{ path.max_variant_val|default:'-'|intcomma }}</td>
+					<td>{{ path.tile_num|intcomma }}</td>
+					<td>{{ path.avg_num_positions_spanned|floatformat|default:'-' }}</td>
+					<td>{{ path.max_num_positions_spanned|default:'-'|intcomma }}</td>
+					<td>{{ path.avg_annotations_per_tile|floatformat|default:'-' }}</td>
+					<td>{{ path.max_annotations_per_tile|default:'-'|intcomma }}</td>
+					<td>{{ path.min_length|default:'-'|intcomma }}</td>
 					<td>{{ path.avg_length|floatformat|default:'-' }}</td>
-					<td>{{ path.max_length|default:'-' }}</td>
+					<td>{{ path.max_length|default:'-'|intcomma }}</td>
 				</tr>
 			</tbody>
 		</table>
@@ -58,16 +71,21 @@
 			{% for position in positions %}
 				<tr>
 					<td><a href="{% url 'tile_library:tile_view' chromosome_int path_int position.tilename %}">{{ position }}</a></td>
-					<td>{{ position.num_var }}</td>
-					<td>{{ position|get_reference_length }}</td>
+					<td>{{ position|get_num_position_annotations|intcomma }}</td>
+					<td>{{ position.num_var|intcomma }}</td>
+					<td>{{ position.avg_pos_spanned|floatformat }}</td>
+					<td>{{ position.max_pos_spanned|intcomma }}</td>
+					<td>{{ position|get_avg_num_tile_annotations|floatformat }}</td>
+					<td>{{ position|get_max_num_tile_annotations|intcomma }}</td>
+					<td>{{ position|get_reference_length|intcomma }}</td>
 					{% if position.num_var == 1 %}
 					<td>-</td>
 					<td>-</td>
 					<td>-</td>
 					{% else %}
-					<td>{{ position.min_len }}</td>
+					<td>{{ position.min_len|intcomma }}</td>
 					<td>{{ position.avg_len|floatformat }}</td>
-					<td>{{ position.max_len }}</td>
+					<td>{{ position.max_len|intcomma }}</td>
 					{% endif %}
 				</tr>
 	

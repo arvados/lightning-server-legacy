@@ -1,6 +1,7 @@
-{% extends "path_base.html" %}
+{% extends "positions_view_base.html" %}
 {% load staticfiles %}
 {% load statistics_filters %}
+{% load humanize %}
 
 {% block title %}Lightning: Tile Library Statistics for Gene {{ gene.gene_aliases }}{% endblock %}
 
@@ -40,16 +41,21 @@
 				<tr>
 				{% endif %}
 					<td><a href="{% url 'tile_library:tile_in_gene_view' gene.id position.tilename %}">{{ position }}</a></td>
-					<td>{{ position.num_var }}</td>
-					<td>{{ position|get_reference_length }}</td>
+					<td>{{ position|get_num_position_annotations|intcomma }}</td>
+					<td>{{ position.num_var|intcomma }}</td>
+					<td>{{ position.avg_pos_spanned|floatformat }}</td>
+					<td>{{ position.max_pos_spanned|intcomma }}</td>
+					<td>{{ position|get_avg_num_tile_annotations|floatformat }}</td>
+					<td>{{ position|get_max_num_tile_annotations|intcomma }}</td>
+					<td>{{ position|get_reference_length|intcomma }}</td>
 					{% if position.num_var == 1 %}
 					<td>-</td>
 					<td>-</td>
 					<td>-</td>
 					{% else %}
-					<td>{{ position.min_len }}</td>
+					<td>{{ position.min_len|intcomma }}</td>
 					<td>{{ position.avg_len|floatformat }}</td>
-					<td>{{ position.max_len }}</td>
+					<td>{{ position.max_len|intcomma }}</td>
 					{% endif %}
 				</tr>
 			{% endfor %}

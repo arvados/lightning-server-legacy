@@ -5,14 +5,20 @@ from django.db.models import Avg, Count, Max, Min
 from tile_library import functions
 import time
 
+
 def get_info(tiles, tilevars, silent=False):
     n = time.time()
-    tile_info = tiles.annotate(num_variants=Count('variants'),
-                               num_annotations=Count('genome_variants_starting')).aggregate(pos_num=Count('tilename'),
-                                                                                            avg_var_val=Avg('num_variants'),
-                                                                                            max_var_val=Max('num_variants'),
-                                                                                            avg_num_ann=Avg('num_annotations'),
-                                                                                            max_num_ann=Max('num_annotations'))
+    tile_info_annotations = tiles.annotate(num_ann=Count('starting_genome_variants')
+                                           ).aggregate(avg_num_ann=Avg('num_ann'),
+                                                       max_num_ann=Max('num_ann'))
+    
+    tile_info = tiles.annotate(num_var=Count('tile_variants')
+                                ).aggregate(pos_num=Count('tilename'),
+                                            avg_var_val=Avg('num_var'),
+                                            max_var_val=Max('num_var'))
+                                                       
+    tile_info['avg_num_ann'] = tile_info_annotations['avg_num_ann']
+    tile_info['max_num_ann'] = tile_info_annotations['max_num_ann']
     x = time.time()
     if not silent:
         print "\tTile Queries:", x-n
@@ -29,7 +35,7 @@ def get_info(tiles, tilevars, silent=False):
         print "\tTileVariant Queries:", y-x
     return tile_info, tile_var_info
 
-def initialize(silent=False):
+def initialize(silent=False, quiet=True):
     impossible_name, impossible_varname = functions.get_min_position_and_tile_variant_from_chromosome_int(27)
     assert Tile.objects.filter(tilename__gte=impossible_name).exists() == False, "Invalid human genome: no tile id should exist with this path according to Tile.CHR_PATH_LENGTHS"
     assert TileVariant.objects.filter(tile_variant_name__gte=impossible_varname).exists() == False, "Invalid human genome: no tile_variant id should exist with this path according to Tile.CHR_PATH_LENGTHS"
@@ -38,7 +44,7 @@ def initialize(silent=False):
         if i == 0:
             if not silent:
                 print "Entire Genome:"
-            tile_info, tile_var_info = get_info(Tile.objects, TileVariant.objects, silent=silent)
+            tile_info, tile_var_info = get_info(Tile.objects, TileVariant.objects, silent=quiet)
         else:
             if not silent:
                 print "Chromosome", i, ":"
@@ -48,7 +54,7 @@ def initialize(silent=False):
             max_tile -= 1
             tile_info, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_pos,max_pos)),
                                                                     TileVariant.objects.filter(tile_variant_name__range=(min_tile, max_tile)),
-                                                                    silent=silent)
+                                                                    silent=quiet)
         if not silent:
             print tile_info, tile_var_info
             
@@ -63,7 +69,7 @@ def initialize(silent=False):
         s.save()
         
     for path in range(Tile.CHR_PATH_LENGTHS[-1]):
-        if not silent:
+        if not silent and not quiet:
             print "Path", path
         min_path_pos, min_path_tile = functions.get_min_position_and_tile_variant_from_path_int(path)
         max_path_pos, max_path_tile = functions.get_min_position_and_tile_variant_from_path_int(path + 1)
@@ -71,7 +77,7 @@ def initialize(silent=False):
         max_path_tile -= 1
         tile_info, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_path_pos,max_path_pos)),
                                                                 TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)),
-                                                                silent=silent)
+                                                                silent=quiet)
 
         s = GenomeStatistic(statistics_type=27, path_name=path, position_num=tile_info['pos_num'],
                             tile_num=tile_var_info['tile_num'], avg_num_positions_spanned=tile_var_info['avg_pos_spanned'],
@@ -83,7 +89,7 @@ def initialize(silent=False):
                             max_annotations_per_tile=tile_var_info['max_num_ann'])
         s.save()
             
-def update(path_only=False, silent=False):
+def update(path_only=False, silent=False, quiet=True):
     impossible_name, impossible_varname = functions.get_min_position_and_tile_variant_from_chromosome_int(27)
     assert Tile.objects.filter(tilename__gte=impossible_name).exists() == False, "Invalid human genome: no tile id should exist with this path according to Tile.CHR_PATH_LENGTHS"
     assert TileVariant.objects.filter(tile_variant_name__gte=impossible_varname).exists() == False, "Invalid human genome: no tile_variant id should exist with this path according to Tile.CHR_PATH_LENGTHS"
@@ -93,7 +99,7 @@ def update(path_only=False, silent=False):
                 if i == 0:
                     if not silent:
                         print "Entire Genome:"
-                    tile_info, tile_var_info = get_info(Tile.objects, TileVariant.objects, silent=silent)
+                    tile_info, tile_var_info = get_info(Tile.objects, TileVariant.objects, silent=quiet)
                 else:
                     if not silent:
                         print "Chromosome", i, ":"
@@ -103,7 +109,7 @@ def update(path_only=False, silent=False):
                     max_tile -= 1
                     tile_info, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_pos,max_pos)),
                                                         TileVariant.objects.filter(tile_variant_name__range=(min_tile, max_tile)),
-                                                        silent=silent)
+                                                        silent=quiet)
                 if not silent:
                     print tile_info, tile_var_info
                 s = GenomeStatistic.objects.get(statistics_type=i)
@@ -122,7 +128,7 @@ def update(path_only=False, silent=False):
                 s.max_annotations_per_tile = tile_var_info['max_num_ann']
                 s.save()
         for path in range(Tile.CHR_PATH_LENGTHS[-1]):
-            if not silent:
+            if not silent and not quiet:
                 print "Path", path
             min_path_pos, min_path_tile = functions.get_min_position_and_tile_variant_from_path_int(path)
             max_path_pos, max_path_tile = functions.get_min_position_and_tile_variant_from_path_int(path + 1)
@@ -130,8 +136,8 @@ def update(path_only=False, silent=False):
             max_path_tile -= 1
             tile_info, tile_var_info = get_info(Tile.objects.filter(tilename__range=(min_path_pos,max_path_pos)),
                                                 TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile)),
-                                                silent=silent)
-            if not silent:
+                                                silent=quiet)
+            if not silent and not quiet:
                 print tile_info, tile_var_info
             s = GenomeStatistic.objects.filter(statistics_type=27).get(path_name=path)
             s.position_num = tile_info['pos_num']
