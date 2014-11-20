@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load gene_filters %}
+{% load humanize %}
+
+{% block title %}Lightning: Gene {{gene.gene_aliases}}{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li><a href="{% url 'genes:names' %}">Known Genes (UCSC)</a></li>
+	<li class="active"><a href="#">{{gene.gene_aliases}}</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>{{gene.gene_aliases}}: <small>{{gene.description}}</small></h1>
+		<div class="btn-group">
+			<a class="btn btn-default disabled active" href="{% url 'genes:specific' gene.id %}">Generic View</a>
+			{% if num_non_over == 1 %}
+			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?exact={{ gene.gene_aliases }}">Map View</a>
+			<a class="btn btn-default" href="{% url 'tile_library:gene_view' gene.id %}">Tile Library View</a>
+			{% else %}
+			<a class="btn btn-default" href="{% url 'slippy:slippymap' %}?multiple-exact={{ gene.gene_aliases }}">Map View</a>
+			{% endif %}
+		</div>
+	</div>
+
+
+		<h3>Gene Review Articles</h3>
+		<ul>
+			{% for obj in gene|get_gene_review_urls %}
+				<li><a href="{{obj.url}}">{{obj.phenotype}}</a></li>
+			{% empty %}
+				<p> (None) </p>
+			{% endfor %}
+		</ul>
+		{% if num_genes == 1 %}
+		<h3>1 Known Gene with name {{gene.gene_aliases}}</h3>
+		{% elif num_non_over == 1 %}
+		<h3>Known Genes with name {{gene.gene_aliases}} <small>({{num_genes}} Gene Transcripts overlapping the same general locus of the genome)</small></h3>
+		{% else %}
+		<h3>Known Genes with name {{gene.gene_aliases}} <small>({{num_genes}} Gene Transcripts covering {{num_non_over}} genome loci)</small></h3>
+		{% endif %}
+		<div class="table-responsive">
+			<table class="table table-striped">
+				<thead>
+					<tr>
+						{% if num_genes > 1 %}
+						<th>Gene Number</th>
+						{% endif %}
+						<th>Description</th>
+						<th>Chromosome</th>
+						<th>Strand</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for gene_xref in genes %}
+					<tr>
+						{% if num_genes > 1 %}
+						<td>{{forloop.counter}}</td>
+						{% endif %}
+						<td>{{ gene_xref.description }}</td>
+						<td>{{ gene_xref.gene.chrom|chromosome_pretty }}</td>
+						<td>{{ gene_xref.gene.strand|strand_pretty }}</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	<h3>Genomic Information <small>(relative to assembly {{gene.gene.assembly|assembly_pretty}})</small></h3>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					{% if num_genes > 1 %}
+					<th>Gene Number</th>
+					{% endif %}
+					<th>Start of Transcription</th>
+					<th>Start of Coding Sequence</th>
+					<th>End of Coding Sequence</th>
+					<th>End of Transcription</th>
+					<th>Length of Transcription</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for gene_xref in genes %}
+				<tr>
+					{% if num_genes > 1 %}
+					<td>{{forloop.counter}}</td>
+					{% endif %}
+					<td>{{ gene_xref.gene.tile_start_tx|tile_string }} (base {{ gene_xref.gene.start_tx|intcomma }})</td>
+					<td>{{ gene_xref.gene.tile_start_cds|tile_string }} (base {{ gene_xref.gene.start_cds|intcomma }})</td>
+					<td>{{ gene_xref.gene.tile_end_cds|tile_string }} (base {{ gene_xref.gene.end_cds|intcomma }})</td>
+					<td>{{ gene_xref.gene.tile_end_tx|tile_string }} (base {{ gene_xref.gene.end_tx|intcomma }})</td>
+					<td>{{ gene_xref.tx_length|intcomma }} bases </td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+
+
+	<h3>Exon Splicing</h3>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					{% if num_genes > 1 %}
+					<th>Gene Number</th>
+					{% endif %}
+					<th>Number of Exons</th>
+					<th>Exons (shown in green)</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for exon in exons %}
+				<tr>
+					{% if num_genes > 1 %}
+					<td>{{forloop.counter}}</td>
+					{% endif %}
+					<td>{{exon|length|add:"-1"}}</td>
+					{% if exon|length > 100 %}
+					<td>(Unable to accurately represent: too many exons)</td>
+					{% else %}
+					<td><div class="row">
+							<div class="col-md-8">
+								<div class="progress">
+									{% for i, j in exon %}
+									<div class="progress-bar progress-bar-danger" style="width: {{i}}%"></div>
+  									<div class="progress-bar progress-bar-success" style="width: {{j}}%"></div>
+									{% endfor %}
+								</div>
+							</div>
+						</div>
+					</td>
+					{% endif %}
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+
+	<h3>External Database Representations</h3>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					{% if num_genes > 1 %}
+					<th>Gene Number</th>
+					{% endif %}
+					<th>UCSC known gene iD</th>
+					<th>GenBank mRNA accession number</th>
+					<th>UniProt accession number</th>
+					<th>NCBI refseq ID</th>
+					<th>NCBI protein accession number</th>
+					<th>RNA family information</th>
+					<th>tRNA name</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for gene_xref in genes %}
+				<tr>
+					{% if num_genes > 1 %}
+					<td>{{forloop.counter}}</td>
+					{% endif %}
+					<td><a href="https://genome.ucsc.edu/cgi-bin/hgGene?hgg_gene={{gene_xref.gene.ucsc_gene_id}}">{{ gene_xref.gene.ucsc_gene_id}}</a></td>
+					<td>{{ gene_xref.mrna|default:'-'}}</td>
+					{% if gene_xref.sp_id %}
+					<td><a href="http://www.uniprot.org/uniprot/{{gene_xref.sp_id}}">{{ gene_xref.sp_display_id }}</a></td>
+					{% else %}
+					<td>-</td>
+					{% endif %}
+					<td>{{ gene_xref.ref_seq|default:'-' }}</td>
+					<td>{{ gene_xref.prot_acc|default:'-' }}</td>
+					<td>{{ gene_xref.rfam_acc|default:'-' }}</td>
+					<td>{{ gene_xref.trna_name|default:'-' }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+
+</div>
+{% endblock %}

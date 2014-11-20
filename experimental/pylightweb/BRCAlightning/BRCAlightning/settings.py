@@ -72,14 +72,23 @@ WSGI_APPLICATION = 'BRCAlightning.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 
-DBPW = "mypassword"
+BRCA_PW = "mypassword"
+ENTIRE_PW = "mypassword"
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'brca-lightning',
         'USER': 'sguthrie',
-        'PASSWORD': DBPW,
+        'PASSWORD': BRCA_PW,
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
+    },
+    'entire': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'lightningdatabase',
+        'USER': 'sguthrie',
+        'PASSWORD': ENTIRE_PW,
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
