@@ -68,11 +68,11 @@
 						<li class="dropdown">
 							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Population <span class="caret"></span></a>
 							<ul class="dropdown-menu" role="menu">
-								<li><a href="{# url 'slippy:slippymap' #}">Genome Map</a></li>
+								<li class="disabled"><a href="{# url 'slippy:slippymap' #}">Genome Map</a></li>
 								<li><a href="{% url 'tile_library:statistics' %}">Tile Library Statistics</a></li>
 							</ul>
 						</li>
-						<li><a href="{# url 'humans:individuals' #}">Individuals</a></li>
+						<li class="disabled"><a href="{# url 'humans:individuals' #}">Individuals</a></li>
 						<li><a href="{% url 'genes:names' %}">Known Genes</a></li>
 						<li><a href="http://lightning-dev4.curoverse.com/beacon">Beacon</a></li>
 						<li><a href="{% url 'home:help' %}">Help</a></li>
@@ -85,8 +85,8 @@
 		{% block additional_divs %}{% endblock %}
 		<div class="container-fluid">
 			<ol class="breadcrumb">
+				<li><a href="{% url 'home:index' %}">Home</a></li>
 				{% block breadcrumbs %}
-				<li><a href="#">Home</a></li>
 				{% endblock %}
 			</ol>
 		</div>

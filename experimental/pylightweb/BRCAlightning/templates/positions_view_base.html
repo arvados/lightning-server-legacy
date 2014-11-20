@@ -2,8 +2,13 @@
 {% load staticfiles %}
 {% load statistics_filters %}
 
+{% block style_extender %}
+.wrap-btn {
+    white-space: normal;
+}
+{% endblock %}
+
 {% block breadcrumbs %}
-	<li><a href="{% url 'home:index' %}">Home</a></li>
 	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
 	<li><a href="{% url 'tile_library:chr_statistics' chromosome_int %}">{{ chromosome }}</a></li>
 	<li class="active"><a href="#">{% block breadcrumb_name %}{% endblock %}</a></li>
@@ -28,24 +33,43 @@
 			<thead>
 				<tr>
 					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Tile Position <span class="caret"></span></button>
+							<button type="button" class="btn btn-default wrap-btn dropdown-toggle" data-toggle="dropdown">Tile Position <span class="caret"></span></button>
 							<ul class="dropdown-menu" role="menu">
 								<li><a href="?{% url_replace request.GET 'ordering' 'desc_tile' %}">Descending</a></li>
 								<li><a href="?{% url_replace request.GET 'ordering' 'asc_tile' %}">Ascending</a></li>
 							</ul>
 						</div>
 					</th>
+					<th>Number of Genomic variants at one position</th>
 					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"> Number of Tile Variants <span class="caret"></span></button>
+							<button type="button" class="btn btn-default wrap-btn dropdown-toggle" data-toggle="dropdown"> Number of Tile Variants <span class="caret"></span></button>
 							<ul class="dropdown-menu" role="menu">
 								<li><a href="?{% url_replace request.GET 'ordering' 'desc_var' %}">Descending</a></li>
 								<li><a href="?{% url_replace request.GET 'ordering' 'asc_var' %}">Ascending</a></li>
 							</ul>
 						</div>
 					</th>
+					<th><div class="btn-group">
+							<button type="button" class="btn btn-default wrap-btn dropdown-toggle" data-toggle="dropdown"> Average number of positions spanned <span class="caret"></span></button>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="?{% url_replace request.GET 'ordering' 'desc_avg_positions_spanned' %}">Descending</a></li>
+								<li><a href="?{% url_replace request.GET 'ordering' 'asc_avg_positions_spanned' %}">Ascending</a></li>
+							</ul>
+						</div>
+					</th>
+					<th><div class="btn-group">
+							<button type="button" class="btn btn-default wrap-btn dropdown-toggle" data-toggle="dropdown"> Maximum number of positions spanned <span class="caret"></span></button>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="?{% url_replace request.GET 'ordering' 'desc_max_positions_spanned' %}">Descending</a></li>
+								<li><a href="?{% url_replace request.GET 'ordering' 'asc_max_positions_spanned' %}">Ascending</a></li>
+							</ul>
+						</div>
+					</th>
+					<th>Average number of Genomic variants per tile variant</th>
+					<th>Maximum number of Genomic variants per tile variant</th>
 					<th>Reference tile length (in bases)</th>
 					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Minimum Tile Length (in bases) <span class="caret"></span></button>
+							<button type="button" class="btn btn-default wrap-btn dropdown-toggle" data-toggle="dropdown">Minimum Tile Length (in bases) <span class="caret"></span></button>
 							<ul class="dropdown-menu" role="menu">
 								<li><a href="?{% url_replace request.GET 'ordering' 'desc_min_len' %}">Descending</a></li>
 								<li><a href="?{% url_replace request.GET 'ordering' 'asc_min_len' %}">Ascending</a></li>
@@ -53,7 +77,7 @@
 						</div>
 					</th>
 					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Average Tile Length (in bases) <span class="caret"></span></button>
+							<button type="button" class="btn btn-default wrap-btn dropdown-toggle" data-toggle="dropdown">Average Tile Length (in bases) <span class="caret"></span></button>
 							<ul class="dropdown-menu" role="menu">
 								<li><a href="?{% url_replace request.GET 'ordering' 'desc_avg_len' %}">Descending</a></li>
 								<li><a href="?{% url_replace request.GET 'ordering' 'asc_avg_len' %}">Ascending</a></li>
@@ -61,7 +85,7 @@
 						</div>
 					</th>
 					<th><div class="btn-group">
-							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Maximum Tile Length (in bases) <span class="caret"></span></button>
+							<button type="button" class="btn btn-default wrap-btn dropdown-toggle" data-toggle="dropdown">Maximum Tile Length (in bases) <span class="caret"></span></button>
 							<ul class="dropdown-menu" role="menu">
 								<li><a href="?{% url_replace request.GET 'ordering' 'desc_max_len' %}">Descending</a></li>
 								<li><a href="?{% url_replace request.GET 'ordering' 'asc_max_len' %}">Ascending</a></li>

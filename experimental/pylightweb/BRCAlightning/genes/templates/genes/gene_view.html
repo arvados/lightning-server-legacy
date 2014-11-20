@@ -6,7 +6,6 @@
 {% block title %}Lightning: Gene {{gene.gene_aliases}}{% endblock %}
 
 {% block breadcrumbs %}
-	<li><a href="{% url 'home:index' %}">Home</a></li>
 	<li><a href="{% url 'genes:names' %}">Known Genes (UCSC)</a></li>
 	<li class="active"><a href="#">{{gene.gene_aliases}}</a></li>
 {% endblock %}
