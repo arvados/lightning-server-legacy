@@ -169,8 +169,7 @@ func (t ByAsciiHex) Less(i,j int) bool {
 func (cgf *CGF) PrintFile( ofp *os.File ) {
 
 
-  fmt.Fprintln( ofp, "{")
-  fmt.Fprintln( ofp, "\"#!cgf\":\"a\",\n" )
+  fmt.Fprintln( ofp, "{\"#!cgf\":\"a\",\n" )
 
   fmt.Fprintf( ofp, "  \"CGFVersion\" : \"%s\",\n", cgf.CGFVersion)
   fmt.Fprintf( ofp, "  \"Encoding\" : \"%s\",\n", cgf.Encoding)
