@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load staticfiles %}
 
-{% block title %}Lightning: Fast Interaction the Personal Genome Project Data (chr13 and 17){% endblock %}
+{% block title %}BRCA Lightning: Fast Interaction the Personal Genome Project Data (chr13 and 17){% endblock %}
 
 {% block additional_scripts %}
 	{% if alert %}
@@ -16,10 +16,10 @@
 {% block content %}
 <div class="container">
 	<div class="page-header">
-		<h1>Welcome to Lightning!</h1>
+		<h1>Welcome to BRCA Lightning!</h1>
 	</div>
 	<p class="lead">This site is a work in progress and is open-source</p>
-	<p>Our goals include enabling fast analysis of population genetic data as part of the GA4GH BRCA Challenge. We currently use whole genome sequence data (covering chr13q13.1 and chr17q21.31 only) obtained from the Personal Genome Project. To view the entire genomes of a smaller portion of the population, visit the other <a href="http://lightning-dev3.curoverse.com">Lightning page</a>. These sequences have been converted losslessly to Compressed Genome Format, a developmental format enabling simple lift-over, annotation, visualization, and fast analysis of human genomes. </p>
+	<p>Our goals include enabling fast analysis of population genetic data as part of the GA4GH BRCA Challenge. We currently use whole genome sequence data (covering chr13q13.1 and chr17q21.31 only) obtained from the Personal Genome Project. To view the entire genomes of a smaller portion of the population, visit the other <a href="http://lightning-dev3.curoverse.com/entire">Lightning page</a>. These sequences have been converted losslessly to Compressed Genome Format, a developmental format enabling simple lift-over, annotation, visualization, and fast analysis of human genomes. </p>
 	<ul>
 		<li>To view the Tile Library, visit the <a href="{% url 'tile_library:statistics' %}">Tile Library Statistics</a> tab. </li>
 		<li>For more search functionality for UCSC genes and corresponding Gene Review Articles, visit the <a href="{% url 'genes:names' %}">Known Genes</a> Tab.</li>
