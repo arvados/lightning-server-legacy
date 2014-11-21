@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{# Expects window_title, breadcrumb_title, page_title, positions, tile_url, tile_specification request to be defined #}
+{% load staticfiles %}
+{% load statistics_filters %}
+{% load humanize %}
+
+{% block title %} {{ window_title }}{% endblock %}
+
+{% block breadcrumbs %}
+	<li class="active"><a href="#">{{ breadcrumb_title }}</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>{{ page_title }}</h1>
+	</div>
+	{% if not positions or positions|length == 0 %}
+		<div class="alert alert-info" role="alert">
+			No positions were found. Remember this library only contains chr13 and chr17.
+		</div>
+	{% endif %}
+	<ul class="pagination {% if not positions or positions|length == 0 %}hidden{% endif %}">
+		{% if positions.has_previous %}
+		<li><a href="?{% url_replace request.GET 'page' positions.previous_page_number %}">&laquo;</a></li>
+		{% endif %}
+		<li class="active"><a href="#">Page {{ positions.number }} of {{ positions.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
+		{% if positions.has_next %}
+		<li><a href="?{% url_replace request.GET 'page' positions.next_page_number %}">&raquo;</a></li>
+		{% endif %}
+	</ul>	
+	<div class="table-responsive {% if not positions or positions|length == 0 %}hidden{%endif%}">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Tile Position</th>
+					<th>Number of Genomic variants at one position</th>
+					<th>Number of Tile Variants</th>
+					<th>Average number of positions spanned</th>
+					<th>Maximum number of positions spanned</th>
+					<th>Average number of Genomic variants per tile variant</th>
+					<th>Maximum number of Genomic variants per tile variant</th>
+					<th>Reference tile length (in bases)</th>
+					<th>Minimum Tile Length (in bases)</th>
+					<th>Average Tile Length (in bases)</th>
+					<th>Maximum Tile Length (in bases)</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for position in positions %}
+				<tr>
+					<td><a href="{% url tile_url tile_specification position.tilename %}">{{ position }}</a></td>
+					<td>{{ position.approx_genomevar|length|intcomma }}</td>
+					<td>{{ position.tilevar_with_ann|length|intcomma }}</td>
+					<td>{{ position|get_avg_pos_spanned|floatformat }}</td>
+					<td>{{ position|get_max_pos_spanned|intcomma }}</td>
+					<td>{{ position|get_avg_num_tile_annotations|floatformat }}</td>
+					<td>{{ position|get_max_num_tile_annotations|intcomma }}</td>
+					<td>{{ position|get_reference_length|intcomma }}</td>
+					{% if position.tilevar_with_ann|length == 1 %}
+					<td>-</td>
+					<td>-</td>
+					<td>-</td>
+					{% else %}
+					<td>{{ position|get_min_len|intcomma }}</td>
+					<td>{{ position|get_avg_len|floatformat }}</td>
+					<td>{{ position|get_max_len|intcomma }}</td>
+					{% endif %}
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	<ul class="pagination {% if not positions or positions|length == 0 %}hidden{%endif%}">
+		{% if positions.has_previous %}
+		<li><a href="?{% url_replace request.GET 'page' positions.previous_page_number %}">&laquo;</a></li>
+		{% endif %}
+		<li class="active"><a href="#">Page {{ positions.number }} of {{ positions.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
+		{% if positions.has_next %}
+		<li><a href="?{% url_replace request.GET 'page' positions.next_page_number %}">&raquo;</a></li>
+		{% endif %}
+	</ul>
+</div>
+{% endblock %}
