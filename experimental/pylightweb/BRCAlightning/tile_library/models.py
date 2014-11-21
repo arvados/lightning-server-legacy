@@ -101,6 +101,7 @@ class TileVariant(models.Model):
     tile_variant_name = models.BigIntegerField(primary_key=True, editable=False, db_index=True)
     tile = models.ForeignKey(Tile, related_name='tile_variants', db_index=True)
     num_positions_spanned = models.PositiveSmallIntegerField()
+    conversion_to_cgf = models.TextField(default='')
     variant_value = models.PositiveIntegerField(db_index=True)
     length = models.PositiveIntegerField(db_index=True)
     md5sum = models.CharField(max_length=40)
@@ -109,6 +110,7 @@ class TileVariant(models.Model):
     sequence = models.TextField()
     start_tag = models.TextField(blank=True)
     end_tag = models.TextField(blank=True)
+    
     
     def getString(self):
         """Displays hex indexing for tile variant"""
@@ -424,9 +426,6 @@ class GenomeStatistic(models.Model):
         unique_together = ("statistics_type", "path_name")
 
   
-
-
-
 
 
     

@@ -20,6 +20,9 @@
 		<h1>Tile Position {{ position }} <small>{{ genome_position }}</small></h1>
 		<h1>Query: <small>{{ query_description }}</small></h1>
 	</div>
+	<div class="alert alert-danger" role="alert">
+		<b>Currently, the population proportion only includes people who have the variant, not the entire population loaded into the database</b>
+	</div>
 	<h3>Genome Variant(s) matching query: </h3>
 	<div class="table-responsive">
 		<table class="table table-striped">
@@ -68,6 +71,7 @@
 		<table id="StatTable" class="table table-striped">
 			<thead>
 				<tr>
+					<th>Population</th>
 					<th>Tile Name</th>
 					<th>Number of Positions Spanned</th>
 					<th>Starting Position</th>
@@ -82,6 +86,7 @@
 			<tbody>
 				{% for tilevar in spanning_tiles %}
 				<tr>
+					<td>{{ tile_to_popul|population_at_variant:tilevar }} out of {{ total_people }} have this variant</td>
 					<td>{{ tilevar }}</td>
 					<td>{{ tilevar.num_positions_spanned }}</td>
 					<td>{{ tilevar.tile }}</td>
@@ -111,6 +116,7 @@
 		<table id="StatTable" class="table table-striped">
 			<thead>
 				<tr>
+					<th>Population</th>
 					<th>Variant Value</th>
 					<th>Start Tag</th>
 					<th>Tile Length (in bases)</th>
@@ -124,6 +130,7 @@
 			<tbody>
 				{% for tile in tiles %}
 				<tr>
+					<td>{{ tile_to_popul|population_at_variant:tile }} out of {{ total_people }} have this variant</td>
 					<td>{{ tile.variant_value }}</td>
 					{% if tile.start_tag|length == 0 %}
 						<td>(Same as hg19) {{ position.start_tag|upper }}</td>
