@@ -11,13 +11,13 @@ import "strings"
 import "sort"
 
 var VERSION_STR string = "1.0"
-var CGF_VERSION string = "0.3"
+var CGF_VERSION string = "0.4"
 
 type TileMapEntry struct {
   Type string
   Ploidy int
   Variant [][]int
-  VariantLength []int
+  VariantLength [][]int
 }
 
 type OverflowMapEntry struct {
@@ -409,7 +409,12 @@ func CreateEncodedTileMap( TileMap []TileMapEntry ) ( []byte ) {
       if v>0 { b = append(b, ':') }
       for k:=0; k<len(TileMap[i].Variant[v]); k++ {
         if k>0 { b = append(b, ',') }
-        b = append(b, []byte( fmt.Sprintf("%x", TileMap[i].Variant[v][k]) )... )
+
+        varstr := ""
+        if TileMap[i].VariantLength[v][k] > 1 {
+          varstr = fmt.Sprintf("+%x", TileMap[i].VariantLength[v][k])
+        }
+        b = append(b, []byte( fmt.Sprintf("%x%s", TileMap[i].Variant[v][k], varstr) )... )
       }
     }
   }
@@ -419,7 +424,6 @@ func CreateEncodedTileMap( TileMap []TileMapEntry ) ( []byte ) {
 
 func CreateTileMapFromEncodedTileMap( s string ) ( []TileMapEntry, error ) {
   n_ele := 0
-  //var freq map[string]int
 
   type_map := map[string]string{ "_." : "hom", "_*":"hom*", "x.":"het", "x*":"het*" }
 
@@ -443,10 +447,21 @@ func CreateTileMapFromEncodedTileMap( s string ) ( []TileMapEntry, error ) {
     for j:=0; j<len(tile_allele_class); j++ {
       tile_var_list := strings.Split( tile_allele_class[j], "," )
 
-      tmap[i].VariantLength = append( tmap[i].VariantLength, len(tile_var_list) )
+      tmap[i].VariantLength = append( tmap[i].VariantLength, []int{} )
 
       for k:=0; k<len(tile_var_list); k++ {
-        variant,e := strconv.ParseInt( tile_var_list[k], 16, 64 )
+
+        tile_var_list_ele := strings.Split( tile_var_list[k], "+" )
+        var_len := 1
+        if len(tile_var_list_ele) == 2 {
+          var_len_64,e := strconv.ParseInt( tile_var_list_ele[1], 16, 64 )
+          if e!=nil { return nil, e }
+          var_len = int(var_len_64)
+        }
+
+        tmap[i].VariantLength[j] = append( tmap[i].VariantLength[j], var_len )
+
+        variant,e := strconv.ParseInt( tile_var_list_ele[0], 16, 64 )
         if e!=nil { return nil, e }
 
         tmap[i].Variant[j] = append( tmap[i].Variant[j], int(variant) )
@@ -475,13 +490,16 @@ func ( cg *CGF ) EncodedTileMapMd5SumString() string {
 
 // Create s key for lookup into the TileMapLookupCache.
 //
-func ( cgf *CGF ) CreateTileMapCacheKey( variantType string, variantId [][]int ) string {
+func ( cgf *CGF ) CreateTileMapCacheKey( variantType string, variantId [][]int, variantIdLength [][]int ) string {
   s := [][]string{}
   tkey := []string{}
   for i:=0; i<len(variantId); i++ {
     s = append( s, []string{} )
     for j:=0; j<len(variantId[i]); j++ {
-      s[i] = append( s[i], fmt.Sprintf("%x", variantId[i][j]) )
+
+      strlen := ""
+      if variantIdLength[i][j] > 1 { strlen = fmt.Sprintf("%x", variantIdLength[i][j]) }
+      s[i] = append( s[i], fmt.Sprintf("%x+%x", variantId[i][j], strlen) )
     }
     tkey = append( tkey, strings.Join( s[i], ";" ) )
   }
@@ -497,10 +515,10 @@ func ( cgf *CGF ) CreateTileMapCacheKey( variantType string, variantId [][]int )
 //
 // Returns the position in the TileMap if found, -2 otherwise.
 //
-func ( cg *CGF ) LookupTileMapVariant( variantType string, variantId [][]int ) int {
+func ( cg *CGF ) LookupTileMapVariant( variantType string, variantId [][]int, variantIdLength [][]int ) int {
   if cg.TileMapLookupCache == nil { cg.TileMapLookupCache = make( map[string]int ) }
 
-  key := cg.CreateTileMapCacheKey( variantType, variantId )
+  key := cg.CreateTileMapCacheKey( variantType, variantId, variantIdLength )
   if v,ok := cg.TileMapLookupCache[key] ; ok { return v }
 
   for i:=0; i<len(cg.TileMap); i++ {
@@ -510,15 +528,16 @@ func ( cg *CGF ) LookupTileMapVariant( variantType string, variantId [][]int ) i
     if variantType != tm.Type { continue }
 
     found := true
-    for j:=0; j<len(tm.VariantLength); j++ {
+    for j:=0; j<len(tm.Variant); j++ {
       if len(tm.Variant[j]) != len(variantId[j]) { found = false ; break }
+      if len(tm.VariantLength[j]) != len(variantIdLength[j]) { found = false; break }
       for k:=0; k<len(tm.Variant[j]); k++ {
         if tm.Variant[j][k] != variantId[j][k] { found = false ; break }
+        if tm.VariantLength[j][k] != variantIdLength[j][k] { found = false; break }
       }
       if !found { break }
     }
     if !found { continue }
-
 
     cg.TileMapLookupCache[key] = i
     return i
@@ -557,6 +576,51 @@ func ( cg *CGF ) LookupABVTileMapVariant( path, step int ) ( variant int, err er
 
 }
 
+// If we fall in a tile of variant length, scan until the parent is reached
+// and return teh path, step and variant.
+//
+func ( cg *CGF ) LookupABVStartTileMapVariant( path, step int ) ( p,s,v int, err error ) {
+
+  path_key := fmt.Sprintf("%x", path)
+
+  abv,abv_ok := cg.ABV[path_key]
+  if !abv_ok { return 0,0,0, fmt.Errorf("Could not find '%s'", path_key) }
+  if (step<0) || (step>=len(abv)) { return 0,0,0, fmt.Errorf("Could not find '%s'", path_key) }
+
+  ch := string(abv[step])
+  code := cg.CharMap[ch]
+
+  if code >= 0 { return path,step,code,nil }
+  if code == -2 {
+    path_step_key := fmt.Sprintf("%x:%x", path, step)
+    overflow_val,oflow_ok := cg.OverflowMap[path_step_key]
+    if !oflow_ok { return 0,0,0, fmt.Errorf("Tile variant not trivial, consult FinalOverflowMap") }
+
+    return path,step,overflow_val,nil
+  }
+
+  if code == -1 { return path,step,code,nil }
+  if code != -3 { return 0,0,0, fmt.Errorf("Unknown code %d", code) }
+
+  for ; step>=0; step-- {
+    ch := string(abv[step])
+    code := cg.CharMap[ch]
+
+    if code >= 0 { return path,step,code,nil }
+    if code == -2 {
+      path_step_key := fmt.Sprintf("%x:%x", path, step)
+      overflow_val,oflow_ok := cg.OverflowMap[path_step_key]
+      if !oflow_ok { return 0,0,0, fmt.Errorf("Tile variant not trivial, consult FinalOverflowMap") }
+
+      return path,step,overflow_val,nil
+    }
+
+  }
+
+  return 0,0,0, fmt.Errorf("Reached beginning of vector without finding parent")
+
+}
+
 // Returns character code as implied by the CharMap (and ReverseCharMap).
 // The flag will return true if the variant was found in the TileMap, false
 // otherwise.
@@ -566,13 +630,33 @@ func ( cg *CGF ) LookupABVCharCode( tileMapPos int ) (string, bool) {
     return "#", false
   }
 
-  if tileMapPos >= (len(cg.CanonicalCharMap)-cg.ReservedCharCount) {
+  if tileMapPos >= len(cg.CanonicalCharMap) {
     return "#", true
+  }
+
+  if tileMapPos >= (len(cg.CanonicalCharMap)-cg.ReservedCharCount) {
+    return cg.CanonicalCharMap[tileMapPos:tileMapPos+1], true
   }
 
   return cg.CanonicalCharMap[tileMapPos:tileMapPos+1], true
 
 }
+
+
+func ( cg *CGF ) ABVTileMapVariantVarianbleLength( path, step int ) ( bool, error ) {
+  path_key := fmt.Sprintf("%x", path)
+
+  abv,abv_ok := cg.ABV[path_key]
+  if !abv_ok { return false, fmt.Errorf("Could not find '%s'", path_key) }
+  if (step<0) || (step>=len(abv)) { return false, fmt.Errorf("Could not find '%s'", path_key) }
+
+  ch := string(abv[step])
+  code := cg.CharMap[ch]
+
+  if code == -3 { return true,nil }
+  return false,nil
+}
+
 
 
 func ( cgf *CGF ) Dump( fn string ) error {
