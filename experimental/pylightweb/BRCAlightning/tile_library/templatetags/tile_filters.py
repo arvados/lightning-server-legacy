@@ -12,6 +12,10 @@ import json
 register = template.Library()
 
 @register.filter
+def population_at_variant(variant_to_popul_dict, tile_variant):
+    return variant_to_popul_dict[tile_variant.tile_variant_name]
+
+@register.filter
 def minus(val1, val2):
     return val1 - val2
 
