@@ -9,7 +9,7 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
       "CGFVersion" : "0.1",
 
       "Encoding" : "utf8",
-      "Notes" : "ABV Version 0.1",
+      "Notes" : "ABV Version 0.3",
 
        "TileLibraryVersion" : "0.1.2",
 
@@ -22,16 +22,16 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
       "EncodedTileMapMd5Sum":"1813f1d7d917cf520d3ad2a8b24231a4",
 
       "TileMap" : [
-        { "Type" : "hom", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[0] ] },
-        { "Type" : "hom*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[0] ] },
-        { "Type" : "het", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [1],[0] ] },
-        { "Type" : "het", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[1] ] },
-        { "Type" : "het*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [1],[0] ] },
-        { "Type" : "het*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [0],[1] ] },
-        { "Type" : "hom", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [1],[1] ] },
-        { "Type" : "hom", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [ [1],[1] ] },
-        { "Type" : "het", "VariantLength" : [2,1], "Ploidy":2, "Variant" : [[2,5],[3]] },
-        { "Type" : "het*", "VariantLength" : [1,1], "Ploidy":2, "Variant" : [[35],[128]] }
+        { "Type" : "hom", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [0],[0] ] },
+        { "Type" : "hom*", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [0],[0] ] },
+        { "Type" : "het", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [1],[0] ] },
+        { "Type" : "het", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [0],[1] ] },
+        { "Type" : "het*", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [1],[0] ] },
+        { "Type" : "het*", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [0],[1] ] },
+        { "Type" : "hom", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [1],[1] ] },
+        { "Type" : "hom", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [1],[1] ] },
+        { "Type" : "het", "VariantLength" : [[1,1],[2]], "Ploidy":2, "Variant" : [[2,5],[3]] },
+        { "Type" : "het*", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [[35],[128]] }
       ],
 
       "CharMap" : { "." :  0,
@@ -67,6 +67,7 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
                 }
       }
 }`)
+
 
 func TestDefaultEncodings( t *testing.T ) {
 
@@ -118,6 +119,19 @@ func _cmp_tile_map( tile_map_entry_a, tile_map_entry_b []TileMapEntry ) error {
         }
       }
 
+      if len(tile_map_entry_a[i].VariantLength[j]) != len(tile_map_entry_b[i].VariantLength[j]) {
+        return fmt.Errorf("TileMap[%d] VariantLength[%d] lengths do not match (%d != %d)\n",
+          i, j, len(tile_map_entry_a[i].VariantLength[j]), len(tile_map_entry_b[i].VariantLength[j]) )
+      }
+
+      for k:=0; k<len(tile_map_entry_a[i].VariantLength[j]); k++ {
+        if tile_map_entry_a[i].VariantLength[j][k] != tile_map_entry_b[i].VariantLength[j][k] {
+          return fmt.Errorf("TileMap[%d] Variant[%d][%d] entries do not match (%d != %d)\n",
+            i, j, k, tile_map_entry_a[i].VariantLength[j][k], tile_map_entry_b[i].VariantLength[j][k] )
+        }
+      }
+
+
     }
 
   }
@@ -150,6 +164,8 @@ func TestTileMapConversion( t *testing.T ) {
   e = _cmp_tile_map( tile_map_entry, cg.TileMap )
   if e!=nil { t.Error( e ) }
 
+  //fmt.Printf("IGNORING Default TestTileMapConversion\n")
+  //return
 
   unphased_tile_map := DefaultTileMapUnphased()
   unphased_encoded_tile_map := DefaultEncodedTileMapUnphased()
@@ -158,6 +174,8 @@ func TestTileMapConversion( t *testing.T ) {
 
   e = _cmp_tile_map( unphased_tile_map, converted_unphased_tile_map )
   if e!=nil { t.Error( e ) }
+
+  //------------
 
   /*
   if len(tile_map_entry) != len(cg.TileMap) {
@@ -205,7 +223,9 @@ func TestTileMapConversion( t *testing.T ) {
 
 }
 
+
 func TestNew( t *testing.T ) {
+
   cg := New()
   _ = cg
 
@@ -228,6 +248,7 @@ func TestNew( t *testing.T ) {
 }
 
 func TestDefaultTileMap( t *testing.T ) {
+
   z := DefaultTileMap()
 
   if len(z) == 0 { t.Error( fmt.Errorf("zero default tile map") ) }
@@ -238,7 +259,7 @@ func TestDefaultTileMap( t *testing.T ) {
     }
 
     for j:=0; j<len(z[i].Variant); j++ {
-      if len(z[i].Variant[0]) != z[i].VariantLength[0] {
+      if len(z[i].Variant[0]) != len(z[i].VariantLength[0]) {
         t.Error( fmt.Errorf("Variant %d length mismatch (%d != %d)\n", len(z[i].Variant[0]), z[i].VariantLength[0] ) )
       }
     }
@@ -249,7 +270,7 @@ func TestDefaultTileMap( t *testing.T ) {
 
 func TestLookups( t *testing.T ) {
   lookup := [][]int{ []int{0}, []int{0} }
-  _ = lookup
+  lookup_len := [][]int{ []int{1}, []int{1} }
 
   f,err := ioutil.TempFile( "", "" )
   if err != nil { t.Error( err ) }
@@ -263,7 +284,7 @@ func TestLookups( t *testing.T ) {
   ee = os.Remove( f.Name() )
   if ee != nil { t.Error(ee) }
 
-  p := cg.LookupTileMapVariant( "hom", lookup )
+  p := cg.LookupTileMapVariant( "hom", lookup, lookup_len )
 
   if p!=0 {
     t.Error( fmt.Errorf("Variant %v length failure (got %d, expected 0)\n", lookup, p ) )
