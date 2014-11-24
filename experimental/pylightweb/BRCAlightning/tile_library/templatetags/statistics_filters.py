@@ -18,7 +18,8 @@ def get_num_position_annotations(position):
     try:
         return position.num_pos_annotations
     except AttributeError:
-        return len(position.approx_genomevar)
+        return position.starting_genome_variants.count()
+#        return len(position.approx_genomevar)
 
 @register.filter
 def get_avg_pos_spanned(position):
