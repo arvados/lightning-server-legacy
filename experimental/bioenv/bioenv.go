@@ -220,10 +220,14 @@ func (h *BioEnvHandle) Flush() {
 
 }
 
-func ( h *BioEnvHandle) Close() {
+func ( h *BioEnvHandle) Close() error {
 
   if h.FileType == "gz" {
-    h.GzReader.Close()
+    e := h.GzReader.Close()
+    if e!=nil { return e }
   }
-  h.Fp.Close()
+
+  e := h.Fp.Close()
+  return e
+
 }
