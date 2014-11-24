@@ -68,6 +68,7 @@
 		<table id="StatTable" class="table table-striped">
 			<thead>
 				<tr>
+					<th>Population</th>
 					<th>Tile Name</th>
 					<th>Number of Positions Spanned</th>
 					<th>Starting Position</th>
@@ -82,6 +83,7 @@
 			<tbody>
 				{% for tilevar in spanning_tiles %}
 				<tr>
+					<td>{{ tile_to_popul|population_at_variant:tilevar }} people have this variant</td> <!--out of {{ total_people }} have this variant-->
 					<td>{{ tilevar }}</td>
 					<td>{{ tilevar.num_positions_spanned }}</td>
 					<td>{{ tilevar.tile }}</td>
@@ -111,6 +113,7 @@
 		<table id="StatTable" class="table table-striped">
 			<thead>
 				<tr>
+					<th>Population</th>
 					<th>Variant Value</th>
 					<th>Start Tag</th>
 					<th>Tile Length (in bases)</th>
@@ -124,6 +127,7 @@
 			<tbody>
 				{% for tile in tiles %}
 				<tr>
+					<td>{{ tile_to_popul|population_at_variant:tile }} people have this variant</td> <!--out of {{ total_people }} have this variant-->
 					<td>{{ tile.variant_value }}</td>
 					{% if tile.start_tag|length == 0 %}
 						<td>(Same as hg19) {{ position.start_tag|upper }}</td>

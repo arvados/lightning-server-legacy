@@ -7,6 +7,9 @@ from django.core.urlresolvers import reverse
 from django.db.models import Prefetch, Q, Avg, Count, Max, Min
 
 import string
+import requests
+import json
+import re
 
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, GenomeStatistic, GenomeVariant
 import tile_library.basic_functions as base_fns
@@ -99,6 +102,40 @@ def parse_request_to_partial_positions(request, positions):
         num_per_page = 16
     partial_positions = get_partial_positions(positions,ordering,num_per_page,page)
     return partial_positions
+
+def get_population_repr_of_tile_variants(tiles, spanning_tiles):
+    def get_population_repr_of_tile_var(tile_variant, tile_to_popul, total_people):
+        assert tile_variant.tile_variant_name not in tile_to_popul
+        post_data = {
+            'Type':'sample-tile-group-match',
+            'Dataset':'all',
+            'Note':'expect population set to be returned from a match of variant',
+            'SampleId':[],
+            'TileGroupVariantId':[]
+        }
+        tile_var_cgf_string = tile_variant.conversion_to_cgf
+        if tile_var_cgf_string == '':
+            tile_var_cgf_string = base_fns.get_tile_variant_string_from_tile_variant_int(int(tile_variant.tile_variant_name))
+        post_data['TileGroupVariantId'].append([tile_var_cgf_string])
+        post_data = json.dumps(post_data)
+        post_response = requests.post(url="http://localhost:8080", data=post_data)
+        m = re.match('\[(.*)\](\{.+\})', post_response.text)
+        assert "success" == json.loads(m.group(2))['Type'], "Lantern-communication failure"
+        if m.group(1) == '':
+            num_matching_people = 0
+        else:
+            num_matching_people = len(m.group(1).split(','))
+        tile_to_popul[tile_variant.tile_variant_name] = num_matching_people
+        total_people += num_matching_people
+        return tile_to_popul, total_people
+        
+    tile_to_popul = {}
+    total_people = 0
+    for tile in tiles:
+        tile_to_popul, total_people = get_population_repr_of_tile_var(tile, tile_to_popul, total_people)
+    for tile in spanning_tiles:
+        tile_to_popul, total_people = get_population_repr_of_tile_var(tile, tile_to_popul, total_people)
+    return tile_to_popul, total_people
 
 ######################################################################################
 ########################### Overall Statistics Views #################################
@@ -232,6 +269,9 @@ def tile_view(request, chr_int, path_int, tilename):
     context['tiles'] = tiles
     context['spanning_tiles'] = spanning_tiles
     context['genome_variants'] = genome_variants
+    tile_to_popul, num_people = get_population_repr_of_tile_variants(tiles, spanning_tiles)
+    context['total_people'] = num_people
+    context['tile_to_popul'] = tile_to_popul
     return render(request, 'tile_library/tile_view.html', context)
 
 ######################################################################################
@@ -366,6 +406,11 @@ def rs_id_tile_view(request, rs_id, position_int, exact=False):
         context['tiles'] = tiles.filter(genome_variants__names__icontains=rs_id).order_by('tile_variant_name').distinct('tile_variant_name')
         context['spanning_tiles'] = spanning_tiles.filter(genome_variants__names__icontains=rs_id).order_by('tile_variant_name').distinct('tile_variant_name')
         context['queried_genome_variants'] = genome_variants.filter(names__icontains=rs_id)
+    tiles = context['tiles']
+    spanning_tiles = context['spanning_tiles']
+    tile_to_popul, num_people = get_population_repr_of_tile_variants(tiles, spanning_tiles)
+    context['total_people'] = num_people
+    context['tile_to_popul'] = tile_to_popul
     return render(request, 'tile_library/search_response_tile_variants', context)
 
 
@@ -448,6 +493,11 @@ def tile_variant_view(request, assembly_int, chr_int, locus, reference, mutation
             context['all_genome_variants'] = genome_variants
             context['tiles'] = tiles.filter(genome_variants=queried_variant).order_by('tile_variant_name').distinct('tile_variant_name')
             context['spanning_tiles'] = spanning_tiles.filter(genome_variants=queried_variant).order_by('tile_variant_name').distinct('tile_variant_name')
+            tiles = context['tiles']
+            spanning_tiles = context['spanning_tiles']
+            tile_to_popul, num_people = get_population_repr_of_tile_variants(tiles, spanning_tiles)
+            context['total_people'] = num_people
+            context['tile_to_popul'] = tile_to_popul
             return render(request, 'tile_library/search_response_tile_variants', context)
     else:
         raise Http404("Unable to find a position in this library satisfying the locus 'chr%d:%d'" % (chr_int, locus))
@@ -543,6 +593,11 @@ def protein_tile_view(request, protein, position_int):
         context['tiles'] = tiles.filter(genome_variants__info__icontains=protein).order_by('tile_variant_name').distinct('tile_variant_name')
         context['spanning_tiles'] = spanning_tiles.filter(genome_variants__info__icontains=protein).order_by('tile_variant_name').distinct('tile_variant_name')
         context['queried_genome_variants'] = genome_variants.filter(info__icontains=protein)
+    tiles = context['tiles']
+    spanning_tiles = context['spanning_tiles']
+    tile_to_popul, num_people = get_population_repr_of_tile_variants(tiles, spanning_tiles)
+    context['total_people'] = num_people
+    context['tile_to_popul'] = tile_to_popul
     return render(request, 'tile_library/search_response_tile_variants', context)
 
 
@@ -693,4 +748,7 @@ def tile_in_gene_view(request, gene_xref_id, tilename):
     context['tiles'] = tiles
     context['spanning_tiles'] = spanning_tiles
     context['genome_variants'] = genome_variants
+    tile_to_popul, num_people = get_population_repr_of_tile_variants(tiles, spanning_tiles)
+    context['total_people'] = num_people
+    context['tile_to_popul'] = tile_to_popul
     return render(request, 'tile_library/tile_in_gene_view.html', context)
