@@ -1,5 +1,7 @@
 from django import template
 import urllib
+from tile_library.models import TileVariant
+from django.db.models import Avg, Count, Max, Min
 
 register = template.Library()
 
@@ -27,62 +29,56 @@ def get_avg_pos_spanned(position):
         return position.avg_pos_spanned
     except AttributeError:
         pass
-    total = sum([tilevar.num_positions_spanned for tilevar in position.tilevar_with_ann])
-    try:
-        return float(total)/position.num_var
-    except AttributeError:
-        num = len(position.tilevar_with_ann)
-        return float(total)/num
+    tile_variant = TileVariant.objects.filter(tile=position).aggregate(avg=Avg("num_positions_spanned"))
+    return tile_variant['avg']
 
 @register.filter
 def get_max_pos_spanned(position):
     try:
         return position.max_pos_spanned
     except AttributeError:
-        return max([tilevar.num_positions_spanned for tilevar in position.tilevar_with_ann])
+        tile_variant = TileVariant.objects.filter(tile=position).aggregate(maximum=Max("num_positions_spanned"))
+        return tile_variant['maximum']
 
 @register.filter
 def get_avg_num_tile_annotations(position):
     try:
         return position.avg_num_tile_annotations
     except AttributeError:
-        pass
-    total = sum([tilevar.num_annotations for tilevar in position.tilevar_with_ann])
-    try:
-        return float(total)/position.num_var
-    except AttributeError:
-        num = len(position.tilevar_with_ann)
-        return float(total)/num
+        tile_variant = TileVariant.objects.filter(tile=position).annotate(num_annotation=Count('genome_variants')).aggregate(avg=Avg("num_annotation"))
+        return tile_variant['avg']
 
 @register.filter
 def get_max_num_tile_annotations(position):
     try:
         return position.max_num_tile_annotations
     except AttributeError:
-        return max([tilevar.num_annotations for tilevar in position.tilevar_with_ann])
+        tile_variant = TileVariant.objects.filter(tile=position).annotate(num_annotation=Count('genome_variants')).aggregate(maximum=Max("num_annotation"))
+        return tile_variant['maximum']
 
 @register.filter
 def get_min_len(position):
     try:
         return position.min_len
     except AttributeError:
-        return min([tilevar.length for tilevar in position.tilevar_with_ann])
+        tile_variant = TileVariant.objects.filter(tile=position).aggregate(interest=Min("length"))
+        return tile_variant['interest']
 
 @register.filter
 def get_avg_len(position):
     try:
         return position.avg_len
     except AttributeError:
-        total = sum([tilevar.length for tilevar in position.tilevar_with_ann])
-        num = len(position.tilevar_with_ann)
-        return float(total)/num
+        tile_variant = TileVariant.objects.filter(tile=position).aggregate(interest=Avg("length"))
+        return tile_variant['interest']
 
 @register.filter
 def get_max_len(position):
     try:
         return position.max_len
     except AttributeError:
-        return max([tilevar.length for tilevar in position.tilevar_with_ann])
+        tile_variant = TileVariant.objects.filter(tile=position).aggregate(interest=Max("length"))
+        return tile_variant['interest']
 
 @register.simple_tag
 def url_replace(request, field, value):
