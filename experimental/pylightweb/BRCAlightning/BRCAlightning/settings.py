@@ -32,6 +32,13 @@ ALLOWED_HOSTS = [
     '.lightning-dev3.curoverse.com.',
     ]
 
+ADMINS = (('Sarah', 'sguthrie@curoverse.com'))
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'sallyeguthrie@gmail.com'
+EMAIL_HOST_PASSWORD = 'bpuhthyzvaonsdnm'
+EMAIL_USE_TLS = True
+
 STATICFILES_DIRS = (
     BASE_DIR + "/static/",
     )
