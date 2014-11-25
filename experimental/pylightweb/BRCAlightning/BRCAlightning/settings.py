@@ -30,6 +30,13 @@ TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'templates')]
 
 ALLOWED_HOSTS = []
 
+ADMINS = (('Sarah', 'sguthrie@curoverse.com'))
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'sallyeguthrie@gmail.com'
+EMAIL_HOST_PASSWORD = 'bpuhthyzvaonsdnm'
+EMAIL_USE_TLS = True
+
 STATICFILES_DIRS = (
     BASE_DIR + "/static/",
     )
