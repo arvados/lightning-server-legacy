@@ -69,6 +69,29 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
 }`)
 
 
+func TestCreateTileMapCacheKey( t *testing.T ) {
+  varTypes := []string{ "het", "het*", "hom", "hom*" }
+  varIds := [][][]int{ [][]int{ []int{0,1,2,3,4}, []int{1} },
+                       [][]int{ []int{3}, []int{15, 1} },
+                       [][]int{ []int{0}, []int{0} },
+                       [][]int{ []int{15}, []int{15} } }
+  varLens := [][][]int{ [][]int{ []int{1,1,1,15,1}, []int{19} },
+                        [][]int{ []int{2}, []int{1, 1} },
+                        [][]int{ []int{1}, []int{1} },
+                        [][]int{ []int{10}, []int{10} } }
+
+  expected := []string{ "x.0,1,2,3+f,4:1+13", "x*3+2:f,1", "_.0:0", "_*f+a:f+a" }
+  for ind:=0; ind<len(varTypes); ind++ {
+    key := string( CreateEncodedTileMapKey( varTypes[ind], varIds[ind], varLens[ind] ) )
+
+    if key!=expected[ind] {
+      t.Error( fmt.Errorf("key %s != expected %s\n", key, expected[ind]) )
+    }
+
+  }
+
+}
+
 func TestDefaultEncodings( t *testing.T ) {
 
   a := string( CreateEncodedTileMap( DefaultTileMap() ) )
