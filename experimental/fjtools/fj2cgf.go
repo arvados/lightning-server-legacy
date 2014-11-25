@@ -23,13 +23,11 @@ import "github.com/codegangsta/cli"
 import "runtime/pprof"
 
 
-var VERSION_STR string = "0.2, AGPLv3.0"
+var VERSION_STR string = "0.3, AGPLv3.0"
 var g_verboseFlag bool
 var gCGF *cgf.CGF
 
 var gPloidy int
-
-var ABV_VERSION string = "0.1"
 
 func init() {
   _ = gCGF
@@ -43,23 +41,7 @@ func md5Ascii( b [16]byte ) (s []byte) {
   return s
 }
 
-/*
-type FastJHeader struct {
-  TileId string `json:"tileId"`
-  Md5sum string `json:"md5sum"`
-  locus []map[string]string `json:"locus"`
-  N int `json:"n"`
-  SeedTileLength  int `json:"seedTileLength"`
-  StartSeq string `json:"startSeq"`
-  EndSeq string `json:"endSeq"`
-  StartTag string `json:"startSeq"`
-  EndTag string `json:"endTag"`
-  Notes []string `json:"notes"`
-}
-*/
-
 type TileLibraryElement struct {
-  //BaseName string
   BaseId uint64
   TileId []uint64
   Md5sum []string
@@ -69,7 +51,6 @@ type TileLibraryElement struct {
 }
 
 func PrintTileLibraryElement( tle *TileLibraryElement ) {
-  //fmt.Println("BaseName:", tle.BaseName)
   fmt.Println("BaseId:", tle.BaseId)
 
   for i:=0; i<len(tle.TileId); i++ {
@@ -86,43 +67,9 @@ func PrintTileLibraryElement( tle *TileLibraryElement ) {
 
 var cacheLibLine []string
 
-/*
-func  parseTileAndBaseTile( tileId string ) ( int64, int64, error ) {
-  x := strings.Split( tileId, "." )
-  if len(x) != 4 { return 0,0,fmt.Errorf("Invalid tileId %v", tileId) }
-
-  path,e := strconv.ParseInt( x[0], 16, 64 )
-  if e!=nil { return 0,0,e }
-
-  version,e := strconv.ParseInt( x[1], 16, 64 )
-  if e!=nil { return 0,0,e }
-
-  step,e := strconv.ParseInt( x[2], 16, 64 )
-  if e!=nil { return 0,0,e }
-
-  variant,e := strconv.ParseInt( x[3], 16, 64 )
-  if e!=nil { return 0,0,e }
-
-  ibaseTile := path
-  ibaseTile = (ibaseTile<<8) + (version)
-  ibaseTile = (ibaseTile<<16) + step
-
-  itileId := path
-  itileId = (itileId<<12) + (version)
-  itileId = (itileId<<8) + (step)
-  itileId = (itileId<<16) + (variant)
-
-  return itileId,ibaseTile,nil
-
-}
-*/
-
 func ( tle *TileLibraryElement) ScanBaseTile( scanner *bufio.Scanner ) error {
 
   var g_err error
-
-  //curBase := ""
-  //origBase := ""
 
   var curBase uint64 = 0
   var origBase uint64 = 0
@@ -162,9 +109,6 @@ func ( tle *TileLibraryElement) ScanBaseTile( scanner *bufio.Scanner ) error {
     curBase,g_err = tileIdToBaseId( strTileId )
     if g_err != nil { return g_err }
 
-    //DEBUG
-    //fmt.Printf("curBase %x %d\n", curBase, curBase )
-
     if origBase == 0 { origBase = curBase }
 
     if curBase == origBase {
@@ -176,9 +120,6 @@ func ( tle *TileLibraryElement) ScanBaseTile( scanner *bufio.Scanner ) error {
       tle.TileId = append( tle.TileId, id )
       tle.Md5sum = append( tle.Md5sum, strMd5Sum )
       tle.Freq = append( tle.Freq, f )
-
-      //DEBUG
-      //fmt.Printf("ADDING %x %s\n", tle.BaseId, strMd5Sum )
 
       tle.Md5sumPosMap[ strMd5Sum ] = len(tle.TileId)-1
     } else {
@@ -350,6 +291,16 @@ func maxvi( v []int ) int {
   return m
 }
 
+func _calc_skip_len( v [][]int ) int {
+  skip_len := 0
+  for i:=0; i<len(v); i++ {
+    cur_s := 0
+    for j:=0; j<len(v[i]); j++ { cur_s += v[i][j] }
+    if cur_s > skip_len { skip_len = cur_s }
+  }
+  return skip_len
+}
+
 // We make minimal assumptions about how the FastJ appears, but we assume the tile library
 // is in sorted order.
 //
@@ -417,7 +368,7 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   // headers.
   //
   phaseVariant := [][]int{ []int{} }
-  phaseVariantSeedTileLength := []int{ 0 }
+  //phaseVariantSeedTileLength := [][]int{ []int{} }
   phaseVariantPrevBaseId := []uint64{ 0 }
 
 
@@ -500,7 +451,11 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       } else                      { variantType = "hom" }
     }
 
-    tile_map_pos        := cg.LookupTileMapVariant( variantType, phaseVariant )
+    //tile_map_pos        := cg.LookupTileMapVariant( variantType, phaseVariant )
+
+    variantLengthArray := [][]int{ []int{seedTileLength} }
+    tile_map_pos        := cg.LookupTileMapVariant( variantType, phaseVariant, variantLengthArray )
+
     abv_char_code,found := cg.LookupABVCharCode( tile_map_pos )
 
     _ = found
@@ -518,11 +473,16 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       //step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(seedTileLength-1) )
       step_pos_key := fmt.Sprintf("%x:%x", path, beg_step)
 
-      k := cg.CreateTileMapCacheKey( variantType, phaseVariant )
+      //k := cg.CreateTileMapCacheKey( variantType, phaseVariant,  )
+
+      variantLengthArray := [][]int{ []int{seedTileLength} }
+      //k := cg.CreateTileMapCacheKey( variantType, phaseVariant, variantLengthArray )
+      tile_class_key := cgf.CreateEncodedTileMapKey( variantType, phaseVariant, variantLengthArray )
 
       cg.FinalOverflowMap[ step_pos_key ] = cgf.OverflowMapEntry{
           Type : "message",
-          Data: "{ \"Message\" : \"not implemented yet\", \"VariantKey\":\"" + k + "\" }" }
+          //Data: "{ \"Message\" : \"not implemented yet\", \"VariantKey\":\"" + k + "\" }" }
+          Data: "{ \"Message\" : \"not implemented yet\", \"VariantKey\":\"" + string(tile_class_key) + "\" }" }
     }
 
     // Remove un-needed elements in the cache
@@ -532,7 +492,7 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
     // Reset state
     //
     phaseVariant[0] = phaseVariant[0][0:0]
-    phaseVariantSeedTileLength[0] = 0
+    //phaseVariantSeedTileLength[0] = phaseVariantSeedTileLength[0][0:0]
     //beg_step = step + uint64(seedTileLength-1)
     beg_step = step + uint64(seedTileLength)
   }
@@ -594,7 +554,8 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   // headers.
   //
   phaseVariant := [][]int{ []int{}, []int{} }
-  phaseVariantSeedTileLength := []int{ 0, 0 }
+  //phaseVariantSeedTileLength := []int{ 0, 0 }
+  phaseVariantSeedTileLength := [][]int{ []int{}, []int{} }
   phaseVariantPrevBaseId := []uint64{ 0, 0 }
 
   gapFlag := false
@@ -690,12 +651,10 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
     if phase == "A" {
       walkTile += seedTileLength
-      phaseVariantSeedTileLength[0] += seedTileLength
+      //phaseVariantSeedTileLength[0] += seedTileLength
+      phaseVariantSeedTileLength[0] = append( phaseVariantSeedTileLength[0], seedTileLength )
 
       for x:=phaseVariantPrevBaseId[0]; (x+uint64(seedTileLength)) < fjBaseId; x++ {
-
-        //fmt.Printf("ADDING '-' to allele A (x%d: %d+%d)\n", x, fjBaseId, seedTileLength)
-
         phaseVariant[0] = append( phaseVariant[0], '-' )
       }
       phaseVariantPrevBaseId[0] = fjBaseId + uint64(seedTileLength)
@@ -703,12 +662,10 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       phaseVariant[0] = append( phaseVariant[0], variantPos )
     } else if phase == "B" {
       walkTile -= seedTileLength
-      phaseVariantSeedTileLength[1] += seedTileLength
+      //phaseVariantSeedTileLength[1] += seedTileLength
+      phaseVariantSeedTileLength[1] = append( phaseVariantSeedTileLength[1], seedTileLength )
 
       for x:=phaseVariantPrevBaseId[1]; (x+uint64(seedTileLength)) < fjBaseId; x++ {
-
-        //fmt.Printf("ADDING '-' to allele B (x%d: %d+%d)\n", x, fjBaseId, seedTileLength)
-
         phaseVariant[1] = append( phaseVariant[1], '-' )
       }
       phaseVariantPrevBaseId[1] = fjBaseId + uint64(seedTileLength)
@@ -729,9 +686,11 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       }
       if gapFlag { variantType = variantType + "*" }
 
-      tile_map_pos        := cg.LookupTileMapVariant( variantType, phaseVariant )
+      //tile_map_pos        := cg.LookupTileMapVariant( variantType, phaseVariant )
+      tile_map_pos        := cg.LookupTileMapVariant( variantType, phaseVariant, phaseVariantSeedTileLength )
       abv_char_code,found := cg.LookupABVCharCode( tile_map_pos )
-      abv_skip_len        := maxvi( phaseVariantSeedTileLength )
+      //abv_skip_len        := maxvi( phaseVariantSeedTileLength )
+      abv_skip_len        := _calc_skip_len( phaseVariantSeedTileLength )
 
       _ = found
 
@@ -741,18 +700,18 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       }
 
       if found && (abv_char_code=="#") {
-        //step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_skip_len-1) )
         step_pos_key := fmt.Sprintf("%x:%x", path, beg_step)
         cg.OverflowMap[ step_pos_key ] = tile_map_pos
       } else if !found {
-        //step_pos_key := fmt.Sprintf("%x:%x", path, step - uint64(abv_skip_len-1) )
         step_pos_key := fmt.Sprintf("%x:%x", path, beg_step)
 
-        k := cg.CreateTileMapCacheKey( variantType, phaseVariant )
+        //k := cg.CreateTileMapCacheKey( variantType, phaseVariant, phaseVariantSeedTileLength )
+        tile_class_key := cgf.CreateEncodedTileMapKey( variantType, phaseVariant, phaseVariantSeedTileLength )
 
         cg.FinalOverflowMap[ step_pos_key ] = cgf.OverflowMapEntry{
             Type : "message",
-            Data: "{ \"Message\" : \"not implemented yet\", \"VariantKey\":\"" + k + "\" }" }
+            //Data: "{ \"Message\" : \"not implemented yet\", \"VariantKey\":\"" + k + "\" }" }
+            Data: "{ \"Message\" : \"not implemented yet\", \"VariantKey\":\"" + string(tile_class_key) + "\" }" }
       }
 
       // Remove un-needed elements in the cache
@@ -764,11 +723,13 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
       phaseVariant[0] = phaseVariant[0][0:0]
       phaseVariant[1] = phaseVariant[1][0:0]
 
-      phaseVariantSeedTileLength[0] = 0
-      phaseVariantSeedTileLength[1] = 0
+      //phaseVariantSeedTileLength[0] = 0
+      //phaseVariantSeedTileLength[1] = 0
+      phaseVariantSeedTileLength[0] = phaseVariantSeedTileLength[0][0:0]
+      phaseVariantSeedTileLength[1] = phaseVariantSeedTileLength[1][0:0]
+
       gapFlag = false
 
-      //beg_step = step + uint64(abv_skip_len-1)
       beg_step += uint64(abv_skip_len)
     }
 
@@ -777,10 +738,7 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   //Tie off the final abv vector and add it to the cgf structure
   //
   n := uint64(cg.StepPerPath[ prev_path ])
-  //for i:=beg_step; i<(n-1); i++ {
-  for i:=beg_step; i<n; i++ {
-    abv = append( abv, '-' )
-  }
+  for i:=beg_step; i<n; i++ { abv = append( abv, '-' ) }
   cg.ABV[ fmt.Sprintf("%x", prev_path) ] = string(abv)
 
   return nil
