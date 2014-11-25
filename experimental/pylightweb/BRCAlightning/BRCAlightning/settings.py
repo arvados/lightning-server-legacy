@@ -26,6 +26,8 @@ TEMPLATE_DEBUG = True
 
 TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'templates')]
 
+#DEBUG_TOOLBAR_PATCH_SETTINGS = False
+
 ALLOWED_HOSTS = []
 
 STATICFILES_DIRS = (
@@ -42,6 +44,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'django_extensions',
+    'debug_toolbar',
     'home',
     'slippy',
     'humans',
