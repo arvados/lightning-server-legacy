@@ -22,34 +22,37 @@ from genes.models import GeneXRef
 ######################################################################################
 
 def get_positions_no_annotations(*tile_filter_args, **tile_filter_kwargs):
-    tilevariants = TileVariant.objects.annotate(num_annotations=Count('genome_variants'))
+    tilevariants = TileVariant.objects.defer('sequence').annotate(num_annotations=Count('genome_variants'))
     positions = Tile.objects.filter(*tile_filter_args, **tile_filter_kwargs).order_by('tilename').distinct('tilename')
     positions = positions.prefetch_related(
-        Prefetch('tile_variants', queryset=tilevariants, to_attr='tilevar_with_ann'),
-        Prefetch('starting_genome_variants', to_attr='approx_genomevar')
+        Prefetch('tile_variants', queryset=tilevariants, to_attr='tilevar_with_ann')#,
+#        Prefetch('starting_genome_variants', to_attr='approx_genomevar')
         )
     return positions
 
 def get_positions_tile_variant_annotations(*tile_filter_args, **tile_filter_kwargs):
-    tilevariants = TileVariant.objects.annotate(num_annotations=Count('genome_variants'))
-    positions = Tile.objects.filter(*tile_filter_args, **tile_filter_kwargs)
-    positions = positions.prefetch_related(
-        Prefetch('tile_variants', queryset=tilevariants, to_attr='tilevar_with_ann'),
-        Prefetch('starting_genome_variants', to_attr='approx_genomevar')
-        ).annotate(
+#    tilevariants = TileVariant.objects.defer('sequence').annotate(num_annotations=Count('genome_variants'))
+    positions = Tile.objects.filter(*tile_filter_args, **tile_filter_kwargs).annotate(
             num_var=Count('tile_variants'), min_len=Min('tile_variants__length'), avg_len=Avg('tile_variants__length'),
             max_len=Max('tile_variants__length'), avg_pos_spanned=Avg('tile_variants__num_positions_spanned'),
             max_pos_spanned=Max('tile_variants__num_positions_spanned'))
+#    positions = positions.prefetch_related(
+#        Prefetch('tile_variants', queryset=tilevariants, to_attr='tilevar_with_ann')#,
+#        Prefetch('starting_genome_variants', to_attr='approx_genomevar')
+#        ).annotate(
+#            num_var=Count('tile_variants'), min_len=Min('tile_variants__length'), avg_len=Avg('tile_variants__length'),
+#            max_len=Max('tile_variants__length'), avg_pos_spanned=Avg('tile_variants__num_positions_spanned'),
+#            max_pos_spanned=Max('tile_variants__num_positions_spanned'))
     return positions
 
-def get_positions_starting_genome_variant_annotations(*tile_filter_args, **tile_filter_kwargs):
-    tilevariants = TileVariant.objects.annotate(num_annotations=Count('genome_variants'))
-    positions = Tile.objects.filter(*tile_filter_args, **tile_filter_kwargs)
-    positions = positions.prefetch_related(
-        Prefetch('tile_variants', queryset=tilevariants, to_attr='tilevar_with_ann'),
-        Prefetch('starting_genome_variants', to_attr='approx_genomevar')
-        ).annotate(num_pos_annotations=Count('starting_genome_variants'))
-    return positions
+##def get_positions_starting_genome_variant_annotations(*tile_filter_args, **tile_filter_kwargs):
+##    tilevariants = TileVariant.objects.defer('sequence').annotate(num_annotations=Count('genome_variants'))
+##    positions = Tile.objects.filter(*tile_filter_args, **tile_filter_kwargs)
+##    positions = positions.prefetch_related(
+##        Prefetch('tile_variants', queryset=tilevariants, to_attr='tilevar_with_ann')#,
+###        Prefetch('starting_genome_variants', to_attr='approx_genomevar')
+##        ).annotate(num_pos_annotations=Count('starting_genome_variants'))
+##    return positions
 
 
 def get_positions(min_accepted, max_accepted):
