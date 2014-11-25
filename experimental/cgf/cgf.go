@@ -228,38 +228,6 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
   fmt.Fprintf( ofp, "  \"EncodedTileMapMd5Sum\":\"%s\",\n", cgf.EncodedTileMapMd5Sum )
   fmt.Fprintf( ofp, "  \"EncodedTileMap\":\"%s\",\n", cgf.EncodedTileMap )
 
-  /*
-  fmt.Fprintf( ofp, "  \"TileMap\" : [\n    ")
-  for i:=0; i<len(cgf.TileMap); i++ {
-    if i>0 { fmt.Fprintf( ofp, ",\n    ") }
-
-    tile_ele := cgf.TileMap[i]
-
-    fmt.Fprintf( ofp, "{ \"Type\":\"%s\", \"Ploidy\":2, \"Variant\": [", tile_ele.Type )
-
-    for ii:=0; ii<len(tile_ele.Variant); ii++ {
-      if ii>0 { fmt.Fprintf( ofp, "," ) }
-      fmt.Fprintf( ofp, "[")
-      for jj:=0; jj<len(tile_ele.Variant[ii]); jj++ {
-        if jj>0 { fmt.Fprintf( ofp, "," ) }
-        fmt.Fprintf( ofp, "%d", tile_ele.Variant[ii][jj] )
-      }
-      fmt.Fprintf( ofp, "]")
-    }
-    fmt.Fprintf( ofp, "]")
-
-    fmt.Fprintf( ofp, ", \"VariantLength\":[")
-    for ii:=0; ii<len(tile_ele.VariantLength); ii++ {
-      if ii>0 { fmt.Fprintf( ofp, "," ) }
-      fmt.Fprintf( ofp, "%d", tile_ele.VariantLength[ii] )
-    }
-    fmt.Fprintf( ofp, "] }" )
-
-  }
-  fmt.Fprintf( ofp, "\n    ],\n")
-  */
-
-
   count = 0
   fmt.Fprintf( ofp, "  \"OverflowMap\":{\n    ")
   for k,v := range cgf.OverflowMap {
@@ -281,7 +249,6 @@ func (cgf *CGF) PrintFile( ofp *os.File ) {
     fmt.Fprintf( ofp, "      \"Data\" : ")
     fmt.Fprintf( ofp, "%s", strconv.Quote( v.Data ) )
 
-    //fmt.Fprintf( ofp, "\",\n" )
     fmt.Fprintf( ofp, "\n" )
 
     fmt.Fprintf( ofp, "    }")
@@ -349,14 +316,12 @@ func LoadNoMap( fn string ) ( cg *CGF, err error ) {
   if err != nil { return nil, err }
 
   cg.ReverseCharMap = ConstructReverseCharMap( cg.CharMap )
-  //cg.TileMap,err = CreateTileMapFromEncodedTileMap( cg.EncodedTileMap )
   if err!=nil { return nil, err }
 
   return cg, nil
 }
 
-/*
-func ( cgf *CGF ) CreateEncodedTileMap() ( []byte ) {
+func CreateEncodedTileMapKey( vartype string, variantId, variantIdLength [][]int ) ( []byte ) {
   typeMap := map[string][2]byte{
     "het": [2]byte{ 'x', '.' },
     "hom": [2]byte{'_', '.'} ,
@@ -364,58 +329,35 @@ func ( cgf *CGF ) CreateEncodedTileMap() ( []byte ) {
     "hom*": [2]byte{'_','*'} }
   b := []byte{}
 
-  for i:=0; i<len(cgf.TileMap); i++ {
-    if i>0 { b = append( b, ';' ) }
+  if v,ok := typeMap[ vartype ] ; ok {
+    b = append( b, v[:]... )
+  } else {
+    b = append(b, []byte( vartype )... )
+  }
 
-    if v,ok := typeMap[ cgf.TileMap[i].Type ] ; ok {
-      //xx := typeMap[ cgf.TileMap[i].Type ]
-      b = append( b, v[:]... )
-    } else {
-      b = append(b, []byte( cgf.TileMap[i].Type )... )
-    }
+  for v:=0; v<len(variantId); v++ {
+    if v>0 { b = append(b, ':') }
+    for k:=0; k<len(variantId[v]); k++ {
+      if k>0 { b = append(b, ',') }
 
-    for v:=0; v<len(cgf.TileMap[i].Variant); v++ {
-      if v>0 { b = append(b, ':') }
-      for k:=0; k<len(cgf.TileMap[i].Variant[v]); k++ {
-        if k>0 { b = append(b, ',') }
-        b = append(b, []byte( fmt.Sprintf("%x", cgf.TileMap[i].Variant[v][k]) )... )
+      varstr := ""
+      if variantIdLength[v][k] > 1 {
+        varstr = fmt.Sprintf("+%x", variantIdLength[v][k])
       }
+      b = append(b, []byte( fmt.Sprintf("%x%s", variantId[v][k], varstr) )... )
     }
   }
 
   return b
+
 }
-*/
+
 
 func CreateEncodedTileMap( TileMap []TileMapEntry ) ( []byte ) {
-  typeMap := map[string][2]byte{
-    "het": [2]byte{ 'x', '.' },
-    "hom": [2]byte{'_', '.'} ,
-    "het*": [2]byte{'x','*'},
-    "hom*": [2]byte{'_','*'} }
   b := []byte{}
-
   for i:=0; i<len(TileMap); i++ {
     if i>0 { b = append( b, ';' ) }
-
-    if v,ok := typeMap[ TileMap[i].Type ] ; ok {
-      b = append( b, v[:]... )
-    } else {
-      b = append(b, []byte( TileMap[i].Type )... )
-    }
-
-    for v:=0; v<len(TileMap[i].Variant); v++ {
-      if v>0 { b = append(b, ':') }
-      for k:=0; k<len(TileMap[i].Variant[v]); k++ {
-        if k>0 { b = append(b, ',') }
-
-        varstr := ""
-        if TileMap[i].VariantLength[v][k] > 1 {
-          varstr = fmt.Sprintf("+%x", TileMap[i].VariantLength[v][k])
-        }
-        b = append(b, []byte( fmt.Sprintf("%x%s", TileMap[i].Variant[v][k], varstr) )... )
-      }
-    }
+    b = append(b, CreateEncodedTileMapKey( TileMap[i].Type, TileMap[i].Variant, TileMap[i].VariantLength )... )
   }
   return b
 }
@@ -454,14 +396,18 @@ func CreateTileMapFromEncodedTileMap( s string ) ( []TileMapEntry, error ) {
         var_len := 1
         if len(tile_var_list_ele) == 2 {
           var_len_64,e := strconv.ParseInt( tile_var_list_ele[1], 16, 64 )
-          if e!=nil { return nil, e }
+          if e!=nil {
+            return nil, fmt.Errorf("%v: entry %d, allele %d, pos %d", e, i, j, k)
+          }
           var_len = int(var_len_64)
         }
 
         tmap[i].VariantLength[j] = append( tmap[i].VariantLength[j], var_len )
 
         variant,e := strconv.ParseInt( tile_var_list_ele[0], 16, 64 )
-        if e!=nil { return nil, e }
+        if e!=nil {
+          return nil, fmt.Errorf("%v: entry %d, allele %d", e, i, j)
+        }
 
         tmap[i].Variant[j] = append( tmap[i].Variant[j], int(variant) )
       }
@@ -474,7 +420,6 @@ func CreateTileMapFromEncodedTileMap( s string ) ( []TileMapEntry, error ) {
 }
 
 func ( cg *CGF ) EncodedTileMapMd5SumString() string {
-  //b := cg.CreateEncodedTileMap()
   b := CreateEncodedTileMap( cg.TileMap )
   m5 := md5.Sum( b )
 
@@ -489,7 +434,7 @@ func ( cg *CGF ) EncodedTileMapMd5SumString() string {
 
 // Create s key for lookup into the TileMapLookupCache.
 //
-func ( cgf *CGF ) CreateTileMapCacheKey( variantType string, variantId [][]int, variantIdLength [][]int ) string {
+func CreateTileMapCacheKey( variantType string, variantId [][]int, variantIdLength [][]int ) string {
   s := [][]string{}
   tkey := []string{}
   for i:=0; i<len(variantId); i++ {
@@ -497,8 +442,8 @@ func ( cgf *CGF ) CreateTileMapCacheKey( variantType string, variantId [][]int, 
     for j:=0; j<len(variantId[i]); j++ {
 
       strlen := ""
-      if variantIdLength[i][j] > 1 { strlen = fmt.Sprintf("%x", variantIdLength[i][j]) }
-      s[i] = append( s[i], fmt.Sprintf("%x+%x", variantId[i][j], strlen) )
+      if variantIdLength[i][j] > 1 { strlen = fmt.Sprintf("+%x", variantIdLength[i][j]) }
+      s[i] = append( s[i], fmt.Sprintf("%x%s", variantId[i][j], strlen) )
     }
     tkey = append( tkey, strings.Join( s[i], ";" ) )
   }
@@ -517,7 +462,7 @@ func ( cgf *CGF ) CreateTileMapCacheKey( variantType string, variantId [][]int, 
 func ( cg *CGF ) LookupTileMapVariant( variantType string, variantId [][]int, variantIdLength [][]int ) int {
   if cg.TileMapLookupCache == nil { cg.TileMapLookupCache = make( map[string]int ) }
 
-  key := cg.CreateTileMapCacheKey( variantType, variantId, variantIdLength )
+  key := CreateTileMapCacheKey( variantType, variantId, variantIdLength )
   if v,ok := cg.TileMapLookupCache[key] ; ok { return v }
 
   for i:=0; i<len(cg.TileMap); i++ {
