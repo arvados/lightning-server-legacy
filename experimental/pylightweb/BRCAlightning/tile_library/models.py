@@ -190,7 +190,7 @@ class GenomeVariant(models.Model):
         help_text="Json-formatted. Known keys are 'source': [what generated the variant],\
                    'phenotype': [phenotypes associated with this annotation], 'amino_acid': [predicted amino-acid changes],\
                    'ucsc_trans': [UCSC translation (picked up from GFF files), and 'other': [Other GFF-file related annotations]",
-        validators=[validate_json],
+        validators=[validate_json], db_index=True
         )
     created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -221,6 +221,10 @@ class GenomeVariantTranslation(models.Model):
     genome_variant = models.ForeignKey(GenomeVariant, related_name='translation_to_tilevariant')
     start = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant")
     end = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant. Exclusive")
+    def __unicode__(self):
+        return tile_variant.__unicode__() + " translation to Genome Variant id " + str(genome_variant.id)
+    class Meta:
+        unique_together = ("tile_variant", "genome_variant")
 
 class TileLocusAnnotation(models.Model):
     """
