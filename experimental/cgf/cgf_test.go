@@ -6,7 +6,7 @@ import "testing"
 import "io/ioutil"
 
 var test_cgf []byte = []byte(`{"#!cgf":"a",
-      "CGFVersion" : "0.1",
+      "CGFVersion" : "0.4",
 
       "Encoding" : "utf8",
       "Notes" : "ABV Version 0.3",
@@ -15,11 +15,11 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
 
 
       "PathCount" : 3,
-      "StepPerPath" : [ 35, 32, 38 ],
+      "StepPerPath" : [ 35, 32, 38, 10 ],
       "TotalStep" : 108,
 
-      "EncodedTileMap":"_.0:0;_*0:0;x.1:0;x.0:1;x*1:0;x*0:1;_.1:1;_.1:1;x.2,5:3;x*35:128",
-      "EncodedTileMapMd5Sum":"1813f1d7d917cf520d3ad2a8b24231a4",
+      "EncodedTileMap":"_.0:0;_*0:0;x.1:0;x.0:1;x*1:0;x*0:1;_.1:1;_.1:1;x.2,5:3;x*23:80;x.6,7+2,8:11",
+      "EncodedTileMapMd5Sum":"ea05336caf0bda6e58723f9636527b33",
 
       "TileMap" : [
         { "Type" : "hom", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [0],[0] ] },
@@ -31,7 +31,8 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
         { "Type" : "hom", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [1],[1] ] },
         { "Type" : "hom", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [ [1],[1] ] },
         { "Type" : "het", "VariantLength" : [[1,1],[2]], "Ploidy":2, "Variant" : [[2,5],[3]] },
-        { "Type" : "het*", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [[35],[128]] }
+        { "Type" : "het*", "VariantLength" : [[1],[1]], "Ploidy":2, "Variant" : [[35],[128]] },
+        { "Type" : "het", "VariantLength" : [[1,2,1],[4]], "Ploidy":2, "Variant" : [[6,7,8],[17]] }
       ],
 
       "CharMap" : { "." :  0,
@@ -43,14 +44,18 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
                     "t" : 45, "u" : 46, "v" : 47, "w" : 48, "x" : 49, "y" : 50, "z" : 51, "0" : 52, "1" : 53,
                     "2" : 54, "3" : 55, "4" : 56, "5" : 57, "6" : 58, "7" : 59,
 
-                    "^" : -4, "-" : -3, "*" : -2, "#" : -1,
+                    "^" : -4, "*" : -3, "#" : -2, "-" : -1,
                     "8" : 60, "9" : 61, "+" : 62, "/" : 63
                   },
+
+      "CanonicalCharMap" : ".BCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678*#-",
+      "ReservedCharCount" : 3,
 
       "ABV" : {
         "0" : "----------...----D--..#..DD-----",
         "1" : "--***G-....-A--#--..#....E---",
-        "2" : "-...----***C-....-A--#--..#....F---"
+        "2" : "-...----***C-....-A--#--..#....F---",
+        "3" : "..BCDEK***"
       },
 
       "OverflowMap" : {
@@ -68,6 +73,90 @@ var test_cgf []byte = []byte(`{"#!cgf":"a",
       }
 }`)
 
+
+func TestVariant( t *testing.T ) {
+
+  f,err := ioutil.TempFile( "", "" )
+  if err != nil { t.Error( err ) }
+
+  f.Write( test_cgf )
+  f.Close()
+
+  cg,ee := Load( f.Name() )
+  if ee != nil { t.Error(ee) }
+
+  ee = os.Remove( f.Name() )
+  if ee != nil { t.Error(ee) }
+
+  path:=3
+
+  // "3" : ".
+  if !cg.HasTileVariant( path, 0, 0 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 0, 0 ) )
+  }
+
+  // "3" : "..
+  if !cg.HasTileVariant( path, 1, 0 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 1, 0 ) )
+  }
+
+  // "3" : "..B
+  if !cg.HasTileVariant( path, 2, 0 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 2, 0 ) )
+  }
+
+
+  // "3" : "..BC
+  if !cg.HasTileVariant( path, 3, 0 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 3, 0 ) )
+  }
+
+  if !cg.HasTileVariant( path, 3, 1 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 3, 1 ) )
+  }
+
+
+  // "3" : "..BCD
+  if !cg.HasTileVariant( path, 4, 1 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 4, 1 ) )
+  }
+
+  if !cg.HasTileVariant( path, 4, 0 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 4, 0 ) )
+  }
+
+
+  // "3" : "..BCDE
+  if !cg.HasTileVariant( path, 5, 0 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 5, 0 ) )
+  }
+
+  if !cg.HasTileVariant( path, 5, 1 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 5, 1 ) )
+  }
+
+
+  // "3" : "..BCDEK
+  if !cg.HasTileVariant( path, 6, 6 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 6, 6 ) )
+  }
+
+  if !cg.HasTileVariant( path, 6, 17 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 6, 17 ) )
+  }
+
+
+  if !cg.HasTileVariant( path, 7, 7 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 7, 7 ) )
+  }
+
+  if !cg.HasTileVariant( path, 9, 8 ) {
+    t.Error( fmt.Errorf("TestVariant(%d, %d, %d) expected, not found\n", path, 9, 8 ) )
+  }
+
+
+
+}
 
 func TestCreateTileMapCacheKey( t *testing.T ) {
   varTypes := []string{ "het", "het*", "hom", "hom*" }
