@@ -32,7 +32,7 @@ ALLOWED_HOSTS = [
     '.lightning-dev3.curoverse.com.',
     ]
 
-ADMINS = (('Sarah', 'sguthrie@curoverse.com'))
+ADMINS = (('Sarah', 'sguthrie@curoverse.com'),)
 SERVER_EMAIL = 'django@lightning-dev3.curoverse.com'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
