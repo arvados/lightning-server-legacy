@@ -491,14 +491,15 @@ func ( cg *CGF ) LookupTileMapVariant( variantType string, variantId [][]int, va
   return -2
 }
 
-// Given a double array of variants, find the position int he TileMap
-// it corresponds to.
-// A cache is maintained so that a linear search doesn't need to
-// happen every query.
+// Return the tile map index of the variant at position (path,step).
+// This first tries to look up in the ABV.  If found, the code is returned,
+// otherwise it's looked up in the overflow map.  If not found in the
+// overflow map, an error is returned.
 //
-// Returns the position in the TileMap if found, -2 otherwise.
+// note: this only returns the tile map code if found.  The position
+// could still existsin the finaloverflow map even if an error is returned.
 //
-func ( cg *CGF ) LookupABVTileMapVariant( path, step int ) ( variant int, err error ) {
+func ( cg *CGF ) LookupABVTileMapVariant( path, step int ) ( int, error ) {
 
   path_key := fmt.Sprintf("%x", path)
 
@@ -519,6 +520,103 @@ func ( cg *CGF ) LookupABVTileMapVariant( path, step int ) ( variant int, err er
   return overflow_val,nil
 
 }
+
+// Sometimes variants can be non trivial because of variable length tiles.
+// Return true if the variant exists, even within a (potentially phased)
+// variable length tile region.
+// Return false otherwise, including if the variant is a  no-call.
+//
+func ( cg *CGF ) HasTileVariant( path, step, tile_variant int ) bool {
+
+  path_key := fmt.Sprintf("%x", path)
+
+  abv,abv_ok := cg.ABV[path_key]
+  if !abv_ok { return false }
+  if (step<0) || (step>=len(abv)) { return false }
+
+  ch := string(abv[step])
+  code := cg.CharMap[ch]
+
+  if code >= 0 {
+
+    tme := cg.TileMap[code]
+    if (tme.Ploidy==1) && (len(tme.Variant[0])==1) {
+      return tme.Variant[0][0] == tile_variant
+    }
+
+    if (tme.Ploidy==2) && (len(tme.Variant[0])==1) && (len(tme.Variant[1])==1) {
+      return (tme.Variant[0][0] == tile_variant) || (tme.Variant[1][0] == tile_variant)
+    }
+
+    for i:=0 ; i < len(tme.Variant); i++ {
+      if tme.Variant[i][0] == tile_variant { return true }
+    }
+
+    return false
+
+  }
+
+  // No call
+  //
+  if code == -1 { return false }
+
+
+
+  // Overflow
+  //
+  if code == -2 {
+    path_step_key := fmt.Sprintf("%x:%x", path, step)
+    overflow_val,oflow_ok := cg.OverflowMap[path_step_key]
+    if !oflow_ok { return false }
+
+    tme := cg.TileMap[overflow_val]
+    if (tme.Ploidy==1) && (len(tme.Variant[0])==1) {
+      return tme.Variant[0][0] == tile_variant
+    }
+
+    if (tme.Ploidy==2) && (len(tme.Variant[0])==1) && (len(tme.Variant[1])==1) {
+      return (tme.Variant[0][0] == tile_variant) || (tme.Variant[1][0] == tile_variant)
+    }
+
+    for i:=0 ; i < len(tme.Variant); i++ {
+      if tme.Variant[i][0] == tile_variant { return true }
+    }
+
+    return false
+
+  }
+
+  // Variable length tile
+  //
+  if code == -3 {
+    p,s,v,e := cg.LookupABVStartTileMapVariant( path, step )
+
+    if e!=nil { return false }
+
+    _ = p ; _ = s ; _ = v
+
+    tile_map_entry := cg.TileMap[v]
+
+    for i:=0; i<len(tile_map_entry.Variant); i++ {
+
+      cur_step := s
+      for j:=0; j<len(tile_map_entry.Variant[i]); j++ {
+        if cur_step == step {
+          if tile_map_entry.Variant[i][j] == tile_variant { return true }
+        } else if cur_step > step {
+          break
+        }
+        cur_step += tile_map_entry.VariantLength[i][j]
+      }
+    }
+
+    return false
+  }
+
+  return false
+}
+
+
 
 // If we fall in a tile of variant length, scan until the parent is reached
 // and return teh path, step and variant.
