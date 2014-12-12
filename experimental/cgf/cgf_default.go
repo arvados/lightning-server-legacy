@@ -56,6 +56,10 @@ func DefaultReverseCharMap() map[int]string {
   return m
 }
 
+func DefaultTileLibraryVersion() string {
+  return "c733f29e733fa4044566c1ea180dfa23"
+}
+
 func DefaultEncodedTileMap() string {
   return strings.Join( _defaultEncodedTileMap, "" )
 }
