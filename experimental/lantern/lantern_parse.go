@@ -4,6 +4,25 @@ import "fmt"
 import "strings"
 import "strconv"
 
+// Parses an 'int option' of the form:
+//
+//         (\d+([\+\-]\d+)?)(,(\d+([\+\-]\d+)?))*
+//
+// into an array of ranges.
+//
+// The (\d) in the above regexp matches an int
+// in the specified base (up to whatever
+// strconv.ParseInt accepts)
+//
+// Here are some examples:
+//
+// '0'          -> [[0,-1]]
+// '0+1'        -> [[0,1]]
+// '0-f'        -> [[0,15]]
+// 'a-b,3-5'    -> [[10,11],[3,5]]
+// 'f,4+2,a-c'  -> [[15,-1],[4,6],[10,13]]
+//
+
 func parseIntOption( istr string, base int ) ([][2]int64, error) {
   r := make( [][2]int64, 0, 8 )
   commaval := strings.Split( istr, "," )

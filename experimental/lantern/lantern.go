@@ -23,6 +23,8 @@ import "github.com/codegangsta/cli"
 
 import "../cgf"
 
+import "encoding/gob"
+
 var VERSION_STR string = "0.0.1"
 
 var gProfileFlag bool
@@ -43,6 +45,8 @@ var g_incr chan int
 var gTileVariantToTileClass map[int][]int
 var gTileClassVersion string
 var gTileLibraryVersion string
+
+var gTileMap map[int][]int
 
 type LanternQueryContainer struct {
   Type string
@@ -66,7 +70,11 @@ type LanternRequest struct {
   ControlSampleId []string
   TileVariantId []string
   TileGroupVariantId [][]string
+  TileGroupVariantIdRange [][]map[string][]int
   TileId []string
+  Position []string
+
+  PathStep []string
 
   VariantId map[string]string
   VariantClass map[string]TileMapVariantClass
@@ -83,6 +91,20 @@ func send_error_bad_request( e_str string, w http.ResponseWriter ) {
   w.Header().Set("Content-Type", "application/json")
   io.WriteString(w, `{"Type":"error","Message":"bad request"}` )
   return
+}
+
+func construct_tile_map( tile_map []cgf.TileMapEntry ) {
+  gTileMap = make( map[int][]int )
+
+  n:=len(tile_map)
+  for tile_class_pos:=0; tile_class_pos<n; tile_class_pos++ {
+    for a:=0; a<len(tile_map[tile_class_pos].Variant); a++ {
+      for k:=0; k<len(tile_map[tile_class_pos].Variant[a]); k++ {
+        gTileMap[tile_class_pos] = append( gTileMap[tile_class_pos], tile_map[tile_class_pos].Variant[a][k] )
+      }
+    }
+  }
+
 }
 
 func construct_tile_variant_to_tile_class_map( tile_map []cgf.TileMapEntry ) {
@@ -169,15 +191,28 @@ func convert_path_step_variant( path_step, inp_hex_variant string ) (path,step,v
 
 }
 
-func unpack_tile_list( TileVariantId []string ) ( map[string][][2]int, error ) {
+type TileRange struct {
+  Range [2]int
+  Permit bool
+}
+
+//func unpack_tile_list( TileVariantId []string ) ( map[string][][2]int, error ) {
+func unpack_tile_list( TileVariantId []string ) ( map[string][]TileRange, error ) {
 
   max_elements := 2000000
   ele_count := 0
 
-  tileRange := make( map[string][][2]int )
+  //tileRange := make( map[string][][2]int )
+  tileRanges := make( map[string][]TileRange )
 
   for i:=0; i<len(TileVariantId); i++ {
-    psv := strings.SplitN( TileVariantId[i], ".", 5 )
+
+    tv_start := 0
+    permit_flag := true
+
+    if (len(TileVariantId[i])>0) && (TileVariantId[i][0] == '~') { tv_start = 1 ; permit_flag = false }
+
+    psv := strings.SplitN( TileVariantId[i][tv_start:], ".", 5 )
     if len(psv) != 4 {
       return nil, fmt.Errorf("Invalid tile %s", TileVariantId[i] )
     }
@@ -223,7 +258,10 @@ func unpack_tile_list( TileVariantId []string ) ( map[string][][2]int, error ) {
             path_step := fmt.Sprintf("%x:%x", x, y)
 
             for vg:=0; vg<len(variant_range); vg++ {
-              tileRange[path_step] = append( tileRange[path_step], [2]int{ int(variant_range[vg][0]), int(variant_range[vg][1]) } )
+              //tileRanges[path_step] = append( tileRanges[path_step], [2]int{ int(variant_range[vg][0]), int(variant_range[vg][1]) } )
+              tileRanges[path_step] =
+                append( tileRanges[path_step],
+                TileRange{ Range : [2]int{ int(variant_range[vg][0]), int(variant_range[vg][1]) } , Permit: permit_flag } )
               ele_count++
 
               if ele_count >= max_elements {
@@ -236,7 +274,7 @@ func unpack_tile_list( TileVariantId []string ) ( map[string][][2]int, error ) {
     }
   }
 
-  return tileRange, nil
+  return tileRanges, nil
 }
 
 func exact_tile_class_match( w http.ResponseWriter, resp *LanternResponse, req *LanternRequest ) {
@@ -510,6 +548,7 @@ func case_control_handler( w http.ResponseWriter, resp *LanternResponse, req *La
 */
 
 
+/*
 func sample_intersect( sampleIndex []int ) string {
   no_match := -5
 
@@ -538,17 +577,6 @@ func sample_intersect( sampleIndex []int ) string {
       } else if (abv[i] <= 'z') && (abv[i] >= 'z') { v[path_str][i] = int(abv[i]-'z') }
 
     }
-
-    /*
-    //DEBUG
-    fmt.Printf(" %d,%s [", s0, path_str )
-    M := 10
-    if M > len(v[path_str]) { M = len(v[path_str]) }
-    for i:=0; i<M; i++ {
-      fmt.Printf(" %d", v[path_str][i] )
-    }
-    fmt.Printf(" ] \n")
-    */
 
   }
 
@@ -589,17 +617,6 @@ func sample_intersect( sampleIndex []int ) string {
 
   for path_str,_ := range v {
 
-    /*
-    //DEBUG
-    fmt.Printf(" %s [", path_str )
-    M := 10
-    if M > len(v[path_str]) { M = len(v[path_str]) }
-    for i:=0; i<M; i++ {
-      fmt.Printf(" %d", v[path_str][i] )
-    }
-    fmt.Printf(" ] \n")
-    */
-
     fmt.Printf(" %s: [[", path_str)
     for i:=0; i<len(v[path_str]); i++  {
       if v[path_str][i] > 0 {
@@ -621,6 +638,9 @@ func sample_intersect( sampleIndex []int ) string {
 
 }
 
+*/
+
+/*
 func sample_intersect_handler( w http.ResponseWriter, resp *LanternResponse, req *LanternRequest ) {
   resp.Type = "success"
   resp.Message = "testing tile-variant"
@@ -640,6 +660,7 @@ func sample_intersect_handler( w http.ResponseWriter, resp *LanternResponse, req
   io.WriteString( w, str )
 
 }
+*/
 
 func tile_variant( sampleIndex []int, tilePosition [][2]int) ( map[string]map[string]int, error ) {
   var err error
@@ -748,17 +769,96 @@ func tile_variant_handler( w http.ResponseWriter, resp *LanternResponse, req *La
 
 }
 
-//----------------------------------------------------------------------------------------------------------------------------------
-//                             _            _   _ _                                                              _       _         .
-//   ___  __ _ _ __ ___  _ __ | | ___      | |_(_) | ___        __ _ _ __ ___  _   _ _ __        _ __ ___   __ _| |_ ___| |__      .
-//  / __|/ _` | '_ ` _ \| '_ \| |/ _ \_____| __| | |/ _ \_____ / _` | '__/ _ \| | | | '_ \ _____| '_ ` _ \ / _` | __/ __| '_ \     .
-//  \__ \ (_| | | | | | | |_) | |  __/_____| |_| | |  __/_____| (_| | | | (_) | |_| | |_) |_____| | | | | | (_| | || (__| | | |    .
-//  |___/\__,_|_| |_| |_| .__/|_|\___|      \__|_|_|\___|      \__, |_|  \___/ \__,_| .__/      |_| |_| |_|\__,_|\__\___|_| |_|    .
-//                      |_|                                    |___/                |_|                                            .
-//----------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+//   ___  __ _ _ __ ___  _ __ | | ___      | |_(_) | ___     __   ____ _ _ __(_) __ _ _ __ | |_   .
+//  / __|/ _` | '_ ` _ \| '_ \| |/ _ \_____| __| | |/ _ \____\ \ / / _` | '__| |/ _` | '_ \| __|  .
+//  \__ \ (_| | | | | | | |_) | |  __/_____| |_| | |  __/_____\ V / (_| | |  | | (_| | | | | |_   .
+//  |___/\__,_|_| |_| |_| .__/|_|\___|      \__|_|_|\___|      \_/ \__,_|_|  |_|\__,_|_| |_|\__|  .
+//                      |_|                                                                       .
+//-------------------------------------------------------------------------------------------------
 
-func sample_tile_group_match_handler( w http.ResponseWriter, resp *LanternResponse, req *LanternRequest ) {
 
+/*
+func sample_tile_variant_handler( w http.ResponseWriter, resp *LanternResponse, req *LanternRequest ) {
+  resp.Type = "success"
+  resp.Message = "testing sample-tile-variant"
+
+  sampleIndex,err := getSampleIndexArray( req.SampleId )
+  if err!=nil {
+    resp.Type = "error" ; resp.Message = fmt.Sprintf("%v", err)
+    return
+  }
+
+  resSampleVariant, err := sample_tile_variant( sampleIndex, req.PathStep )
+  if err!=nil {
+    resp.Type = "error" ; resp.Message = fmt.Sprintf("%v", err)
+    return
+  }
+
+  sample_var_map := make( map[string][]string )
+
+  for i := range resSampleVariant {
+    sampleName := gCGFName[ i ]
+    sample_var_map[ sampleName ] = resSampleVariant[i]
+  }
+
+  fmt.Printf("got: %v --> %v", resSampleVariant, sample_var_map )
+
+  w.Header().Set("Content-Type", "application/json")
+  res_json_bytes,_ := json.Marshal( sample_var_map )
+  io.WriteString(w, string(res_json_bytes))
+
+}
+
+
+func sample_tile_variant( sampleIndex []int, pathStep []string ) (resSampleVariant map[int][]string, err error)  {
+  resSampleVariant = make( map[int]string )
+
+  for spos:=0; spos<len(sampleIndex); spos++ {
+    cgf_ind := sampleIndex[spos]
+
+    path,step,e := convert_path_step( pathStep )
+    if e!=nil { return nil, e }
+
+    tile_variant := gCGF[cgf_ind].GetTileIds( int(path), int(step) )
+
+    s_path, s_step, s_class, e := gCGF[cgf_ind].LookupABVStartTileMap( int(path), int(step) )
+    if e!=nil { return nil, e }
+
+    tile_class := gTileMap[ s_class ]
+
+    resSampleVariant[spos] = [][]string{}
+    if gCGF[cgf_ind].ABVTileMapVariantVariableLength( int(path), int(step) ) {
+      continue
+    }
+
+    tile_class,e := gCGF[cgf_ind].LookupABVTileMapVariant( int(path), int(step) )
+    if e!=nil { return nil, e }
+
+    tile_class,ok := gTileMap[tile_class_rank]
+    if !ok {  continue }
+
+    for i:=0; i<len(tile_class); i++ {
+      resSampleVariant[spos] = append( resSampleVariant[spos], fmt.Sprintf("%x.%x.%x.%x", path, 0, step, tile_class[i]) )
+    }
+
+  }
+
+  return resSampleVariant, nil
+
+}
+*/
+
+
+//-------------------------------------------------------------------------------------------
+// __   ____ _ _ __(_) __ _ _ __ | |_      / _|_ __ ___  __ _ _   _  ___ _ __   ___ _   _   .
+// \ \ / / _` | '__| |/ _` | '_ \| __|____| |_| '__/ _ \/ _` | | | |/ _ \ '_ \ / __| | | |  .
+//  \ V / (_| | |  | | (_| | | | | ||_____|  _| | |  __/ (_| | |_| |  __/ | | | (__| |_| |  .
+//   \_/ \__,_|_|  |_|\__,_|_| |_|\__|    |_| |_|  \___|\__, |\__,_|\___|_| |_|\___|\__, |  .
+//                                                         |_|                      |___/   .
+//-------------------------------------------------------------------------------------------
+
+func variant_frequency_handler( w http.ResponseWriter, resp *LanternResponse, req *LanternRequest ) {
   resp.Type = "success"
   resp.Message = "testing sample-tile-group-match"
 
@@ -768,7 +868,8 @@ func sample_tile_group_match_handler( w http.ResponseWriter, resp *LanternRespon
     return
   }
 
-  tileGroupRange := make( []map[string][][2]int, 0, 8 )
+  //tileGroupRange := make( []map[string][][2]int, 0, 8 )
+  tileGroupRange := make( []map[string][]TileRange, 0, 8 )
 
   // Unpack TileVariantIds
   //
@@ -783,18 +884,6 @@ func sample_tile_group_match_handler( w http.ResponseWriter, resp *LanternRespon
     tileGroupRange = append( tileGroupRange, tileRange )
 
   }
-
-
-  //DEBUG
-  fmt.Printf(">>> sampleIndex %v\n", sampleIndex )
-
-  for g:=0; g<len(tileGroupRange); g++ {
-    tileRange := tileGroupRange[g]
-    for k,v := range tileRange {
-      fmt.Printf("...>>> [%d] tileRange %v %v\n", g, k, v)
-    }
-  }
-
 
   resSample, err := sample_tile_group_match( sampleIndex, tileGroupRange )
   if err!=nil {
@@ -816,95 +905,9 @@ func sample_tile_group_match_handler( w http.ResponseWriter, resp *LanternRespon
 
 }
 
-// Give a list of sample results from the tileGroupVariantRange
-//
-// Each 'group' is referenced by the slice position.  For a sample
-// to be returned, the sample must have at least one tile
-// variant in each group.
-//
-// Queries are of the form:
-//
-//    ( variant_range_{0,0} OR variant_range_{0,1} OR variant_range_{0,2} ... OR variant_range_{0,m_0-1} )
-//      AND
-//    ( variant_range_{1,0} OR variant_range_{1,1} OR variant_range_{1,2} ... OR variant_range_{1,m_1-1} )
-//      AND
-//      ...
-//      AND
-//    ( variant_range_{n-1,0} OR variant_range_{n-1,1} OR variant_range_{n-1,2} ... OR variant_range_{n-1,m_{n-1}-1} )
-//
-//
-// For example, to get back smaples that have any of the variants "247.0.2.0" to "247.0.2.e", this would be the query:
-// [ [ "247.0.2.0+f" ] ]
-//
-// To get back all samples that have "247.0.2.0" AND "247.0.3.1", this would be the query:
-// [ [ "247.0.2.0" ], [ "247.0.3.1" ] ]
-//
-
-func sample_tile_group_match( sampleIndex []int, tileGroupVariantRange []map[string][][2]int ) (resSample []int, err error)  {
-
-  n_group := len(tileGroupVariantRange)
-  res_count := make( []int, len(sampleIndex) )
-
-  for spos:=0; spos<len(sampleIndex); spos++ {
-    cgf_ind := sampleIndex[spos]
-
-    variant_so_far := 0
-
-    for g:=0; g<n_group; g++ {
-
-      if variant_so_far != g { break }
-      found_variant := false
-
-      for path_step,variantRange := range tileGroupVariantRange[g] {
-        path,step,e := convert_path_step( path_step )
-        if e!=nil { err = fmt.Errorf("%v", e) ; return }
-
-        str_hex_path := fmt.Sprintf("%x", path)
-        abv,abv_ok := gCGF[cgf_ind].ABV[str_hex_path]
-        if !abv_ok { continue }
-        if (step<0) || (step>=int64(len(abv))) { continue }
-
-        for vpos:=0; vpos<len(variantRange); vpos++ {
-
-          tile_class_rank,e := gCGF[cgf_ind].LookupABVTileMapVariant( int(path), int(step) )
-          if e!=nil { continue }
-
-          // naive iterative search through
-          for tile_variant:=variantRange[vpos][0]; tile_variant<variantRange[vpos][1]; tile_variant++ {
-            if tile_variant_in_class( tile_variant, tile_class_rank ) {
-              res_count[ spos ]++
-              found_variant = true
-
-              variant_so_far++
-
-              break
-            }
-          }
-
-          if found_variant { break }
-
-        }
-
-        if found_variant { break }
-
-
-      }
-
-    }
-
-  }
-
-  for spos:=0; spos<len(sampleIndex); spos++ {
-
-    fmt.Printf("sample_tile_match>>> res_count[%d]:%d\n", spos, res_count[spos] )
-
-    if res_count[spos] == n_group {
-      resSample = append( resSample, sampleIndex[spos] )
-    }
-  }
-
-  return resSample, nil
-
+func variant_frequency( sampleIndex []int,
+                        tileGroupVariantRange []map[string][][2]int ) (tileVariantFrequncy map[string]map[string]int, err error)  {
+  return nil, nil
 }
 
 
@@ -926,7 +929,6 @@ func handle_json_req( w http.ResponseWriter, r *http.Request ) {
 
   c := <-g_incr
   go func() { g_incr <- c+1 }()
-  fmt.Printf("%d >>>\n", c)
 
   var body_reader io.Reader = r.Body
 
@@ -942,12 +944,35 @@ func handle_json_req( w http.ResponseWriter, r *http.Request ) {
   resp := LanternResponse{ Type:"error", Message:"invalid command" }
 
   switch req.Type {
+
+  //*
   case "sample-tile-group-match":
     sample_tile_group_match_handler( w, &resp, &req )
+
+  //*
+  case "tile-sequence":
+    tile_sequence_handler( w, &resp, &req )
+
+  //*
+  case "tile-sequence-tracer":
+    tile_sequence_handler_tracer( w, &resp, &req )
+
+  //*
+  case "system-info":
+    system_info_handler( w, &resp, &req )
+
+  //*
+  case "sample-position-variant":
+    sample_position_variant_handler( w, &resp, &req )
+
   case "tile-variant":
     tile_variant_handler( w, &resp, &req )
   case "sample-intersect":
     sample_intersect_handler( w, &resp, &req )
+
+  //*
+  case "sample-tile-neighborhood":
+    sample_tile_neighborhood_handler( w, &resp, &req )
 
   //case "case-control":
   //  case_control_handler( w, &resp, &req )
@@ -962,18 +987,25 @@ func handle_json_req( w http.ResponseWriter, r *http.Request ) {
   case "tile-class":
     tile_class( w, &resp, &req )
     */
+
+  default:
+    io.WriteString(w, "{\n")
+    io.WriteString(w, "  \"Type\":\"error\", \"Message\":\"bad command\"\n")
+    io.WriteString(w, "}")
   }
 
 
   fmt.Printf(" content-type: %s\n", r.Header.Get("Content-Type") )
 
   fmt.Println("\n--------\n")
-  fmt.Println( req )
+  //fmt.Println( req )
   fmt.Println("\n--------\n\n")
 
+  /*
   w.Header().Set("Content-Type", "application/json")
   res,_ := json.Marshal( resp )
   io.WriteString(w, string(res))
+  */
 
 }
 
@@ -1008,6 +1040,13 @@ func _main( c *cli.Context ) {
     os.Exit(1)
   }
 
+  e := TileSimpleInit()
+  if e!=nil {
+    fmt.Fprintf( os.Stderr, "TileSimpleInit failed %v\n", e )
+    os.Exit(1)
+  }
+
+
   cg,e := cgf.Load( z[0] )
   if e != nil {
     fmt.Fprintf( os.Stderr, "ERROR: could not load %s: %v\n", z[0], e )
@@ -1023,6 +1062,7 @@ func _main( c *cli.Context ) {
   gTileClassVersion = cg.EncodedTileMapMd5Sum
   gTileLibraryVersion = cg.TileLibraryVersion
 
+  construct_tile_map( gCGF[0].TileMap )
   construct_tile_variant_to_tile_class_map( gCGF[0].TileMap )
 
   for i:=1; i<len(z); i++ {
@@ -1047,11 +1087,49 @@ func _main( c *cli.Context ) {
 
     sampleName := fmt.Sprintf("%d:%s", i, z[i])
 
+    cg.TileMap = gCGF[0].TileMap
+
     gCGF = append( gCGF, cg )
     gCGFName = append( gCGFName, sampleName )
     gCGFIndexMap[ sampleName ] = len(gCGF)-1
 
   }
+
+
+  z = c.StringSlice("input-cgf-gob")
+  for i:=0; i<len(z); i++ {
+    fmt.Println(z[i])
+
+    cg := cgf.CGF{}
+    fp,e := os.Open( z[i] )
+    if e!=nil { panic(e) }
+
+    dec := gob.NewDecoder( fp )
+    e = dec.Decode(&cg)
+    if e!=nil { panic(e) }
+
+    fp.Close()
+
+    if cg.EncodedTileMapMd5Sum != gTileClassVersion {
+      fmt.Fprintf( os.Stderr, "ERROR: Could not load %s: Tile class mismatch (%s != %s)\n", z[i], cg.EncodedTileMapMd5Sum, gTileClassVersion )
+      os.Exit(1)
+    }
+
+    if cg.TileLibraryVersion != gTileLibraryVersion {
+      fmt.Fprintf( os.Stderr, "ERROR: Could not load %s: Tile library mismatch (%s != %s)\n", z[i], cg.TileLibraryVersion , gTileLibraryVersion )
+      os.Exit(1)
+    }
+
+    sampleName := fmt.Sprintf("%d:%s", i, z[i])
+
+    cg.TileMap = gCGF[0].TileMap
+
+    gCGF = append( gCGF, &cg )
+    gCGFName = append( gCGFName, sampleName )
+    gCGFIndexMap[ sampleName ] = len(gCGF)-1
+
+  }
+
 
   fmt.Printf("indexmap:\n\n%v\n\n", gCGFIndexMap)
 
@@ -1069,10 +1147,18 @@ func _main( c *cli.Context ) {
   }(term)
   signal.Notify(term, syscall.SIGTERM)
 
+  if c.Bool( "Test" ) {
+    flint()
+    return
+  }
+
 
   http.HandleFunc("/", handle_json_req)
 
   srv := &http.Server{ Addr: gPortStr }
+
+  fmt.Printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n")
+
   srv.Serve(listener)
 
   fmt.Printf("lantern finished, shutting down\n")
@@ -1095,6 +1181,17 @@ func main() {
       Name: "input-cgf, i",
       Value: &cli.StringSlice{},
       Usage: "CGF file(s)",
+    },
+
+    cli.StringSliceFlag{
+      Name: "input-cgf-gob, g",
+      Value: &cli.StringSlice{},
+      Usage: "CGF gob file(s)",
+    },
+
+    cli.BoolFlag{
+      Name: "Test, T",
+      Usage: "Run tests (for debugging purposes)",
     },
 
     cli.BoolFlag{
