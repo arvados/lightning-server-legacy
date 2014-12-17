@@ -47,7 +47,6 @@ func sample_intersect( sampleIndex []int ) string {
       mm := m
       if mm > len(v[path_str]) { mm = len(v[path_str]) }
 
-      //for i:=0; i<m; i++ {
       for i:=0; i<mm; i++ {
         if v[path_str][i] == no_match { continue }
 
@@ -65,7 +64,6 @@ func sample_intersect( sampleIndex []int ) string {
     }
 
   }
-
 
   ll := 0
   found_count := 0
@@ -103,6 +101,7 @@ func sample_intersect_handler( w http.ResponseWriter, resp *LanternResponse, req
   sampleIndex,err := getSampleIndexArray( req.SampleId )
   _ = sampleIndex
   if err!=nil {
+    fmt.Printf("ERROR: %v\n", err )
     resp.Type = "error" ; resp.Message = fmt.Sprintf("%v", err)
     return
   }
