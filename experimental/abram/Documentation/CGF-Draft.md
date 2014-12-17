@@ -19,7 +19,7 @@ The ASCII CGF (aCGF) header consists of the string `{"#!cgf":"a",` followed by a
 structure describing the parameters of the file.  Here is an example:
 
     {"#!cgf":"a",
-      "CGFVersion" : "0.1",
+      "CGFVersion" : "0.4",
       "Encoding" : "utf8",
       "Notes" : "ABV Version 0.1",
 
@@ -38,21 +38,11 @@ structure describing the parameters of the file.  Here is an example:
       "StepPerPath" : [ 5433, 11585, ..., 181, 35 ],
       "TotalStep" : 10655006,
 
-      "TileMap" : [
-        { "Type" : "hom",  "Ploidy" : 2, "Variant" : [ [0], [0] ], 1, "VariantLength" : [1,1] },
-        { "Type" : "hom*", "Ploidy" : 2, "Variant" : [ [0], [0] ], 1, "VariantLength" : [1,1] },
-        { "Type" : "het",  "Ploidy" : 2, "Variant" : [ [1], [0] ], 1, "VariantLength" : [1,1] },
-        { "Type" : "hom*", "Ploidy" : 2, "Variant" : [ [0], [1] ], 1, "VariantLength" : [1,1] },
-        { "Type" : "het*", "Ploidy" : 2, "Variant" : [ [1], [0] ], 1, "VariantLength" : [1,1] },
-        { "Type" : "het*", "Ploidy" : 2, "Variant" : [ [0], [1] ], 1, "VariantLength" : [1,1] },
-        { "Type" : "hom",  "Ploidy" : 2, "Variant" : [ [1], [1] ], 1, "VariantLength" : [1,1] },
-        { "Type" : "hom*", "Ploidy" : 2, "Variant" : [ [1], [1] ], 1, "VariantLength" : [1,1] },
-        { "Type" : "het",  "Ploidy" : 2, "Variant" : [ [0,0], [1] ], 1, "VariantLength" : [2,1] },
-        ...
-        { "Type" : "het",  "Ploidy" : 2, "Variant" : [ [2,5], [3] ], 1, "VariantLength" : [2,1] },
-        ...
-        { "Type" : "het",  "Ploidy" : 2, "Variant" : [ [35], [128] ], 1, "VariantLength" : [1,1] }
-      ],
+      "CanonicalCharMap" : ".BCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678*#-",
+      "ReservedCharCount" : 3,
+
+      "EncodedTileMapMd5Sum" : "746c5512c7d7949aeefb5ee8791349e5",
+      "EncodedTileMap" : "_.0:0;x.0:1;x.1:0;_.1:1;_*1:1;_*0:0;_*2:2;x.0:2;_*3:3;x.0,0:1;x.0:3;_*4:4;_*5:5;_*6:6;_*7:7",
 
       "PhaseLoci" : {
         "PhaseGroup_0_0_0_1" :
@@ -78,6 +68,8 @@ structure describing the parameters of the file.  Here is an example:
 
       "FinalOverflowMap" : {
         ...
+        "12e:12a" : { "Type" : "OverflowMapEntry", "VariantKey" : "_.1af+3:0,a+2" },
+        ...
         "35e:13a3" : { "Type" : "FastJ", "Data" : ">{ \"tileID\" : \"35e.00.13a3.000\", \"locus\" : ... }\nACCCAA ... AAC\nCT\n" },
         ...
       }
@@ -97,6 +89,11 @@ Any character that appears in the keys of the `CharMap` object may appear in the
 The `CanonicalCharMap` gives the default encoding for the `ABV` value entries, where the character encoding is given by the character
 at the appropriate position in the string array.
 
+The 'tile map' is a mapping from the string values (or overflow values) in the `ABV` vectors.  The tile map gives the mapping from
+which (potentially encoded) tile map value to the underlying tiles.  The `EncodedTileMap` string holds this information.  The
+format is `[_x][\.\*]([\da-f])(,[\da-f])*(:([\da-f])(,[\da-f])*)`.  The first character encodes `x=het`, `_=hom`, the second records
+ whether a no-call was found on the sequence `.=normal`, `*=no-call-in-seq`.  The rest encodes the length of the
+
 Non negative mapped values (that is, not a `-`, `#` or `*`) at Positions in the entries of the `ABV` JSON object encode a position into the `TileMap` JSON object.
 
 When the `ABV` entry maps to a position in the `TileMap` table, the `Type` filed indicates whether it is a heterozygous, homozygous or
@@ -115,14 +112,20 @@ For that entry in the above example, the `Type` field is `Map` and the `Data` fi
 If the key is not found in the `OverflowMap`, the `FinalOverflowMap` should be consulted.  It is an error if an overflowed tile does not appear
 in either the `OverflowMap` or `FinalOverflowMap` object.
 
-For now, the only option for the `FinalOverflowMap` JSON object entry is `FastJ`.
+For now, two options are available for the 'FinalOverFlowMap'.
+The first is a string encoded JSON object encoded in the 'Data' entry when the 'Type' entry is `FastJ`.
 In this case the `Data` field will be a JSON encoded string of a FastJ tile corresponding to that entry.
 This is included in case the CGF file has a novel tile that is not included in the tile library referenced.
+
+The second is an encoded tile map entry in the 'VariantKey' entry when the 'Type' field is 'OverflowMapEntry'.
 
 A non-simple variant is indicated in the `ABV` string as a mapped `-3` value (i.e. `*`).
 In the case of a non-simple variant, this is interpreted as a tile that spans multiple 'seed' tiles.
 The first non negative mapped value before the contiguous list of mapped `-3` values indicates the position in the `TileMap` (or
 if the overflow objects should be consulted).
+
+Reserved character codes are indicated by the 'ReservedCharCount' number.  Any number falling within the range of
+`[len(CanonicalCharMap)-ReservedCharCount:len(CanonicalCharMap)]` should be considered a special value.
 
 This tile is still referenced in the tile library, as pointed to by the `TileMap` object.
 The number of seed tiles it spans is indicated by the number of contiguous mapped `-3` values (i.e. `*`s) plus one.
@@ -135,9 +138,13 @@ For example, if the first allele spans 3 seed tiles and the second allele has no
 
     ...J**...
 
-With a `TileMap` entry:
+With an implied `TileMap` entry of:
 
-    { "Type" : "non-simple", "Variant" : [ [ 54 ], [ 0, 0, 0 ] ], ... }
+    { "Type" : "het", "Variant" : [ [ 54 ], [ 0, 0, 0 ] ], "VariantLength" : [ [4],[1,2,1] ] }
+
+The encoded tile map entry for the above would be:
+
+    x.36+4:0,0+2,0
 
 The non-simple case can have 'interleaved' tiles of varying seed tile length.
 For example, the first allele could have a non-simple tile of seed tile length 3 followed by two default tiles, whereas
@@ -148,9 +155,13 @@ Here is an example of the what the portion of the `ABV` string might look like a
 
     ...Z****...
 
-With a `TileMap` entry:
+With an implied `TileMap` entry of:
 
-    { "Type" : "non-simple", "Variant" : [ [ 101, 0, 0 ], [ 0, 122 ] ], ... }
+    { "Type" : "het", "Variant" : [ [ 101, 0, 0 ], [ 0, 122 ] ], "VariantLength" : [[3,1,1],[1,4]] }
+
+and an encoded tile map entry of:
+
+    x.65+3,0,0:0,7a+4
 
 Where again, in this example, tile variant 101 spans 3 default tiles whereas tile variant 122 spans 4 default tiles.
 
@@ -170,6 +181,7 @@ Notes
     the value `63` (mapped to a `/` character), a `-2` value could map to value `62` (mapped to a `+` character) and a `-3` value could map to value
     `61` (mapped to a `9` character).
   - By convention, negative values are used to handle special cases for tiles as in the overflow indicators, non-simple and complex tile types.
+  - Only the `EncodedTileMap` is stored and the `TileMap` is calculated at runtime.
 
 
 
