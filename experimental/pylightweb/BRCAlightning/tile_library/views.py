@@ -122,6 +122,7 @@ def get_population_repr_of_tile_variants(tiles, spanning_tiles):
         post_data['TileGroupVariantId'].append([tile_var_cgf_string])
         post_data = json.dumps(post_data)
         post_response = requests.post(url="http://localhost:8080", data=post_data)
+        print post_response.text
         m = re.match('\[(.*)\](\{.+\})', post_response.text)
         assert "success" == json.loads(m.group(2))['Type'], "Lantern-communication failure"
         if m.group(1) == '':

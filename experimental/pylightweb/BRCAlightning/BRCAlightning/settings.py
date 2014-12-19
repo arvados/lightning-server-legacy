@@ -52,11 +52,13 @@ INSTALLED_APPS = (
     'django.contrib.humanize',
     'django_extensions',
     'debug_toolbar',
+    'bootstrapform',
     'home',
     'slippy',
     'humans',
     'tile_library',
     'genes',
+    'variant_query',
 )
 
 GRAPH_MODELS = {
