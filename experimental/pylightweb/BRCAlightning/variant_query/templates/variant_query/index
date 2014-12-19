@@ -28,7 +28,7 @@
 					<thead>
 						<tr>
 							<th>Sample Name</th>
-							<th>Base call at that position</th>
+							<th>Base call at that position (including the requested bases around the query)</th>
 							<th>Tile Variant Queries</th>
 						</tr>
 					</thead>
