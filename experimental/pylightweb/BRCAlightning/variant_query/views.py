@@ -118,6 +118,7 @@ def index(request):
         t5 = time.time()
         base_query = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome)
         try:
+            #What happens if we have 2 loci that match this? they overlap!
             locus = base_query.filter(begin_int__lte=base_int).filter(end_int__gt=base_int).get()
             tile_position = locus.tile
             tile_position_int = int(tile_position.tilename)
