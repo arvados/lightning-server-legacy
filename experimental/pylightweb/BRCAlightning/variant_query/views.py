@@ -183,7 +183,7 @@ def index(request):
             response = {'text':'Success!', 'humans':humans, 'actual_number':number_around}
         except ObjectDoesNotExist:
             smallest_int = base_query.order_by('begin_int').first().begin_int
-            largest_int = base_query.order_by('-end_int').first().end_int
+            largest_int = base_query.order_by('begin_int').reverse().first().end_int
             response_text = "That locus is not loaded into this library. Try a number in the range %i to %i." % (smallest_int, largest_int)
             response = {'text': response_text}
         t6 = time.time()
