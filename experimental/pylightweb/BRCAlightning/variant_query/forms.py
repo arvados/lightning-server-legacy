@@ -14,5 +14,5 @@ class SearchForm(forms.Form):
         self.fields['indexing'] = forms.ChoiceField(initial=self.INDEX_CHOICES[0][0], label='Indexing to use',
                                      widget=forms.RadioSelect, choices=self.INDEX_CHOICES)
         self.fields['target_base'] = forms.IntegerField(label='Base to query')
-        self.fields['number_around'] = forms.IntegerField(label='Number of bases around query to retrieve')
+        self.fields['number_around'] = forms.IntegerField(initial=0,label='Number of bases around query to retrieve')
         
