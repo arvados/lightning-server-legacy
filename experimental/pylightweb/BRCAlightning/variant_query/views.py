@@ -173,7 +173,7 @@ def index(request):
             tile_position_int = int(tile_position.tilename)
             tile_position_name = basic_fns.get_position_string_from_position_int(tile_position_int)
             position_base_int = base_int - int(locus.begin_int)
-            distance_from_end = int(locus.end_int) - base_int
+            distance_from_end = int(locus.end_int) - (base_int+1)
             number_around = min(position_base_int, number_around, distance_from_end)
             #This tile_position_name can be used to query the majority of the population.
             #   However, we still need to get spanning tiles that don't start on this position
