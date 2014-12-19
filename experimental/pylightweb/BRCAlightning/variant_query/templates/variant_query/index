@@ -23,6 +23,7 @@
 		<h1>Response:</h1>
 		<p>{{ response.text }} This query took {{response.time|floatformat:3}} seconds.</p>
 		{% if response.humans %}
+			{% regroup response.humans by base as humans_list %}
 			<div class="table-responsive">
 				<table class="table table-striped">
 					<thead>
@@ -32,10 +33,10 @@
 						</tr>
 					</thead>
 					<tbody>
-						{% for human in response.humans %}
+						{% for human in humans_list %}
 							<tr>
 								<td>{{ human.name }}</td>
-								<td>{{ human.base }}</td>
+								<td>{{ human.base|upper }}</td>
 							</tr>
 						{% endfor %}
 					</tbody>

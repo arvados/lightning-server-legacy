@@ -26,8 +26,10 @@ def get_humans_with_base_change(base_position, tile_position_int, spanning_tiles
         post_response = requests.post(url="http://localhost:8080", data=post_data)
         m = re.match('\[(.*)\](\{.+\})', post_response.text)
         assert "success" == json.loads(m.group(2))['Type'], "Lantern-communication failure"
+        large_file_names = m.group(1).split(',')
+        retlist = [name.split('/')[-1] for name in large_file_names]
         return m.group(1).split(',')
-    humans = []
+    humans = {}
     low_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int)
     high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
     tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
@@ -36,15 +38,26 @@ def get_humans_with_base_change(base_position, tile_position_int, spanning_tiles
         base_call = tile_variant.getBaseAtPosition(base_position)
         matching_humans = get_population_repr_of_tile_var(cgf_str)
         for hu in matching_humans:
-            humans.append({'name':hu, 'base':base_call})
+            if hu != '':
+                if hu in humans:
+                    humans[hu] += ", "+base_call
+                else:
+                    humans[hu] = base_call
     for tile_variant in spanning_tiles_to_check:
         cgf_str = tile_variant.conversion_to_cgf
         base_call = tile_variant.getBaseAtPosition(base_position)
         matching_humans = get_population_repr_of_tile_var(cgf_str)
         for hu in matching_humans:
-            humans.append({'name':hu, 'base':base_call})
+            if hu != '':
+                if hu in humans:
+                    humans[hu] += ", "+base_call
+                else:
+                    humans[hu] = base_call
     ## humans expected to be list of dictionaries with keys "name" and "base"
-    return humans
+    retlist = []
+    for human in humans:
+        retlist.append({'name':human, 'base':humans[human]})
+    return retlist
 
 def get_spanning_tiles(tile_position_int):
     """ ignores any spanning tiles started at the given position. Only looks backward
