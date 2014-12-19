@@ -141,7 +141,7 @@ class TileVariant(models.Model):
         assert upper_position_int > -1, "Expects the upper position integer to be positive"
         assert lower_position_int < upper_position_int, "Expects lower position_int to be strictly lower than upper position int"
         try:
-            return self.sequence[lower_position_int:upper_position_int]
+            return self.sequence[lower_position_int:upper_position_int+1]
         except IndexError:
             raise Exception('Malformed tile: length is not the length of the sequence')
 
