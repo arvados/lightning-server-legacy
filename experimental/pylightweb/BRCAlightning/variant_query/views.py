@@ -180,7 +180,7 @@ def index(request):
             #   but still overlap it
             spanning_tile_variants = get_spanning_tiles(tile_position_int)
             humans = query_population_base_range(position_base_int-number_around, position_base_int+number_around, tile_position_int, spanning_tile_variants)
-            response = {'text':'Success!', 'humans':humans}
+            response = {'text':'Success!', 'humans':humans, 'actual_number':number_around}
         except ObjectDoesNotExist:
             smallest_int = base_query.order_by('begin_int').first().begin_int
             largest_int = base_query.order_by('-end_int').first().end_int
