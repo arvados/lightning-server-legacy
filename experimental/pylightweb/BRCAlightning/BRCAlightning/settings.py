@@ -54,11 +54,13 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'django_extensions',
+    'bootstrapform',
     'home',
     'slippy',
     'humans',
     'tile_library',
     'genes',
+    'variant_query',
 )
 
 GRAPH_MODELS = {

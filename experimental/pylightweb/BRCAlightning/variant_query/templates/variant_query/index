@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+
+{% block title %}Lightning: Variant Query{% endblock %}
+
+{% block breadcrumbs %}
+	<li class="active"><a href="#">Query</a></li>
+{% endblock %}
+
+
+{% block content %}
+<div class="container">
+	<div class="page-header">
+		<h1>Submit form </h1>
+		<p> Took {{time1|floatformat:3}} seconds to get assembly choices. Took {{time2|floatformat:3}} seconds to get chromosome choices.</p>
+	</div>
+	<form role="form" method="get">
+		{{ form|bootstrap }}
+		<input type="submit" value="Submit" />
+	</form>
+	{% if response %}
+		<h1>Response:</h1>
+		<p>{{ response.text }} This query took {{response.time|floatformat:3}} seconds.</p>
+		{% if response.humans %}
+			<div class="table-responsive">
+				<table class="table table-striped">
+					<thead>
+						<tr>
+							<th>Sample Name</th>
+							<th>Base call at that position</th>
+							<th>Tile Variant Queries</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for human in response.humans %}
+							<tr>
+								<td>{{ human.name }}</td>
+								<td>{{ human.base|upper }}</td>
+								<td>{{ human.tile_variants }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	{% endif %}
+</div>
+{% endblock %}
+
