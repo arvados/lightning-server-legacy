@@ -27,7 +27,7 @@ def get_humans_with_base_change(base_position, tile_position_int, spanning_tiles
         m = re.match('\[(.*)\](\{.+\})', post_response.text)
         assert "success" == json.loads(m.group(2))['Type'], "Lantern-communication failure"
         large_file_names = m.group(1).split(',')
-        retlist = [name.split('/')[-1] for name in large_file_names]
+        retlist = [name.strip('" ').split('/')[-1] for name in large_file_names]
         return retlist
     humans = {}
     low_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int)
