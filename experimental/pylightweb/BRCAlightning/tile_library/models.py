@@ -118,6 +118,17 @@ class TileVariant(models.Model):
     getString.short_description='Variant Name'
     def isReference(self):
         return int(self.variant_value) == 0
+    def getBaseAtPosition(self, position_int):
+        try:
+            position_int = int(position_int)
+        except ValueError:
+            raise Exception('Position integer must be able to convert into an integer')
+        assert position_int < self.length, "Expects the position integer to be 0-indexed and less than the length of the sequence"
+        assert position_int > -1, "Expects the position integer to be positive"
+        try:
+            return self.sequence[position_int]
+        except IndexError:
+            raise Exception('Malformed tile: length is not the length of the sequence')
     def __unicode__(self):
         return self.getString()
     class Meta:
