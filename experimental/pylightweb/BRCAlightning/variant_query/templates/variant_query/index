@@ -35,8 +35,8 @@
 					<tbody>
 						{% for human in humans_list %}
 							<tr>
-								<td>{{ human.name }}</td>
-								<td>{{ human.base|upper }}</td>
+								<td>{{ human.list }}</td>
+								<td>{{ human.grouper|upper }}</td>
 							</tr>
 						{% endfor %}
 					</tbody>
