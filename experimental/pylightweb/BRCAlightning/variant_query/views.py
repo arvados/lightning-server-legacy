@@ -40,9 +40,10 @@ def get_humans_with_base_change(base_position, tile_position_int, spanning_tiles
         for hu in matching_humans:
             if hu != '':
                 if hu in humans:
-                    humans[hu] += ", "+base_call
+                    humans[hu][0] += ", "+base_call
+                    humans[hu][1] += ", "+cgf_str
                 else:
-                    humans[hu] = base_call
+                    humans[hu] = [base_call, cgf_str]
     for tile_variant in spanning_tiles_to_check:
         cgf_str = tile_variant.conversion_to_cgf
         base_call = tile_variant.getBaseAtPosition(base_position)
@@ -50,13 +51,14 @@ def get_humans_with_base_change(base_position, tile_position_int, spanning_tiles
         for hu in matching_humans:
             if hu != '':
                 if hu in humans:
-                    humans[hu] += ", "+base_call
+                    humans[hu][0] += ", "+base_call
+                    humans[hu][1] += ", "+cgf_str
                 else:
-                    humans[hu] = base_call
+                    humans[hu] = [base_call, cgf_str]
     ## humans expected to be list of dictionaries with keys "name" and "base"
     retlist = []
     for human in humans:
-        retlist.append({'name':human, 'base':humans[human]})
+        retlist.append({'name':human, 'base':humans[human][0], 'tile_variants':humans[human][1]})
     return retlist
 
 def get_spanning_tiles(tile_position_int):

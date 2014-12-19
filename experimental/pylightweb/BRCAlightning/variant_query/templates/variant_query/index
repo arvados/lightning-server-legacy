@@ -29,6 +29,7 @@
 						<tr>
 							<th>Sample Name</th>
 							<th>Base call at that position</th>
+							<th>Tile Variant Queries</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -36,6 +37,7 @@
 							<tr>
 								<td>{{ human.name }}</td>
 								<td>{{ human.base|upper }}</td>
+								<td>{{ human.tile_variants }}</td>
 							</tr>
 						{% endfor %}
 					</tbody>
