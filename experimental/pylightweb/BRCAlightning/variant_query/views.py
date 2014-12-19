@@ -24,9 +24,9 @@ def get_humans_with_base_change(base_position, tile_position_int, spanning_tiles
             }
         post_data = json.dumps(post_data)
         post_response = requests.post(url="http://localhost:8080", data=post_data)
-        m = re.match('\[(.*)\](\{.+\})', post_response.text)
-        assert "success" == json.loads(m.group(2))['Type'], "Lantern-communication failure"
-        large_file_names = m.group(1).split(',')
+        response = json.loads(post_response.text)
+        assert "success" == response['Type'], "Lantern-communication failure:" + foo['Message']
+        large_file_names = response['Result']
         retlist = [name.strip('" ').split('/')[-1] for name in large_file_names]
         return retlist
     humans = {}
