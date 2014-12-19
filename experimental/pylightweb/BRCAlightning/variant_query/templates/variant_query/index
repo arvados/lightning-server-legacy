@@ -22,7 +22,7 @@
 	{% if response %}
 		<h1>Response:</h1>
 		<p>{{ response.text }} This query took {{response.time|floatformat:3}} seconds.</p>
-		{% if response.tile_variants %}
+		{% if response.humans %}
 			<div class="table-responsive">
 				<table class="table table-striped">
 					<thead>
