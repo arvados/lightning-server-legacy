@@ -13,7 +13,7 @@ from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVarian
 import tile_library.basic_functions as basic_fns
 import tile_library.functions as fns
 
-def get_humans_with_base_change(base_position, tile_position_int, spanning_tiles_to_check):
+def query_population_base_range(lower_base_position, higher_base_position, tile_position_int, spanning_tiles_to_check):
     def get_population_repr_of_tile_var(cgf_string):
         post_data = {
                 'Type':'sample-tile-group-match',
@@ -27,56 +27,6 @@ def get_humans_with_base_change(base_position, tile_position_int, spanning_tiles
         response = json.loads(post_response.text)
         assert "success" == response['Type'], "Lantern-communication failure:" + foo['Message']
         large_file_names = response['Result']
-        retlist = [name.strip('" ').split('/')[-1] for name in large_file_names]
-        return retlist
-    humans = {}
-    low_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int)
-    high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
-    tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
-    for tile_variant in tile_variants:
-        cgf_str = tile_variant.conversion_to_cgf
-        base_call = tile_variant.getBaseAtPosition(base_position)
-        matching_humans = get_population_repr_of_tile_var(cgf_str)
-        for hu in matching_humans:
-            if hu != '':
-                if hu in humans:
-                    humans[hu][0] += ", "+base_call
-                    humans[hu][1] += ", "+cgf_str
-                else:
-                    humans[hu] = [base_call, cgf_str]
-    for tile_variant in spanning_tiles_to_check:
-        cgf_str = tile_variant.conversion_to_cgf
-        base_call = tile_variant.getBaseAtPosition(base_position)
-        matching_humans = get_population_repr_of_tile_var(cgf_str)
-        for hu in matching_humans:
-            if hu != '':
-                if hu in humans:
-                    humans[hu][0] += ", "+base_call
-                    humans[hu][1] += ", "+cgf_str
-                else:
-                    humans[hu] = [base_call, cgf_str]
-    ## humans expected to be list of dictionaries with keys "name" and "base"
-    retlist = []
-    for human in humans:
-        retlist.append({'name':human, 'base':humans[human][0], 'tile_variants':humans[human][1]})
-    return retlist
-
-def query_population_base_range(lower_base_position, higher_base_position, tile_position_int, spanning_tiles_to_check):
-    def get_population_repr_of_tile_var(cgf_string):
-        post_data = {
-                'Type':'sample-tile-group-match',
-                'Dataset':'all',
-                'Note':'expect population set to be returned from a match of variant',
-                'SampleId':[],
-                'TileGroupVariantId':[[cgf_string]]
-            }
-        post_data = json.dumps(post_data)
-        post_response = requests.post(url="http://localhost:8080", data=post_data)
-        print post_data
-        print post_response.text
-        m = re.match('\[(.*)\](\{.+\})', post_response.text)
-        assert "success" == json.loads(m.group(2))['Type'], "Lantern-communication failure"
-        large_file_names = m.group(1).split(',')
         retlist = [name.strip('" ').split('/')[-1] for name in large_file_names]
         return retlist
     humans = {}
