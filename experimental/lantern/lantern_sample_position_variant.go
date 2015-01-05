@@ -5,6 +5,8 @@ import "net/http"
 import "encoding/json"
 import "io"
 
+import "sort"
+
 import "strings"
 
 /*
@@ -123,7 +125,20 @@ func sample_position_variant_handler( w http.ResponseWriter, resp *LanternRespon
                 x := 0
                 for v_ind:=0; v_ind<len(tme.Variant[allele]); v_ind++ {
                   if (p==int(path)) && ((s+x)==int(step)) {
-                    result_tileid := fmt.Sprintf("%03x.%02x.%04x.%04x", p, library_version, s+x, tme.Variant[allele][v_ind] )
+
+                    len_opt_str := ""
+                    if tme.VariantLength[allele][v_ind] > 1 {
+                      len_opt_str = fmt.Sprintf("+%x", tme.VariantLength[allele][v_ind])
+                    }
+
+                    //result_tileid := fmt.Sprintf("%03x.%02x.%04x.%04x", p, library_version, s+x, tme.Variant[allele][v_ind] )
+                    result_tileid := fmt.Sprintf("%03x.%02x.%04x.%04x%s",
+                      p,
+                      library_version,
+                      s+x,
+                      tme.Variant[allele][v_ind],
+                      len_opt_str )
+
                     result[name][allele][result_tileid] = true
                     break
                   }
@@ -156,6 +171,14 @@ func sample_position_variant_handler( w http.ResponseWriter, resp *LanternRespon
       for tileid := range result[name][allele] {
         fin_result[name][allele] = append(fin_result[name][allele], tileid)
       }
+    }
+  }
+
+  // For convenience, sort results
+  //
+  for name := range fin_result {
+    for allele:=0; allele<len(fin_result[name]); allele++ {
+      sort.Sort( ByString( fin_result[name][allele] ) )
     }
   }
 

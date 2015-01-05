@@ -6,6 +6,8 @@ import "encoding/json"
 import _ "os"
 import "io"
 
+import "sort"
+
 import "strings"
 import "strconv"
 
@@ -300,7 +302,12 @@ func construct_result_set( cgf_ind int, base_set map[string][2]int ) ( []map[str
         x:=0
         for j:=0; j<len(tme.Variant[i]); j++ {
           if (p==int(path)) && ((s+x)==int(step)) {
-            result_tileid := fmt.Sprintf("%03x.%02x.%04x.%04x", p, ver, s+x, tme.Variant[i][j] )
+
+            len_opt_str := ""
+            if tme.VariantLength[i][j] > 1 {
+              len_opt_str = fmt.Sprintf("+%x", tme.VariantLength[i][j])
+            }
+            result_tileid := fmt.Sprintf("%03x.%02x.%04x.%04x%s", p, ver, s+x, tme.Variant[i][j], len_opt_str )
             //result_set[ result_tileid ] = true
             result_set[i][result_tileid] = true
             break
@@ -403,6 +410,14 @@ func sample_tile_neighborhood_handler( w http.ResponseWriter, resp *LanternRespo
       }
     }
 
+  }
+
+  // For convenience, sort results
+  //
+  for name := range result {
+    for allele:=0; allele<len(result[name]); allele++ {
+      sort.Sort( ByString( result[name][allele] ) )
+    }
   }
 
 

@@ -25,7 +25,7 @@ import "../cgf"
 
 import "encoding/gob"
 
-var VERSION_STR string = "0.0.1"
+var VERSION_STR string = "0.0.3"
 
 var gProfileFlag bool
 var gProfileFile string = "lantern.pprof"
@@ -47,6 +47,12 @@ var gTileClassVersion string
 var gTileLibraryVersion string
 
 var gTileMap map[int][]int
+
+type ByString []string
+func (x ByString) Len() int { return len(x) }
+func (x ByString) Swap(i, j int) { x[i],x[j] = x[j],x[i] }
+func (x ByString) Less(i,j int) bool { return x[i] < x[j] }
+
 
 type LanternQueryContainer struct {
   Type string
