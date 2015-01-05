@@ -129,6 +129,23 @@ class TileVariant(models.Model):
             return self.sequence[position_int]
         except IndexError:
             raise Exception('Malformed tile: length is not the length of the sequence')
+    def getBaseGroupBetweenPositions(self, lower_position_int, upper_position_int):
+        try:
+            lower_position_int = int(lower_position_int)
+            upper_position_int = int(upper_position_int)
+        except ValueError:
+            raise Exception('Position integer must be able to convert into an integer')
+        assert lower_position_int < self.length, "Expects the lower position integer to be 0-indexed and less than the length of the sequence"
+        assert upper_position_int < self.length, "Expects the upper position integer to be 0-indexed and less than the length of the sequence"
+        assert lower_position_int > -1, "Expects the lower position integer to be positive"
+        assert upper_position_int > -1, "Expects the upper position integer to be positive"
+        assert lower_position_int < upper_position_int, "Expects lower position_int to be strictly lower than upper position int"
+        try:
+            return self.sequence[lower_position_int:upper_position_int+1]
+        except IndexError:
+            raise Exception('Malformed tile: length is not the length of the sequence')
+
+    
     def __unicode__(self):
         return self.getString()
     class Meta:

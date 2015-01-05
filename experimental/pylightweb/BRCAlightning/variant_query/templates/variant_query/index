@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% load staticfiles %}
 {% load bootstrap %}
+{% load humanize %}
 
 {% block title %}Lightning: Variant Query{% endblock %}
 
 {% block breadcrumbs %}
-	<li class="active"><a href="#">Query</a></li>
+	<li class="active"><a href="{% url 'variant_query:index' %}">Query</a></li>
 {% endblock %}
 
 
@@ -28,7 +29,7 @@
 					<thead>
 						<tr>
 							<th>Sample Name</th>
-							<th>Base call at that position</th>
+							<th>Base call at that position (including {{response.actual_number|intcomma}} bases around the query)</th>
 							<th>Tile Variant Queries</th>
 						</tr>
 					</thead>
