@@ -65,7 +65,7 @@ class PopulationVariantQuery(APIView):
         low_int = target_base_int - number_bases_around
         high_int = target_base_int + number_bases_around
         locuses = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
-            begin_int__lte=low_int).filter(end_int__gt=high_int)
+            begin_int__lt=high_int).filter(end_int__gte=low_int)
         num_locuses = locuses.count()
         variants_to_query = [[] for i in range(num_locuses)]
         if num_locuses == 0:
