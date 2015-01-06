@@ -53,13 +53,19 @@ INSTALLED_APPS = (
     'django_extensions',
     'debug_toolbar',
     'bootstrapform',
+    'rest_framework',
     'home',
     'slippy',
     'humans',
     'tile_library',
     'genes',
     'variant_query',
+    'api',
 )
+
+REST_FRAMEWORK = {
+    'PAGINATE_BY': 10
+}
 
 GRAPH_MODELS = {
     'all_applications':True,

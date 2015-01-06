@@ -80,7 +80,7 @@ def mk_tilevars(num_vars, lengths, start_tag, end_tag, tile, tile_int):
         new = TileVariant(tile_variant_name=tile_var_int, tile=tile, variant_value=i, length=length,
                           md5sum=digestor.hexdigest(), sequence=seq, num_positions_spanned=1)
         new.save()
-        
+
 def make_long_gene1(assembly=19):
     """(Assembly 19, chr1)
               gene1: 400   |___|       |_____|                      |_____| 5500
@@ -118,7 +118,7 @@ def make_tiles(assembly_default=19, skip_zero=False):
            15,  258,  258.00,  258 {'vars':1, 'lengths':[258]}, #16
            16,  248,  248.00,  248 {'vars':3, 'lengths':[248,248,248]}, #17
            17,  250,  250.00,  250 {'vars':1, 'lengths':[250]}, #18
-           
+
     loci = [(0, 448),    #0 -> 448
             (448-24, 725),#1 -> 301
             (725-24, 974),#2 -> 273
@@ -171,7 +171,7 @@ def make_tiles(assembly_default=19, skip_zero=False):
                 t, foo, new_start_tag, annotation = mk_tile(j, locus, tile_vars[j]['lengths'][0]+locus, tile_vars[j]['vars'], tile_vars[j]['lengths'], start_tag=new_start_tag, assembly=assembly_default)
             #print j, locus, locus+tile_vars[j]['lengths'][0]
             locus += tile_vars[j]['lengths'][0] - 24
-            
+
     locus = 0
     t, foo, new_start_tag, annotation = mk_tile(1000, locus, tile_vars[0]['lengths'][0]+locus, 1, [tile_vars[0]['lengths'][0]], assembly=assembly_default, chrom=2)
     locus += tile_vars[0]['lengths'][0] - 24
@@ -179,14 +179,14 @@ def make_tiles(assembly_default=19, skip_zero=False):
         t, foo, new_start_tag, annotation = mk_tile(i+1000, locus, tile_vars[i]['lengths'][0]+locus, 1, [tile_vars[i]['lengths'][0]], start_tag=new_start_tag,
                                                     assembly=assembly_default, chrom=2)
         locus += tile_vars[i]['lengths'][0] - 24
-                                                    
+
 def make_ridiculously_long_gene(assembly_default=19):
     """
         (Assembly 19, chr1)
                 gene1: 400          |___|       |_____|               |_____|        5500
                                    600-700     1100-1900             5450-5500
       gene1 (by tile): 0.00.0000   0.00.0001                              2.00.0004  2.00.0004
-    
+
     creates the following structure:
             i,  min,     avg,  max
         Path 0:
@@ -210,7 +210,7 @@ def make_ridiculously_long_gene(assembly_default=19):
             2,  258,  258.00,  258 {'vars':1, 'lengths':[258]}, #16
             3,  248,  248.00,  248 {'vars':3, 'lengths':[248,248,248]}, #17
             4,  250,  250.00,  250 {'vars':1, 'lengths':[250]}, #18
-           
+
     loci = [(0, 448),    #0 -> 448
             (448-24, 725),#1 -> 301
             (725-24, 974),#2 -> 273
@@ -243,7 +243,7 @@ def make_ridiculously_long_gene(assembly_default=19):
             {'vars':3, 'lengths':[248,248,248]}, #17
             {'vars':1, 'lengths':[250]}, #18
         ]
-    
+
     locus = 0
     for j in range(18):
         if j == 0:
@@ -269,7 +269,7 @@ def make_ridiculously_long_gene(assembly_default=19):
             t, foo, new_start_tag, annotation = mk_tile(i, locus, tile_vars[j]['lengths'][0]+locus, tile_vars[j]['vars'], tile_vars[j]['lengths'], start_tag=new_start_tag, assembly=assembly_default)
         #print j, locus, locus+tile_vars[j]['lengths'][0]
         locus += tile_vars[j]['lengths'][0] - 24
-        
+
     random_letters = 'foo long'
     g = UCSC_Gene(ucsc_gene_id=random_letters, assembly=19, chrom=1, strand=True, start_tx=400,
                            tile_start_tx=0, end_tx=5500, tile_end_tx=int('2000004', 16), start_cds=600,
@@ -296,12 +296,12 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(path, '1c0')
         self.assertEqual(version, '03')
         self.assertEqual(step, '020f')
-        
+
     def test_convert_position_int_to_position_hex_str_failure(self):
         self.assertRaises(AssertionError, basic_fns.convert_position_int_to_position_hex_str, '10')
         self.assertRaises(AssertionError, basic_fns.convert_position_int_to_position_hex_str, -1)
         self.assertRaises(AssertionError, basic_fns.convert_position_int_to_position_hex_str, int('1000000000', 16))
-        
+
     def test_convert_tile_variant_int_to_tile_hex_str(self):
         """ Expects integer, returns 4 strings """
         tile_int = int('0c010020f0a0', 16)
@@ -320,12 +320,12 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(version, '10')
         self.assertEqual(step, '020f')
         self.assertEqual(var, '0a0')
-        
+
     def test_convert_tile_variant_int_to_tile_hex_str_failure(self):
         self.assertRaises(AssertionError, basic_fns.convert_tile_variant_int_to_tile_hex_str, '10')
         self.assertRaises(AssertionError, basic_fns.convert_tile_variant_int_to_tile_hex_str, -1)
         self.assertRaises(AssertionError, basic_fns.convert_tile_variant_int_to_tile_hex_str, int('1000000000000', 16))
-        
+
     def test_get_position_string_from_position_int(self):
         """ Expects integer, returns string """
         tile_int = int('1c403002f', 16)
@@ -343,12 +343,12 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '001.00.0000')
         tile_int = int('10000000', 16)
         self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '010.00.0000')
-        
+
     def test_get_position_string_from_position_int_failure(self):
         self.assertRaises(AssertionError, basic_fns.get_position_string_from_position_int, '10')
         self.assertRaises(AssertionError, basic_fns.get_position_string_from_position_int, -1)
         self.assertRaises(AssertionError, basic_fns.get_position_string_from_position_int, int('1000000000', 16))
-        
+
     def test_get_position_ints_from_position_int(self):
         """ Expects integer, returns 3 integers """
         tile_int = int('0c003020f', 16)
@@ -364,7 +364,7 @@ class TestBasicFunctions(TestCase):
         self.assertRaises(AssertionError, basic_fns.get_position_ints_from_position_int, '10')
         self.assertRaises(AssertionError, basic_fns.get_position_ints_from_position_int, -1)
         self.assertRaises(AssertionError, basic_fns.get_position_ints_from_position_int, int('1000000000', 16))
-        
+
     def test_get_tile_variant_string_from_tile_variant_int(self):
         """ Expects integer, returns string """
         tile_variant_int = int('1c403002f0f3', 16)
@@ -387,7 +387,7 @@ class TestBasicFunctions(TestCase):
         self.assertRaises(AssertionError, basic_fns.get_tile_variant_string_from_tile_variant_int, '10')
         self.assertRaises(AssertionError, basic_fns.get_tile_variant_string_from_tile_variant_int, -1)
         self.assertRaises(AssertionError, basic_fns.get_tile_variant_string_from_tile_variant_int, int('1000000000000', 16))
-        
+
     def test_get_tile_variant_ints_from_tile_variant_int(self):
         """ Expects integer, returns 4 integers """
         tile_int = int('0c003020f0a0', 16)
@@ -399,12 +399,12 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(version, int('03',16))
         self.assertEqual(step, int('020f',16))
         self.assertEqual(var, int('0a0',16))
-        
+
     def test_get_tile_variant_string_from_tile_variant_int_failure(self):
         self.assertRaises(AssertionError, basic_fns.get_tile_variant_ints_from_tile_variant_int, '10')
         self.assertRaises(AssertionError, basic_fns.get_tile_variant_ints_from_tile_variant_int, -1)
         self.assertRaises(AssertionError, basic_fns.get_tile_variant_ints_from_tile_variant_int, int('1000000000000', 16))
-        
+
     def test_convert_position_int_to_tile_variant_int(self):
         """ Expects integer, returns integer """
         tile_int = int('1c403002f', 16)
@@ -429,7 +429,7 @@ class TestBasicFunctions(TestCase):
         tile_int = int('10000000', 16)
         check_int = int('10000000000', 16)
         self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-        
+
     def test_convert_position_int_to_tile_variant_int_failure(self):
         self.assertRaises(AssertionError, basic_fns.convert_position_int_to_tile_variant_int, '10')
         self.assertRaises(AssertionError, basic_fns.convert_position_int_to_tile_variant_int, -1)
@@ -447,7 +447,7 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
         tile_variant_int = int('1c403002f100', 16)
         self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        
+
         tile_int = int('0', 16)
         tile_variant_int = 0
         self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
@@ -466,13 +466,13 @@ class TestBasicFunctions(TestCase):
         tile_int = int('10000000', 16)
         tile_variant_int= int('10000000000', 16)
         self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        
+
     def test_convert_tile_variant_int_to_position_failure(self):
         self.assertRaises(AssertionError, basic_fns.convert_tile_variant_int_to_position_int, '10')
         self.assertRaises(AssertionError, basic_fns.convert_tile_variant_int_to_position_int, -1)
         self.assertRaises(AssertionError, basic_fns.convert_tile_variant_int_to_position_int, int('1000000000000', 16))
 
-################################## TEST functions ###################################       
+################################## TEST functions ###################################
 class TestAdvancedFunctions(TestCase):
     def test_get_min_position_and_tile_variant_from_path_int(self):
         """ Expects int, returns two integers"""
@@ -483,17 +483,17 @@ class TestAdvancedFunctions(TestCase):
         self.assertEqual(type(varname), int)
         self.assertEqual(name, tile_int)
         self.assertEqual(varname, tile_variant_int)
-        
+
         name, varname = fns.get_min_position_and_tile_variant_from_path_int(0)
         self.assertEqual(name, 0)
         self.assertEqual(varname, 0)
-        
+
         tile_int = int('1000000', 16)
         tile_variant_int = int('1000000000', 16)
         name, varname = fns.get_min_position_and_tile_variant_from_path_int(1)
         self.assertEqual(name, tile_int)
         self.assertEqual(varname, tile_variant_int)
-        
+
         tile_int = int('10000000', 16)
         tile_variant_int= int('10000000000', 16)
         name, varname = fns.get_min_position_and_tile_variant_from_path_int(16)
@@ -513,7 +513,7 @@ class TestAdvancedFunctions(TestCase):
             exp_name, exp_varname = fns.get_min_position_and_tile_variant_from_path_int(int(path_int))
             self.assertEqual(name, exp_name)
             self.assertEqual(varname, exp_varname)
-        
+
     def test_get_min_position_and_tile_variant_from_chromosome_int_failure(self):
         self.assertRaises(AssertionError, fns.get_min_position_and_tile_variant_from_chromosome_int, '1')
         self.assertRaises(BaseException, fns.get_min_position_and_tile_variant_from_chromosome_int, 0)
@@ -526,15 +526,15 @@ class TestAdvancedFunctions(TestCase):
     def test_get_chromosome_int_from_position_int_failure(self):
         # Not implemented yet
         self.assertRaises(BaseException, fns.get_chromosome_int_from_position_int, 0)
-        
+
     def test_get_chromosome_int_from_tile_variant_int(self):
         #Not implemented yet
         self.assertRaises(BaseException, fns.get_chromosome_int_from_tile_variant_int, 0)
-        
+
     def test_get_chromosome_int_from_tile_variant_int_failure(self):
         #Not implemented yet
         self.assertRaises(BaseException, fns.get_chromosome_int_from_tile_variant_int, 0)
-        
+
     #Feels a bit weird because the last populated path is 25, but technical last path is 26...
     def test_get_chromosome_int_from_path_int(self):
         path_in_one = Tile.CHR_PATH_LENGTHS[1]/2
@@ -545,26 +545,25 @@ class TestAdvancedFunctions(TestCase):
         self.assertEqual(fns.get_chromosome_int_from_path_int(path_in_two), 2)
         path_in_last = Tile.CHR_PATH_LENGTHS[-1]-1
         self.assertEqual(fns.get_chromosome_int_from_path_int(path_in_last), 25)
-        
+
     def test_get_chromosome_int_from_path_int_failure(self):
         self.assertRaises(AssertionError, fns.get_chromosome_int_from_path_int, -1)
         bad_path = Tile.CHR_PATH_LENGTHS[-1]
         self.assertRaises(BaseException, fns.get_chromosome_int_from_path_int, bad_path)
-    
+
     #Feels a bit weird because the names might change...
     def test_get_chromosome_name_from_chromosome_int(self):
         self.assertEqual(fns.get_chromosome_name_from_chromosome_int(1), 'chr1')
         self.assertEqual(fns.get_chromosome_name_from_chromosome_int(23), 'chrX')
         self.assertEqual(fns.get_chromosome_name_from_chromosome_int(24), 'chrY')
         self.assertEqual(fns.get_chromosome_name_from_chromosome_int(25), 'chrM')
-        
+
     def test_get_chromosome_name_from_chromosome_int_failure(self):
         self.assertRaises(AssertionError, fns.get_chromosome_name_from_chromosome_int, '1')
         self.assertRaises(ValueError, fns.get_chromosome_name_from_chromosome_int, -1)
         self.assertRaises(ValueError, fns.get_chromosome_name_from_chromosome_int, 27)
 
-
-################################## TEST models ###################################   
+################################## TEST models ###################################
 class TestTileMethods(TestCase):
     def test_get_tile_string(self):
         """
@@ -623,7 +622,6 @@ class TestTileMethods(TestCase):
         for s in cytomap:
             self.assertEqual(type(s), str)
 
-            
 ################################## TEST models continued ###################################
 class TestTileVariantMethods(TestCase):
     def test_get_string(self):
@@ -645,7 +643,7 @@ class TestTileVariantMethods(TestCase):
                                        length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
         self.assertEqual(type(new_tile_variant.getString()), str)
         self.assertEqual(new_tile_variant.getString(), '1c4.03.002f.0f3')
-        
+
         tile_int = int('0', 16)
         new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
         tile_variant_int = int('10', 16)
@@ -659,7 +657,7 @@ class TestTileVariantMethods(TestCase):
         new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=int('100',16),
                                        length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
         self.assertEqual(new_tile_variant.getString(), '000.00.1000.100')
-        
+
         tile_int = int('10000', 16)
         new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
         tile_variant_int = int('10000001', 16)
@@ -699,7 +697,7 @@ class TestTileVariantMethods(TestCase):
                                        length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
         self.assertEqual(type(new_tile_variant.isReference()), bool)
         self.assertFalse(new_tile_variant.isReference())
-        
+
         tile_variant_int = int('a1001004001', 16)
         new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=1,
                                        length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
@@ -776,7 +774,7 @@ class TestGenerateStatistics(TestCase):
                        'avg_len_low':245.800, 'avg_len_hi':245.800, 'max_len':300},
                       {'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':4, 'min_len':200,
                        'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100}]
-        
+
         for i in range(27):
             genome_piece = GenomeStatistic.objects.filter(statistics_type=i).all()
             self.assertEqual(len(genome_piece), 1)
@@ -847,7 +845,7 @@ class TestGenerateStatistics(TestCase):
                        'avg_len_low':245.800, 'avg_len_hi':245.800, 'max_len':300},
                       {'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':4, 'min_len':200,
                        'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100}]
-        
+
         for i in range(27):
             genome_piece = GenomeStatistic.objects.filter(statistics_type=i).all()
             self.assertEqual(len(genome_piece), 1)
@@ -956,7 +954,7 @@ class TestGenerateStatistics(TestCase):
                             length=lengths[i], md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
             t.save()
         tile0.save()
-        
+
         tile1 = Tile(tilename=pos+1, start_tag="AAAAAA", end_tag="AGGGGGG")
         tile_variant_int = basic_fns.convert_position_int_to_tile_variant_int(pos+1)
         t = TileVariant(tile_variant_name=tile_variant_int,tile=tile1, variant_value=0,
@@ -971,7 +969,7 @@ class TestGenerateStatistics(TestCase):
                         length=1200, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
         t.save()
         tile2.save()
-        
+
         tile3 = Tile.objects.get(pk=3)
         tile_hex = string.join(basic_fns.convert_position_int_to_position_hex_str(3), "")
         tile_hex += hex(1).lstrip('0x').zfill(3)
@@ -980,7 +978,7 @@ class TestGenerateStatistics(TestCase):
                         length=500, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
         t.save()
         tile3.save()
-        
+
         #end of initialization#
         gen_stats.update(silent=True)
         check_vals = [{'num_pos':11, 'num_tiles':30, 'avg_var':2.727, 'max_var':6, 'min_len':150,
@@ -991,7 +989,7 @@ class TestGenerateStatistics(TestCase):
                        'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100},
                       {'num_pos':2, 'num_tiles':7, 'avg_var':3.5, 'max_var':6, 'min_len':150,
                        'avg_len_low':263.571, 'avg_len_hi':263.572, 'max_len':310}]
-        
+
         for i in range(27):
             genome_piece = GenomeStatistic.objects.filter(statistics_type=i).all()
             self.assertEqual(len(genome_piece), 1)
@@ -1058,15 +1056,14 @@ class TestGenerateStatistics(TestCase):
     def test_update_failure(self):
         self.assertRaises(BaseException, gen_stats.update, silent=True)
 
-    
-################################## TEST overall_statistics_views ###################################    
+################################## TEST overall_statistics_views ###################################
 ##class TestViewOverallStatistics(TestCase):
 ##    def test_overall_statistics_empty_view(self):
 ##        response = self.client.get(reverse('tile_library:statistics'))
 ##        self.assertEqual(response.status_code, 200)
 ##        self.assertQuerysetEqual(response.context['stats'], [])
 ##        self.assertContains(response, "No statistics for this Tile Library are available.")
-##        
+##
 ##    def test_overall_statistics_view(self):
 ##        gen_stats.initialize(silent=True)
 ##        response = self.client.get(reverse('tile_library:statistics'))
@@ -1088,7 +1085,7 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(response.status_code, 200)
 ##        self.assertFalse('chromosome_stats' in response.context)
 ##        self.assertContains(response, "No statistics for this Tile Library are available.")
-##        
+##
 ##    def test_first_chr_statistics_view(self):
 ##        gen_stats.initialize(silent=True)
 ##        response = self.client.get(reverse('tile_library:chr_statistics', args=(1,)))
@@ -1096,10 +1093,10 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertTrue('paths' in response.context)
 ##        self.assertContains(response, 'Path 0')
 ##        path_ints, path_hexs, path_names, paths = zip(*response.context['paths'])
-##        
+##
 ##        self.assertEqual(len(paths), Tile.CHR_PATH_LENGTHS[1])
 ##        self.assertQuerysetEqual(paths,path_ints, transform=lambda path_stat: path_stat.path_name)
-##        
+##
 ##    def test_mitochondrial_chr_statistics_view(self):
 ##        gen_stats.initialize(silent=True)
 ##        response = self.client.get(reverse('tile_library:chr_statistics', args=(25,)))
@@ -1109,7 +1106,7 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertNotContains(response, 'Path 0')
 ##        self.assertEqual(len(paths), Tile.CHR_PATH_LENGTHS[25]-Tile.CHR_PATH_LENGTHS[24])
 ##        self.assertQuerysetEqual(paths,path_ints, transform=lambda path_stat: path_stat.path_name)
-##        
+##
 ##    def test_other_chr_statistics_view(self):
 ##        gen_stats.initialize(silent=True)
 ##        response = self.client.get(reverse('tile_library:chr_statistics', args=(26,)))
@@ -1124,7 +1121,7 @@ class TestGenerateStatistics(TestCase):
 ##            self.assertQuerysetEqual(paths,[])
 ##        self.assertEqual(len(paths), Tile.CHR_PATH_LENGTHS[26]-Tile.CHR_PATH_LENGTHS[25])
 ##
-########################## TEST views.get_positions (used by path/gene views) ################## 
+########################## TEST views.get_positions (used by path/gene views) ##################
 ##class TestGetPositionsFunctions(TestCase):
 ##    fixtures = ['test_view_paths.json']
 ##    """
@@ -1180,7 +1177,7 @@ class TestGenerateStatistics(TestCase):
 ##            self.assertAlmostEqual(pos.avg_len, expected[i]['avg_len'])
 ##            self.assertEqual(pos.max_len, expected[i]['max_len'])
 ##    #def test_get_positions_invalid_inputs(self):
-##            
+##
 ##    def test_pagination_size(self):
 ##        positions = views.get_positions(0, 17)
 ##        partial_positions = views.get_partial_positions(positions, "", 5, 1)
@@ -1197,12 +1194,12 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(len(partial_positions), len(positions[:5]))
 ##        for pos1, pos2 in zip(partial_positions, positions[:5]):
 ##            self.assertEqual(pos1, pos2)
-##        
+##
 ##        partial_positions = views.get_partial_positions(positions, "", 5, "")
 ##        self.assertEqual(len(partial_positions), len(positions[:5]))
 ##        for pos1, pos2 in zip(partial_positions, positions[:5]):
 ##            self.assertEqual(pos1, pos2)
-##        
+##
 ##        partial_positions = views.get_partial_positions(positions, "", 5, 2)
 ##        self.assertEqual(len(partial_positions), len(positions[5:10]))
 ##        for pos1, pos2 in zip(partial_positions, positions[5:10]):
@@ -1212,7 +1209,7 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(len(partial_positions), len(positions[10:15]))
 ##        for pos1, pos2 in zip(partial_positions, positions[10:15]):
 ##            self.assertEqual(pos1, pos2)
-##        
+##
 ##        partial_positions = views.get_partial_positions(positions, "", 5, 4)
 ##        self.assertEqual(len(partial_positions), len(positions[15:]))
 ##        for pos1, pos2 in zip(partial_positions, positions[15:]):
@@ -1227,12 +1224,12 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(len(partial_positions), len(underreaching))
 ##        for pos1, pos2 in zip(partial_positions, underreaching):
 ##            self.assertEqual(pos1, pos2)
-##        
+##
 ##        partial_positions = views.get_partial_positions(positions, "", 10, 1)
 ##        self.assertEqual(len(partial_positions), len(positions[:10]))
 ##        for pos1, pos2 in zip(partial_positions, positions[:10]):
 ##            self.assertEqual(pos1, pos2)
-##            
+##
 ##        partial_positions = views.get_partial_positions(positions, "", 15, 1)
 ##        self.assertEqual(len(partial_positions), len(positions[:15]))
 ##        for pos1, pos2 in zip(partial_positions, positions[:15]):
@@ -1246,11 +1243,11 @@ class TestGenerateStatistics(TestCase):
 ##        positions = views.get_positions(0, 17)
 ##        pos_reversed = list(positions)
 ##        pos_reversed.reverse()
-##        
+##
 ##        partial_positions = views.get_partial_positions(positions, "desc_tile", 5, 1)
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertEqual(pos, pos_reversed[i])
-##            
+##
 ##    def test_var_ordering(self):
 ##        positions = views.get_positions(0, 17)
 ##        partial_positions = views.get_partial_positions(positions, "desc_var", 5, 1)
@@ -1276,7 +1273,7 @@ class TestGenerateStatistics(TestCase):
 ##                    [positions[1], positions[15]]]
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertTrue(pos in expected[i])
-##            
+##
 ##        partial_positions = views.get_partial_positions(positions, "desc_min_len", 5, 1)
 ##        expected = [positions[7],
 ##                    positions[8],
@@ -1294,7 +1291,7 @@ class TestGenerateStatistics(TestCase):
 ##                    [positions[2], positions[3], positions[16]]]
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertTrue(pos in expected[i])
-##            
+##
 ##        partial_positions = views.get_partial_positions(positions, "desc_avg_len", 5, 1)
 ##        expected = [positions[7],
 ##                    positions[8],
@@ -1312,7 +1309,7 @@ class TestGenerateStatistics(TestCase):
 ##                    [positions[3], positions[5], positions[16]]]
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertTrue(pos in expected[i])
-##            
+##
 ##        partial_positions = views.get_partial_positions(positions, "desc_max_len", 5, 1)
 ##        expected = [positions[7],
 ##                    positions[8],
@@ -1321,12 +1318,12 @@ class TestGenerateStatistics(TestCase):
 ##                    positions[11]]
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertEqual(pos, expected[i])
-##            
+##
 ##    def test_tile_ordering_pages(self):
 ##        positions = views.get_positions(0, 17)
 ##        pos_reversed = list(positions)
 ##        pos_reversed.reverse()
-##        
+##
 ##        partial_positions = views.get_partial_positions(positions, "desc_tile", 5, 2)
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertEqual(pos, pos_reversed[i+5])
@@ -1334,11 +1331,11 @@ class TestGenerateStatistics(TestCase):
 ##        partial_positions = views.get_partial_positions(positions, "desc_tile", 5, 3)
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertEqual(pos, pos_reversed[i+10])
-##            
+##
 ##        partial_positions = views.get_partial_positions(positions, "desc_tile", 5, 4)
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertEqual(pos, pos_reversed[i+15])
-##            
+##
 ##    def test_var_ordering_pages(self):
 ##        positions = views.get_positions(0, 17)
 ##        partial_positions = views.get_partial_positions(positions, "desc_var", 5, 2)
@@ -1387,8 +1384,8 @@ class TestGenerateStatistics(TestCase):
 ##                    [positions[10]]]
 ##        for i, pos in enumerate(partial_positions):
 ##            self.assertTrue(pos in expected[i])
-##    
-#################################### TEST path_statistics_views ################################### 
+##
+#################################### TEST path_statistics_views ###################################
 ##class TestViewPathStatistics(TestCase):
 ##    fixtures = ['test_view_paths.json']
 ##    """
@@ -1438,7 +1435,7 @@ class TestGenerateStatistics(TestCase):
 ##        for page in response.context['positions']:
 ##            self.assertEqual(page, [])
 ##        self.assertContains(response, "No tiles are in this path.")
-##    
+##
 ##    def test_basic_statistics_view(self):
 ##        true_positions = views.get_positions(0, 17)
 ##        gen_stats.initialize(silent=True)
@@ -1453,7 +1450,7 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(response.context['path_cyto'], Tile.CYTOMAP[0])
 ##        path = response.context['path']
 ##        positions = response.context['positions']
-##        
+##
 ##        self.assertEqual(len(positions), 16)
 ##        for i, pos in enumerate(positions):
 ##            self.assertEqual(pos, true_positions[i])
@@ -1493,7 +1490,7 @@ class TestGenerateStatistics(TestCase):
 ##        gen_stats.initialize(silent=True)
 ##        response_1 = self.client.get(reverse('tile_library:path_statistics', args=(1,0))+'?num=10')
 ##        self.assertEqual(len(response_1.context['positions']),10)
-##        
+##
 ##        response_2 = self.client.get(reverse('tile_library:path_statistics', args=(1,0)))
 ##        for item in ['chromosome_int', 'chromosome', 'path_int', 'path_hex', 'path_cyto', 'path']:
 ##            self.assertEqual(response_1.context[item], response_2.context[item])
@@ -1507,7 +1504,7 @@ class TestGenerateStatistics(TestCase):
 ##        gen_stats.initialize(silent=True)
 ##        response_1 = self.client.get(reverse('tile_library:path_statistics', args=(1,0))+'?num=10&page=2')
 ##        self.assertEqual(len(response_1.context['positions']),7)
-##        
+##
 ##        response_2 = self.client.get(reverse('tile_library:path_statistics', args=(1,0)))
 ##        for item in ['chromosome_int', 'chromosome', 'path_int', 'path_hex', 'path_cyto', 'path']:
 ##            self.assertEqual(response_1.context[item], response_2.context[item])
@@ -1522,7 +1519,7 @@ class TestGenerateStatistics(TestCase):
 ##        gen_stats.initialize(silent=True)
 ##        response_1 = self.client.get(reverse('tile_library:path_statistics', args=(1,0))+'?ordering=desc_tile')
 ##        self.assertEqual(len(response_1.context['positions']),16)
-##        
+##
 ##        response_2 = self.client.get(reverse('tile_library:path_statistics', args=(1,0)))
 ##        for item in ['chromosome_int', 'chromosome', 'path_int', 'path_hex', 'path_cyto', 'path']:
 ##            self.assertEqual(response_1.context[item], response_2.context[item])
@@ -1537,7 +1534,7 @@ class TestGenerateStatistics(TestCase):
 ##        gen_stats.initialize(silent=True)
 ##        response_1 = self.client.get(reverse('tile_library:path_statistics', args=(1,0))+'?ordering=desc_tile&num=10')
 ##        self.assertEqual(len(response_1.context['positions']),10)
-##        
+##
 ##        response_2 = self.client.get(reverse('tile_library:path_statistics', args=(1,0)))
 ##        for item in ['chromosome_int', 'chromosome', 'path_int', 'path_hex', 'path_cyto', 'path']:
 ##            self.assertEqual(response_1.context[item], response_2.context[item])
@@ -1552,7 +1549,7 @@ class TestGenerateStatistics(TestCase):
 ##        gen_stats.initialize(silent=True)
 ##        response_1 = self.client.get(reverse('tile_library:path_statistics', args=(1,0))+'?ordering=desc_tile&page=2')
 ##        self.assertEqual(len(response_1.context['positions']),1)
-##        
+##
 ##        response_2 = self.client.get(reverse('tile_library:path_statistics', args=(1,0)))
 ##        for item in ['chromosome_int', 'chromosome', 'path_int', 'path_hex', 'path_cyto', 'path']:
 ##            self.assertEqual(response_1.context[item], response_2.context[item])
@@ -1567,7 +1564,7 @@ class TestGenerateStatistics(TestCase):
 ##        gen_stats.initialize(silent=True)
 ##        response_1 = self.client.get(reverse('tile_library:path_statistics', args=(1,0))+'?ordering=desc_tile&num=10&page=2')
 ##        self.assertEqual(len(response_1.context['positions']),7)
-##        
+##
 ##        response_2 = self.client.get(reverse('tile_library:path_statistics', args=(1,0)))
 ##        for item in ['chromosome_int', 'chromosome', 'path_int', 'path_hex', 'path_cyto', 'path']:
 ##            self.assertEqual(response_1.context[item], response_2.context[item])
@@ -1618,13 +1615,13 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(tile_filters.strand_pretty(None), '')
 ##    def test_template_tags_strand_pretty_incorrect_input(self):
 ##        self.assertRaises(AssertionError, tile_filters.strand_pretty, 1)
-##    
+##
 ##    def test_template_tags_get_SNP_INDEL_annotations_no_annotations(self):
 ##        tile_variant = TileVariant.objects.get(pk=0)
 ##        annotations = tile_filters.get_SNP_INDEL_annotations(tile_variant)
 ##        self.assertEqual(len(annotations), 0)
 ##        self.assertQuerysetEqual(annotations, [])
-##        
+##
 ##    def test_template_tags_get_SNP_INDEL_annotations(self):
 ##        tile_variant = TileVariant.objects.get(pk=1)
 ##        annotations = tile_filters.get_SNP_INDEL_annotations(tile_variant)
@@ -1635,7 +1632,7 @@ class TestGenerateStatistics(TestCase):
 ##        annotations = tile_filters.get_SNP_INDEL_annotations(tile_variant)
 ##        self.assertEqual(len(annotations), 2)
 ##        self.assertQuerysetEqual(annotations, ['SNP_INDEL','SNP_INDEL'], transform=lambda a: a.annotation_type)
-##        
+##
 ##    def test_template_tags_get_SNP_INDEL_annotations_incorrect_input(self):
 ##        #Incorrect type of input (Tile instead of TileVariant)
 ##        tile = Tile.objects.filter(pk=0)
@@ -1649,13 +1646,13 @@ class TestGenerateStatistics(TestCase):
 ##        annotations = tile_filters.get_database_annotations(tile_variant)
 ##        self.assertEqual(len(annotations), 0)
 ##        self.assertQuerysetEqual(annotations, [])
-##        
+##
 ##    def test_template_tags_get_database_annotations(self):
 ##        tile_variant = TileVariant.objects.get(pk=2)
 ##        annotations = tile_filters.get_database_annotations(tile_variant)
 ##        self.assertEqual(len(annotations), 1)
 ##        self.assertQuerysetEqual(annotations, ['DATABASE'], transform=lambda a: a.annotation_type)
-##        
+##
 ##    def test_template_tags_get_database_annotations_incorrect_input(self):
 ##        #Incorrect type of input (Tile instead of TileVariant)
 ##        tile = Tile.objects.get(pk=0)
@@ -1684,7 +1681,7 @@ class TestGenerateStatistics(TestCase):
 ##        #Incorrect type of input (Tile instead of VarAnnotation)
 ##        tile = Tile.objects.get(pk=0)
 ##        self.assertRaises(AssertionError, tile_filters.get_readable_annotation_text, tile)
-##        #Non-existant annotation 
+##        #Non-existant annotation
 ##        annotation = TileVariant.objects.get(pk=0).annotations.filter(pk=1)
 ##        self.assertRaises(BaseException, tile_filters.get_readable_annotation_text, annotation)
 ##        #Wrong-type of annotation
@@ -1701,62 +1698,62 @@ class TestGenerateStatistics(TestCase):
 ##        readable = tile_filters.get_snps(annotations[0])
 ##        self.assertEqual(type(readable), list)
 ##        self.assertItemsEqual(readable, ['rs1708875'])
-##        
+##
 ##    def test_template_tags_get_snps_incorrect_input(self):
 ##        #Incorrect type of input (Tile instead of VarAnnotation)
 ##        tile = Tile.objects.get(pk=0)
 ##        self.assertRaises(AssertionError, tile_filters.get_snps, tile)
-##        #Non-existant annotation 
+##        #Non-existant annotation
 ##        annotation = TileVariant.objects.get(pk=0).annotations.filter(pk=1)
 ##        self.assertRaises(BaseException, tile_filters.get_snps, annotation)
 ##        #Wrong-type of annotation
 ##        annotation = TileVariant.objects.get(pk=2).annotations.filter(annotation_type='SNP_INDEL')
 ##        self.assertRaises(BaseException, tile_filters.get_snps, annotation)
-##        
+##
 ##    def test_template_tags_get_aa_no_annotation_text(self):
 ##        #wait until annotation revamp
 ##        #Also check for weirdly formated annotation text
 ##        pass
-##    
+##
 ##    def test_template_tags_get_aa(self):
 ##        annotations = TileVariant.objects.get(pk=2).annotations.filter(annotation_type='DATABASE')
 ##        readable = tile_filters.get_aa(annotations[0])
 ##        self.assertNotEqual(type(readable), list)
 ##        self.assertEqual(readable.strip(), 'RUNDC1 W160R')
-##    
+##
 ##    def test_template_tags_get_aa_incorrect_input(self):
 ##        #Incorrect type of input (Tile instead of VarAnnotation)
 ##        tile = Tile.objects.get(pk=0)
 ##        self.assertRaises(AssertionError, tile_filters.get_aa, tile)
-##        #Non-existant annotation 
+##        #Non-existant annotation
 ##        annotation = TileVariant.objects.get(pk=0).annotations.filter(pk=1)
 ##        self.assertRaises(BaseException, tile_filters.get_aa, annotation)
 ##        #Wrong-type of annotation
 ##        annotation = TileVariant.objects.get(pk=2).annotations.filter(annotation_type='SNP_INDEL')
 ##        self.assertRaises(BaseException, tile_filters.get_aa, annotation)
-##        
+##
 ##    def test_template_tags_get_other_no_annotation_text(self):
 ##        #wait until annotation revamp
 ##        #Also check for weirdly formated annotation text
 ##        pass
-##    
+##
 ##    def test_template_tags_get_other(self):
 ##        annotations = TileVariant.objects.get(pk=2).annotations.filter(annotation_type='DATABASE')
 ##        readable = tile_filters.get_other(annotations[0])
 ##        self.assertEqual(type(readable), list)
 ##        self.assertEqual(readable, ['ucsc_trans uc002ici.1'])
-##        
+##
 ##    def test_template_tags_get_other_incorrect_input(self):
 ##        #Incorrect type of input (Tile instead of VarAnnotation)
 ##        tile = Tile.objects.get(pk=0)
 ##        self.assertRaises(AssertionError, tile_filters.get_other, tile)
-##        #Non-existant annotation 
+##        #Non-existant annotation
 ##        annotation = TileVariant.objects.get(pk=0).annotations.filter(pk=1)
 ##        self.assertRaises(BaseException, tile_filters.get_other, annotation)
 ##        #Wrong-type of annotation
 ##        annotation = TileVariant.objects.get(pk=2).annotations.filter(annotation_type='SNP_INDEL')
 ##        self.assertRaises(BaseException, tile_filters.get_other, annotation)
-##        
+##
 ##    def test_template_tags_get_reference_sequence(self):
 ##        tile_variants = Tile.objects.get(pk=0).variants.all()
 ##        ref_seq_list = tile_filters.get_reference_sequence(tile_variants)
@@ -1771,7 +1768,7 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertRaises(AssertionError,tile_filters.get_reference_sequence, tile_variants)
 ##        tile_variants = TileVariant.objects.filter(tile=1)
 ##        self.assertRaises(BaseException,tile_filters.get_reference_sequence, tile_variants)
-##        
+##
 ##class TestViewTileView(TestCase):
 ##    fixtures = ['test_view_tiles.json.gz']
 ##    """
@@ -1788,19 +1785,19 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(response.status_code, 404)
 ##        response = self.client.get(reverse('tile_library:tile_view', args=(27,0,0)))
 ##        self.assertEqual(response.status_code, 404)
-##        
+##
 ##        reasonable_tile, foo = fns.get_min_position_and_tile_variant_from_path_int(Tile.CHR_PATH_LENGTHS[1]-1)
 ##        response = self.client.get(reverse('tile_library:tile_view', args=(2, Tile.CHR_PATH_LENGTHS[1]-1,reasonable_tile)))
 ##        self.assertEqual(response.status_code, 404)
 ##        response = self.client.get(reverse('tile_library:tile_view', args=(2, Tile.CHR_PATH_LENGTHS[1]-1,0)))
 ##        self.assertEqual(response.status_code, 404)
-##        
+##
 ##        reasonable_tile, foo = fns.get_min_position_and_tile_variant_from_path_int(Tile.CHR_PATH_LENGTHS[2])
 ##        response = self.client.get(reverse('tile_library:tile_view', args=(2, Tile.CHR_PATH_LENGTHS[2],reasonable_tile)))
 ##        self.assertEqual(response.status_code, 404)
 ##        response = self.client.get(reverse('tile_library:tile_view', args=(2, Tile.CHR_PATH_LENGTHS[2],0)))
 ##        self.assertEqual(response.status_code, 404)
-##        
+##
 ##        response = self.client.get(reverse('tile_library:tile_view', args=(1,1,0)))
 ##        self.assertEqual(response.status_code, 404)
 ##
@@ -1836,8 +1833,8 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(position.start_tag, 'GTAGGCTTTCCTATTCCCACCTTG')
 ##        self.assertEqual(position.end_tag, 'CGCGGTTATTTCTACGACATAAAT')
 ##
-##        
-#################################### TEST gene_path_views ################################### 
+##
+#################################### TEST gene_path_views ###################################
 ##class TestViewGenePathView(TestCase):
 ##    """
 ##        make_tiles generates the following structure:
@@ -1885,7 +1882,7 @@ class TestGenerateStatistics(TestCase):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        response = self.client.get(reverse('tile_library:gene_view', args=(gene_id,)))
 ##        self.assertEqual(response.status_code, 404)
-##        
+##
 ##    def test_absence_of_or_wrong_tile_locus_annotations_return_404(self):
 ##        #If genes have wrong assembly and we can't lift-over, raise 404
 ##        make_tiles(assembly_default=18)
@@ -1893,7 +1890,7 @@ class TestGenerateStatistics(TestCase):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        response = self.client.get(reverse('tile_library:gene_view', args=(gene_id,)))
 ##        self.assertEqual(response.status_code, 404)
-##    
+##
 ##    #Gene view is not dependent on statistics
 ##    def test_gene_empty_tiles_view(self):
 ##        make_gene1()
@@ -1974,13 +1971,13 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertFalse('beg_path_int' in info)
 ##        self.assertFalse('beg_path_hex' in info)
 ##        self.assertFalse('beg_path_name' in info)
-##    
+##
 ##        positions = response.context['positions']
 ##        exon_dict = response.context['exon_dict']
 ##        check_dict = {1:True, 2:False, 3:False, 4:True, 5:True}
 ##        self.assertEqual(len(positions), 5)
 ##        for i, pos in enumerate(positions):
-##            self.assertEqual(pos, true_positions[i+1]) 
+##            self.assertEqual(pos, true_positions[i+1])
 ##        self.assertEqual(exon_dict, check_dict)
 ##
 ##    def test_gene_spanning_many_paths_view(self):
@@ -2000,7 +1997,7 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(info['beg_path_int'], 0)
 ##        self.assertEqual(info['beg_path_hex'], '0')
 ##        self.assertEqual(info['beg_path_name'], Tile.CYTOMAP[0])
-##    
+##
 ##        positions = response.context['positions']
 ##        exon_dict = response.context['exon_dict']
 ##        self.assertEqual(len(positions), 16)
@@ -2013,7 +2010,7 @@ class TestGenerateStatistics(TestCase):
 ##            exon_list.append(exon_dict[i])
 ##        for i in range(len(exon_dict)):
 ##            self.assertEqual(exon_list[i], LONG_GENE1_CHECK_LIST[i])
-##        
+##
 ##    def test_first_page_gene_page_view(self):
 ##        """ Test asking for the first page is the same as the default page """
 ##        make_tiles()
@@ -2042,7 +2039,7 @@ class TestGenerateStatistics(TestCase):
 ##
 ##        self.assertEqual(len(response_1.context['positions']), len(true_positions[16:]))
 ##        for pos1, pos2 in zip(response_1.context['positions'], true_positions[16:]):
-##            self.assertEqual(pos1, pos2)    
+##            self.assertEqual(pos1, pos2)
 ##        self.assertEqual(response_1.context['exon_dict'], response_2.context['exon_dict'])
 ##        self.assertEqual(response_1.context['exon_dict'], LONG_GENE1_CHECK_DICT)
 ##
@@ -2080,7 +2077,7 @@ class TestGenerateStatistics(TestCase):
 ##            self.assertEqual(pos1, pos2)
 ##        self.assertEqual(response_1.context['exon_dict'], response_2.context['exon_dict'])
 ##        self.assertEqual(response_1.context['exon_dict'], LONG_GENE1_CHECK_DICT)
-##        
+##
 ##    def test_ordering_statistics_view(self):
 ##        make_tiles()
 ##        make_long_gene1()
@@ -2089,7 +2086,7 @@ class TestGenerateStatistics(TestCase):
 ##        rev_positions.reverse()
 ##        response_1 = self.client.get(reverse('tile_library:gene_view', args=(gene_id,))+'?ordering=desc_tile')
 ##        self.assertEqual(len(response_1.context['positions']),16)
-##        
+##
 ##        response_2 = self.client.get(reverse('tile_library:gene_view', args=(gene_id,)))
 ##        for item in ['chromosome_int', 'chromosome', 'position_info']:
 ##            self.assertEqual(response_1.context[item], response_2.context[item])
@@ -2143,7 +2140,7 @@ class TestGenerateStatistics(TestCase):
 ##        rev_positions.reverse()
 ##        response_1 = self.client.get(reverse('tile_library:gene_view', args=(gene_id,))+'?ordering=desc_tile&num=10&page=2')
 ##        self.assertEqual(len(response_1.context['positions']),8)
-##        
+##
 ##        response_2 = self.client.get(reverse('tile_library:gene_view', args=(gene_id,)))
 ##        for item in ['chromosome_int', 'chromosome', 'position_info']:
 ##            self.assertEqual(response_1.context[item], response_2.context[item])
@@ -2185,7 +2182,7 @@ class TestGenerateStatistics(TestCase):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        response = self.client.get(reverse('tile_library:tile_in_gene_view', args=(gene_id,1)))
 ##        self.assertEqual(response.status_code, 404)
-##        
+##
 ##    def test_absence_of_or_wrong_tile_locus_annotations_return_404(self):
 ##        #If genes have wrong assembly and we can't lift-over, raise 404
 ##        make_tiles(assembly_default=18)
@@ -2193,7 +2190,7 @@ class TestGenerateStatistics(TestCase):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        response = self.client.get(reverse('tile_library:tile_in_gene_view', args=(gene_id,1)))
 ##        self.assertEqual(response.status_code, 404)
-##    
+##
 ##    #Gene view and tile view is not dependent on statistics
 ##    def test_non_existant_tile_in_gene_view(self):
 ##        make_gene1()
@@ -2205,7 +2202,7 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertFalse('pos_outline' in response.context)
 ##        self.assertFalse('in_exon' in response.context)
 ##        self.assertFalse('exons' in response.context)
-##        self.assertContains(response, "This position (tile) has not been loaded into the Tile Library.") 
+##        self.assertContains(response, "This position (tile) has not been loaded into the Tile Library.")
 ##
 ##    def test_view_not_in_gene_checking_lower_table(self):
 ##        make_tiles(skip_zero=True)
@@ -2233,9 +2230,9 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(position.tilename, 0)
 ##        self.assertEqual(position.start_tag, 'GTAGGCTTTCCTATTCCCACCTTG')
 ##        self.assertEqual(position.end_tag, 'CGCGGTTATTTCTACGACATAAAT')
-##        
+##
 ##        self.assertContains(response, "No piece of this tile is coding.")
-##        
+##
 ##        pos_outline = response.context['pos_outline']
 ##        self.assertAlmostEqual(pos_outline[0], 24/448.0*100)
 ##        self.assertAlmostEqual(pos_outline[1], 400/448.0*100)
@@ -2248,7 +2245,7 @@ class TestGenerateStatistics(TestCase):
 ##        has_exons, check_all_exons = gene_fns.color_exon_parts(GeneXRef.objects.all(), Tile.objects.get(pk=0))
 ##        self.assertItemsEqual(all_exons, check_all_exons)
 ##        self.assertItemsEqual(genes, list(GeneXRef.objects.all()))
-##        
+##
 ##    def test_view_in_gene(self):
 ##        make_tiles()
 ##        make_long_gene1()
@@ -2273,7 +2270,7 @@ class TestGenerateStatistics(TestCase):
 ##        for i, t in enumerate(tiles):
 ##            self.assertEqual(t, true_tiles[i])
 ##        self.assertEqual(position.tilename, 1)
-##        
+##
 ##        pos_outline = response.context['pos_outline']
 ##        self.assertAlmostEqual(pos_outline[0], 24/301.0*100)
 ##        self.assertAlmostEqual(pos_outline[1], 253/301.0*100)
@@ -2302,7 +2299,7 @@ class TestGenerateStatistics(TestCase):
 ##        for i, t in enumerate(tiles):
 ##            self.assertEqual(t, true_tiles[i])
 ##        self.assertEqual(position.tilename, 1)
-##        
+##
 ##        pos_outline = response.context['pos_outline']
 ##        self.assertAlmostEqual(pos_outline[0], 24/301.0*100)
 ##        self.assertAlmostEqual(pos_outline[1], 253/301.0*100)
@@ -2328,7 +2325,7 @@ class TestGenerateStatistics(TestCase):
 ##    def tearDownClass(cls):
 ##        cls.selenium.quit()
 ##        super(TestViewTileLibraryInteractive, cls).tearDownClass()
-##    
+##
 ##    def test_overall_statistics_breadcrumbs(self):
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
 ##        elements = self.selenium.find_element_by_class_name("breadcrumb").find_elements_by_tag_name('li')
@@ -2338,11 +2335,11 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Home':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Home').get_attribute('href'), '%s/' % (self.live_server_url))
-##                
+##
 ##            elif element.text == 'Library':
 ##                self.assertTrue('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s#' % (self.selenium.current_url))
-##                
+##
 ##    def test_overall_statistics_view_hrefs(self):
 ##        gen_stats.initialize(silent=True)
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
@@ -2351,7 +2348,7 @@ class TestGenerateStatistics(TestCase):
 ##        for i, element in enumerate(elements):
 ##            self.assertTrue(element.is_displayed())
 ##            if i > 1:
-##                self.assertEqual(element.find_element_by_tag_name('a').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(i-1,))))               
+##                self.assertEqual(element.find_element_by_tag_name('a').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(i-1,))))
 ##
 ##    def test_first_chr_statistics_breadcrumbs(self):
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(1,))))
@@ -2362,16 +2359,16 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Home':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Home').get_attribute('href'), '%s/' % (self.live_server_url))
-##                
+##
 ##            elif element.text == 'Library':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
-##                
+##
 ##            else:
 ##                self.assertTrue('active' in element.get_attribute('class'))
 ##                #This will throw an error if the link does not exist
 ##                self.assertEqual(element.find_element_by_link_text('chr1').get_attribute('href'), '%s#' % (self.selenium.current_url))
-##                
+##
 ##    def test_first_chr_statistics_view_hrefs(self):
 ##        gen_stats.initialize(silent=True)
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(1,))))
@@ -2380,7 +2377,7 @@ class TestGenerateStatistics(TestCase):
 ##        for i, element in enumerate(elements):
 ##            self.assertTrue(element.is_displayed())
 ##            if i > 1:
-##                self.assertEqual(element.find_element_by_tag_name('a').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:path_statistics', args=(1,i-2))))               
+##                self.assertEqual(element.find_element_by_tag_name('a').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:path_statistics', args=(1,i-2))))
 ##
 ##    def test_mitochondrial_chr_statistics_breadcrumbs(self):
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(25,))))
@@ -2395,23 +2392,23 @@ class TestGenerateStatistics(TestCase):
 ##            elif element.text == 'Library':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
-##                
+##
 ##            else:
 ##                self.assertTrue('active' in element.get_attribute('class'))
 ##                #This will throw an error if the link does not exist
 ##                self.assertEqual(element.find_element_by_link_text('chrM').get_attribute('href'), '%s#' % (self.selenium.current_url))
-##    
+##
 ##    def test_mitochondrial_chr_statistics_view_hrefs(self):
 ##        gen_stats.initialize(silent=True)
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(25,))))
 ##        elements = self.selenium.find_element_by_class_name("table-responsive").find_elements_by_tag_name('tr')
-##        
+##
 ##        self.assertEqual(len(elements), 2+Tile.CHR_PATH_LENGTHS[25]-Tile.CHR_PATH_LENGTHS[24])
 ##        for i, element in enumerate(elements):
 ##            self.assertTrue(element.is_displayed())
 ##            if i > 1:
 ##                self.assertEqual(element.find_element_by_tag_name('a').get_attribute('href'), '%s%s' % (self.live_server_url,
-##                                                                                                        reverse('tile_library:path_statistics', args=(25,i-2+Tile.CHR_PATH_LENGTHS[24]))))               
+##                                                                                                        reverse('tile_library:path_statistics', args=(25,i-2+Tile.CHR_PATH_LENGTHS[24]))))
 ##
 ##    def test_other_chr_statistics_breadcrumbs(self):
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(26,))))
@@ -2422,21 +2419,21 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Home':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Home').get_attribute('href'), '%s/' % (self.live_server_url))
-##                
+##
 ##            elif element.text == 'Library':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
-##                
+##
 ##            else:
 ##                self.assertTrue('active' in element.get_attribute('class'))
 ##                #This will throw an error if the link does not exist
 ##                self.assertEqual(element.find_element_by_link_text('Other').get_attribute('href'), '%s#' % (self.selenium.current_url))
-##                
+##
 ##    def test_other_chr_statistics_view_hrefs(self):
 ##        gen_stats.initialize(silent=True)
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(26,))))
 ##        elements = self.selenium.find_element_by_class_name("table-responsive").find_elements_by_tag_name('tr')
-##        
+##
 ##        self.assertEqual(len(elements), 2+Tile.CHR_PATH_LENGTHS[26]-Tile.CHR_PATH_LENGTHS[25])
 ##        for i, element in enumerate(elements):
 ##            self.assertTrue(element.is_displayed())
@@ -2453,11 +2450,11 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Home':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Home').get_attribute('href'), '%s/' % (self.live_server_url))
-##                
+##
 ##            elif element.text == 'Library':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
-##                
+##
 ##            elif element.text == 'chr1':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('chr1').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(1,))))
@@ -2469,7 +2466,7 @@ class TestGenerateStatistics(TestCase):
 ##    def test_path_statistics_view_no_statistics(self):
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:path_statistics', args=(1,0))))
 ##        #check that path 0 title shows the 0
-##        
+##
 ##        title_element = self.selenium.find_element_by_class_name("page-header").find_element_by_tag_name('h1')
 ##        self.assertTrue('Path 0' in title_element.text)
 ##
@@ -2481,7 +2478,7 @@ class TestGenerateStatistics(TestCase):
 ##        elements = self.selenium.find_elements_by_class_name("pagination")
 ##        for element in elements:
 ##            self.assertFalse(element.is_displayed())
-##            
+##
 ##    def test_path_statistics_view_no_positions(self):
 ##        gen_stats.initialize(silent=True)
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:path_statistics', args=(1,1))))
@@ -2494,11 +2491,11 @@ class TestGenerateStatistics(TestCase):
 ##                self.assertTrue(element.is_displayed())
 ##            else:
 ##                self.assertFalse(element.is_displayed())
-##                
+##
 ##        elements = self.selenium.find_elements_by_class_name("pagination")
 ##        for element in elements:
 ##            self.assertFalse(element.is_displayed())
-##            
+##
 ##    #For tile_view, no hrefs (other than snps, which don't have clear testing) are checkable outside the breadcrumbs
 ##    def test_tile_view_breadcrumbs(self):
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:tile_view', args=(1,0,0))))
@@ -2509,11 +2506,11 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Home':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Home').get_attribute('href'), '%s/' % (self.live_server_url))
-##                
+##
 ##            elif element.text == 'Library':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
-##                
+##
 ##            elif element.text == 'chr1':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('chr1').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(1,))))
@@ -2538,11 +2535,11 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Home':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Home').get_attribute('href'), '%s/' % (self.live_server_url))
-##                
+##
 ##            elif element.text == 'Library':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
-##                
+##
 ##            elif element.text == 'chr1':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('chr1').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(1,))))
@@ -2565,7 +2562,7 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Generic View':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.get_attribute('href'), '%s%s' % (self.live_server_url, reverse('genes:specific', args=(gene_id,))))
-##                
+##
 ##            elif element.text == 'Map View':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.get_attribute('href'), '%s%s?exact=%s' % (self.live_server_url, reverse('slippy:slippymap'), gene_name))
@@ -2586,7 +2583,7 @@ class TestGenerateStatistics(TestCase):
 ##        self.assertEqual(len(elements), 1)
 ##        for element in elements:
 ##            self.assertFalse(element.is_displayed())
-##                
+##
 ##        elements = self.selenium.find_elements_by_class_name("pagination")
 ##        for element in elements:
 ##            self.assertFalse(element.is_displayed())
@@ -2667,7 +2664,7 @@ class TestGenerateStatistics(TestCase):
 ##            self.assertEqual(len(table_rows[1:]), 16)
 ##            for j, row in enumerate(table_rows[1:]):
 ##                self.assertEqual('success' in row.get_attribute('class'), check_dict[j])
-##        
+##
 ##        pagination_element = self.selenium.find_element_by_class_name("pagination")
 ##        pagination_element.find_elements_by_tag_name('li')[1].find_element_by_tag_name('a').click()
 ##
@@ -2699,7 +2696,7 @@ class TestGenerateStatistics(TestCase):
 ##            for j, row in enumerate(table_rows[1:]):
 ##                self.assertEqual('success' in row.get_attribute('class'), check_dict[j+1])
 ##
-##        
+##
 ##    def test_gene_tile_statistics_in_gene_breadcrumbs(self):
 ##        make_tiles()
 ##        make_gene1()
@@ -2712,11 +2709,11 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Home':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Home').get_attribute('href'), '%s/' % (self.live_server_url))
-##                
+##
 ##            elif element.text == 'Library':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
-##                
+##
 ##            elif element.text == 'chr1':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('chr1').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(1,))))
@@ -2742,11 +2739,11 @@ class TestGenerateStatistics(TestCase):
 ##            if element.text == 'Home':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Home').get_attribute('href'), '%s/' % (self.live_server_url))
-##                
+##
 ##            elif element.text == 'Library':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('Library').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:statistics')))
-##                
+##
 ##            elif element.text == 'chr1':
 ##                self.assertFalse('active' in element.get_attribute('class'))
 ##                self.assertEqual(element.find_element_by_link_text('chr1').get_attribute('href'), '%s%s' % (self.live_server_url, reverse('tile_library:chr_statistics', args=(1,))))
@@ -2790,7 +2787,7 @@ class TestGenerateStatistics(TestCase):
 ##        elements[0].click()
 ##        title = self.selenium.find_element_by_class_name("page-header").find_element_by_tag_name('h1').text
 ##        self.assertEqual(title, 'Tile Position 000.00.0004 (Path 0, chr1p36.33, Gene gene1)')
-##        
+##
 ##
 ##    def test_gene_tile_in_gene_view_exon_splicing_table(self):
 ##        #check Exon Splicing table exist
@@ -2803,11 +2800,11 @@ class TestGenerateStatistics(TestCase):
 ##        for i, element in enumerate(elements):
 ##            self.assertTrue(element.is_displayed())
 ##            table_rows = element.find_elements_by_tag_name('tr')
-##            if i == 0:    
+##            if i == 0:
 ##                self.assertEqual(len(table_rows[1:]), 2)
 ##            else:
 ##                self.assertEqual(len(table_rows[1:]), 3)
-##                
+##
 ##    def test_gene_tile_in_gene_view_exon_splicing_table_multiple_genes(self):
 ##        #check Exon Splicing table exist
 ##        make_tiles()
@@ -2820,7 +2817,7 @@ class TestGenerateStatistics(TestCase):
 ##        for i, element in enumerate(elements):
 ##            self.assertTrue(element.is_displayed())
 ##            table_rows = element.find_elements_by_tag_name('tr')
-##            if i == 0:    
+##            if i == 0:
 ##                self.assertEqual(len(table_rows[1:]), 3)
 ##            else:
 ##                self.assertEqual(len(table_rows[1:]), 2)
@@ -2849,14 +2846,14 @@ class TestGenerateStatistics(TestCase):
 ##    def tearDownClass(cls):
 ##        cls.selenium.quit()
 ##        super(TestGeneViewInteractive, cls).tearDownClass()
-##        
+##
 ##    def setUp(self):
 ##        make_tiles()
 ##        make_long_gene1()
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        self.selenium.get('%s%s' % (self.live_server_url, reverse('tile_library:gene_view', args=(gene_id,))))
 ##        super(TestGeneViewInteractive, self).setUp()
-##            
+##
 ##    def test_view_native_full_page(self):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        #Check that 1 table exists and is visible. Check that hrefs in table link correctly
@@ -2869,7 +2866,7 @@ class TestGenerateStatistics(TestCase):
 ##            for j, row in enumerate(table_rows[1:]):
 ##                self.assertEqual(row.find_element_by_tag_name('a').get_attribute('href'), '%s%s' % (self.live_server_url,
 ##                                                                                                    reverse('tile_library:tile_in_gene_view', args=(gene_id,j))))
-##                    
+##
 ##        #Check pagination elements exist, are visible, and link correctly
 ##        elements = self.selenium.find_elements_by_class_name("pagination")
 ##        self.assertEqual(len(elements),2)
@@ -2883,7 +2880,7 @@ class TestGenerateStatistics(TestCase):
 ##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s#' % (self.selenium.current_url))
 ##                else:
 ##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s%s?page=2' % (self.live_server_url, reverse('tile_library:gene_view', args=(gene_id,))))
-##    
+##
 ##    def test_go_to_page_native_view(self):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        #Go to next page (using top pagination)
@@ -2911,7 +2908,7 @@ class TestGenerateStatistics(TestCase):
 ##            for i, page in enumerate(pages):
 ##                self.assertTrue(page.is_displayed())
 ##                if i == 0:
-##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s%s?page=1' % (self.live_server_url, reverse('tile_library:gene_view', args=(gene_id,)))) 
+##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s%s?page=1' % (self.live_server_url, reverse('tile_library:gene_view', args=(gene_id,))))
 ##                else:
 ##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s#' % (self.selenium.current_url))
 ##        #Go to prev page (using lower pagination)
@@ -2935,7 +2932,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[0].click()
 ##        elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[1].click()
-##        
+##
 ##        #Check the table has the requested order (descending position)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 1)
@@ -2973,7 +2970,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[2].click()
 ##        elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[4].click()
-##        
+##
 ##        #Check the table has the requested order (descending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 1)
@@ -3000,7 +2997,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[2].click()
 ##        elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[5].click()
-##        
+##
 ##        #Check the table has the requested order (ascending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 1)
@@ -3019,7 +3016,7 @@ class TestGenerateStatistics(TestCase):
 ##                    curr = int(curr)
 ##                self.assertLessEqual(prev, curr)
 ##                prev = curr
-##    
+##
 ##    def test_sort_by_desc_avg_len(self):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        #Click button to sort the table contents by descending minimum length
@@ -3027,7 +3024,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[3].click()
 ##        elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[6].click()
-##        
+##
 ##        #Check the table has the requested order (descending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 1)
@@ -3054,7 +3051,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[3].click()
 ##        elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[7].click()
-##        
+##
 ##        #Check the table has the requested order (ascending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 1)
@@ -3081,7 +3078,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[4].click()
 ##        elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[8].click()
-##        
+##
 ##        #Check the table has the requested order (descending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 1)
@@ -3108,7 +3105,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[4].click()
 ##        elements[0].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[9].click()
-##        
+##
 ##        #Check the table has the requested order (ascending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 1)
@@ -3127,7 +3124,7 @@ class TestGenerateStatistics(TestCase):
 ##                    curr = int(curr)
 ##                self.assertLessEqual(prev, curr)
 ##                prev = curr
-##    
+##
 ##    def test_sort_by_desc_var(self):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        #Click button to sort the table contents by descending number of variants
@@ -3149,7 +3146,7 @@ class TestGenerateStatistics(TestCase):
 ##                    curr = int(row.find_elements_by_tag_name('td')[1].text.strip())
 ##                    self.assertGreaterEqual(prev, curr)
 ##                    prev = curr
-##                    
+##
 ##    def test_sort_by_asc_var_and_change_page(self):
 ##        gene_id = GeneXRef.objects.all().first().id
 ##        #Click button to sort the table contents by ascending number of variants
@@ -3170,7 +3167,7 @@ class TestGenerateStatistics(TestCase):
 ##                curr = int(row.find_elements_by_tag_name('td')[1].text.strip())
 ##                self.assertLessEqual(prev, curr)
 ##                prev = curr
-##        
+##
 ##        #Go to next page (using lower pagination)
 ##        pagination_element = self.selenium.find_elements_by_class_name("pagination")[1]
 ##        pagination_element.find_elements_by_tag_name('li')[1].find_element_by_tag_name('a').click()
@@ -3189,7 +3186,7 @@ class TestGenerateStatistics(TestCase):
 ##
 ##class TestViewPopulatedPathInteractive(StaticLiveServerTestCase):
 ##    fixtures = ['test_view_paths.json']
-##    
+##
 ##    @classmethod
 ##    def setUpClass(cls):
 ##        cls.selenium = webdriver.PhantomJS()
@@ -3217,7 +3214,7 @@ class TestGenerateStatistics(TestCase):
 ##                for j, row in enumerate(table_rows[1:]):
 ##                    self.assertEqual(row.find_element_by_tag_name('a').get_attribute('href'), '%s%s' % (self.live_server_url,
 ##                                                                                                        reverse('tile_library:tile_view', args=(1,0,j))))
-##                    
+##
 ##        #Check pagination elements exist, are visible, and link correctly
 ##        elements = self.selenium.find_elements_by_class_name("pagination")
 ##        self.assertEqual(len(elements),2)
@@ -3231,7 +3228,7 @@ class TestGenerateStatistics(TestCase):
 ##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s#' % (self.selenium.current_url))
 ##                else:
 ##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s%s?page=2' % (self.live_server_url, reverse('tile_library:path_statistics', args=(1,0))))
-##    
+##
 ##    def test_go_to_page_native_view(self):
 ##        #Go to next page (using top pagination)
 ##        pagination_element = self.selenium.find_element_by_class_name("pagination")
@@ -3259,7 +3256,7 @@ class TestGenerateStatistics(TestCase):
 ##            for i, page in enumerate(pages):
 ##                self.assertTrue(page.is_displayed())
 ##                if i == 0:
-##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s%s?page=1' % (self.live_server_url, reverse('tile_library:path_statistics', args=(1,0)))) 
+##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s%s?page=1' % (self.live_server_url, reverse('tile_library:path_statistics', args=(1,0))))
 ##                else:
 ##                    self.assertEqual(page.find_element_by_tag_name('a').get_attribute('href'), '%s#' % (self.selenium.current_url))
 ##        #Go to prev page (using lower pagination)
@@ -3283,7 +3280,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[0].click()
 ##        elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[1].click()
-##        
+##
 ##        #Check the table has the requested order (descending position)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 2)
@@ -3321,7 +3318,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[2].click()
 ##        elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[4].click()
-##        
+##
 ##        #Check the table has the requested order (descending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 2)
@@ -3341,7 +3338,7 @@ class TestGenerateStatistics(TestCase):
 ##                        curr = int(curr)
 ##                    self.assertGreaterEqual(prev, curr)
 ##                    prev = curr
-##                    
+##
 ##
 ##    def test_sort_by_ascending_min_len(self):
 ##        #Click button to sort the table contents by ascending minimum length
@@ -3349,7 +3346,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[2].click()
 ##        elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[5].click()
-##        
+##
 ##        #Check the table has the requested order (ascending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 2)
@@ -3369,14 +3366,14 @@ class TestGenerateStatistics(TestCase):
 ##                        curr = int(curr)
 ##                    self.assertLessEqual(prev, curr)
 ##                    prev = curr
-##    
+##
 ##    def test_sort_by_desc_avg_len(self):
 ##        #Click button to sort the table contents by descending minimum length
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        table_buttons = elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[3].click()
 ##        elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[6].click()
-##        
+##
 ##        #Check the table has the requested order (descending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 2)
@@ -3396,7 +3393,7 @@ class TestGenerateStatistics(TestCase):
 ##                        curr = float(curr)
 ##                    self.assertGreaterEqual(prev, curr)
 ##                    prev = curr
-##                    
+##
 ##
 ##    def test_sort_by_ascending_avg_len(self):
 ##        #Click button to sort the table contents by ascending minimum length
@@ -3404,7 +3401,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[3].click()
 ##        elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[7].click()
-##        
+##
 ##        #Check the table has the requested order (ascending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 2)
@@ -3431,7 +3428,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[4].click()
 ##        elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[8].click()
-##        
+##
 ##        #Check the table has the requested order (descending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 2)
@@ -3451,7 +3448,7 @@ class TestGenerateStatistics(TestCase):
 ##                        curr = int(curr)
 ##                    self.assertGreaterEqual(prev, curr)
 ##                    prev = curr
-##                    
+##
 ##
 ##    def test_sort_by_ascending_max_len(self):
 ##        #Click button to sort the table contents by ascending minimum length
@@ -3459,7 +3456,7 @@ class TestGenerateStatistics(TestCase):
 ##        table_buttons = elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('button')
 ##        table_buttons[4].click()
 ##        elements[1].find_elements_by_tag_name('tr')[0].find_elements_by_tag_name('a')[9].click()
-##        
+##
 ##        #Check the table has the requested order (ascending minimum length)
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
 ##        self.assertEqual(len(elements), 2)
@@ -3479,7 +3476,7 @@ class TestGenerateStatistics(TestCase):
 ##                        curr = int(curr)
 ##                    self.assertLessEqual(prev, curr)
 ##                    prev = curr
-##    
+##
 ##    def test_sort_by_desc_var(self):
 ##        #Click button to sort the table contents by descending number of variants
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
@@ -3500,7 +3497,7 @@ class TestGenerateStatistics(TestCase):
 ##                    curr = int(row.find_elements_by_tag_name('td')[1].text.strip())
 ##                    self.assertGreaterEqual(prev, curr)
 ##                    prev = curr
-##                    
+##
 ##    def test_sort_by_asc_var_and_change_page(self):
 ##        #Click button to sort the table contents by ascending number of variants
 ##        elements = self.selenium.find_elements_by_class_name("table-responsive")
@@ -3521,7 +3518,7 @@ class TestGenerateStatistics(TestCase):
 ##                    curr = int(row.find_elements_by_tag_name('td')[1].text.strip())
 ##                    self.assertLessEqual(prev, curr)
 ##                    prev = curr
-##        
+##
 ##        #Go to next page (using lower pagination)
 ##        pagination_element = self.selenium.find_elements_by_class_name("pagination")[1]
 ##        pagination_element.find_elements_by_tag_name('li')[1].find_element_by_tag_name('a').click()
