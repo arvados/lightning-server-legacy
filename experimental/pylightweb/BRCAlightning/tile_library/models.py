@@ -6,6 +6,7 @@ import json
 
 import tile_library.basic_functions as fns
 
+TAG_LENGTH=24
 #No population data for these models: all of that should be dealt with using the human models or npy file manipulation
 #   Population data includes:
 #       png representation of the tile
@@ -17,7 +18,6 @@ def validate_json(text):
         json.loads(text)
     except ValueError:
         raise ValidationError("Expects json-formatted text")
-    
 
 class TileManage(models.Manager):
     """
@@ -25,8 +25,6 @@ class TileManage(models.Manager):
     """
     def get_by_natural_key(self, name):
         return self.get(tilename=name)
-
-    
 
 class Tile(models.Model):
     """
@@ -43,22 +41,22 @@ class Tile(models.Model):
             First 3 digits of the hexidecimal identifier indicate the path
             Next 2 digits indicate the path version
             Next 4 digits indicate the step
-        start_tag(charfield(24)): start Tag 
+        start_tag(charfield(24)): start Tag
         end_tag(charfield(24)): end Tag
         created(datetimefield): The day the tile was generated
 
     Functions:
         getTileString(): returns string: human readable tile name
-    
+
     """
     CHR_PATH_LENGTHS = [0,63,125,187,234,279,327,371,411,454,496,532,573,609,641,673,698,722,742,761,781,795,811,851,862,863,863]
     CYTOMAP = ['p36.33', 'p36.32', 'p36.31', 'p36.23', 'p36.22', 'p36.21', 'p36.13', 'p36.12', 'p36.11', 'p35.3', 'p35.2', 'p35.1', 'p34.3', 'p34.2', 'p34.1', 'p33', 'p32.3', 'p32.2', 'p32.1', 'p31.3', 'p31.2', 'p31.1', 'p22.3', 'p22.2', 'p22.1', 'p21.3', 'p21.2', 'p21.1', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11.2', 'p11.1', 'q11', 'q12', 'q21.1', 'q21.2', 'q21.3', 'q22', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q25.1', 'q25.2', 'q25.3', 'q31.1', 'q31.2', 'q31.3', 'q32.1', 'q32.2', 'q32.3', 'q41', 'q42.11', 'q42.12', 'q42.13', 'q42.2', 'q42.3', 'q43', 'q44', 'p25.3', 'p25.2', 'p25.1', 'p24.3', 'p24.2', 'p24.1', 'p23.3', 'p23.2', 'p23.1', 'p22.3', 'p22.2', 'p22.1', 'p21', 'p16.3', 'p16.2', 'p16.1', 'p15', 'p14', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q12.3', 'q13', 'q14.1', 'q14.2', 'q14.3', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q31.1', 'q31.2', 'q31.3', 'q32.1', 'q32.2', 'q32.3', 'q33.1', 'q33.2', 'q33.3', 'q34', 'q35', 'q36.1', 'q36.2', 'q36.3', 'q37.1', 'q37.2', 'q37.3', 'p26.3', 'p26.2', 'p26.1', 'p25.3', 'p25.2', 'p25.1', 'p24.3', 'p24.2', 'p24.1', 'p23', 'p22.3', 'p22.2', 'p22.1', 'p21.33', 'p21.32', 'p21.31', 'p21.2', 'p21.1', 'p14.3', 'p14.2', 'p14.1', 'p13', 'p12.3', 'p12.2', 'p12.1', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q12.3', 'q13.11', 'q13.12', 'q13.13', 'q13.2', 'q13.31', 'q13.32', 'q13.33', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23', 'q24', 'q25.1', 'q25.2', 'q25.31', 'q25.32', 'q25.33', 'q26.1', 'q26.2', 'q26.31', 'q26.32', 'q26.33', 'q27.1', 'q27.2', 'q27.3', 'q28', 'q29', 'p16.3', 'p16.2', 'p16.1', 'p15.33', 'p15.32', 'p15.31', 'p15.2', 'p15.1', 'p14', 'p13', 'p12', 'p11', 'q11', 'q12', 'q13.1', 'q13.2', 'q13.3', 'q21.1', 'q21.21', 'q21.22', 'q21.23', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23', 'q24', 'q25', 'q26', 'q27', 'q28.1', 'q28.2', 'q28.3', 'q31.1', 'q31.21', 'q31.22', 'q31.23', 'q31.3', 'q32.1', 'q32.2', 'q32.3', 'q33', 'q34.1', 'q34.2', 'q34.3', 'q35.1', 'q35.2', 'p15.33', 'p15.32', 'p15.31', 'p15.2', 'p15.1', 'p14.3', 'p14.2', 'p14.1', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.3', 'q14.1', 'q14.2', 'q14.3', 'q15', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q31.1', 'q31.2', 'q31.3', 'q32', 'q33.1', 'q33.2', 'q33.3', 'q34', 'q35.1', 'q35.2', 'q35.3', 'p25.3', 'p25.2', 'p25.1', 'p24.3', 'p24.2', 'p24.1', 'p23', 'p22.3', 'p22.2', 'p22.1', 'p21.33', 'p21.32', 'p21.31', 'p21.2', 'p21.1', 'p12.3', 'p12.2', 'p12.1', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q13', 'q14.1', 'q14.2', 'q14.3', 'q15', 'q16.1', 'q16.2', 'q16.3', 'q21', 'q22.1', 'q22.2', 'q22.31', 'q22.32', 'q22.33', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q25.1', 'q25.2', 'q25.3', 'q26', 'q27', 'p22.3', 'p22.2', 'p22.1', 'p21.3', 'p21.2', 'p21.1', 'p15.3', 'p15.2', 'p15.1', 'p14.3', 'p14.2', 'p14.1', 'p13', 'p12.3', 'p12.2', 'p12.1', 'p11.2', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q21.11', 'q21.12', 'q21.13', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q31.1', 'q31.2', 'q31.31', 'q31.32', 'q31.33', 'q32.1', 'q32.2', 'q32.3', 'q33', 'q34', 'q35', 'q36.1', 'q36.2', 'q36.3', 'p23.3', 'p23.2', 'p23.1', 'p22', 'p21.3', 'p21.2', 'p21.1', 'p12', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q12.1', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.3', 'q21.11', 'q21.12', 'q21.13', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.11', 'q24.12', 'q24.13', 'q24.21', 'q24.22', 'q24.23', 'q24.3', 'p24.3', 'p24.2', 'p24.1', 'p23', 'p22.3', 'p22.2', 'p22.1', 'p21.3', 'p21.2', 'p21.1', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11.2', 'p11.1', 'q11', 'q12', 'q13', 'q21.11', 'q21.12', 'q21.13', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22.1', 'q22.2', 'q22.31', 'q22.32', 'q22.33', 'q31.1', 'q31.2', 'q31.3', 'q32', 'q33.1', 'q33.2', 'q33.3', 'q34.11', 'q34.12', 'q34.13', 'q34.2', 'q34.3', 'p15.3', 'p15.2', 'p15.1', 'p14', 'p13', 'p12.33', 'p12.32', 'p12.31', 'p12.2', 'p12.1', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.31', 'q23.32', 'q23.33', 'q24.1', 'q24.2', 'q24.31', 'q24.32', 'q24.33', 'q25.1', 'q25.2', 'q25.3', 'q26.11', 'q26.12', 'q26.13', 'q26.2', 'q26.3', 'p15.5', 'p15.4', 'p15.3', 'p15.2', 'p15.1', 'p14.3', 'p14.2', 'p14.1', 'p13', 'p12', 'p11.2', 'p11.12', 'p11.11', 'q11', 'q12.1', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.3', 'q13.4', 'q13.5', 'q14.1', 'q14.2', 'q14.3', 'q21', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q25', 'p13.33', 'p13.32', 'p13.31', 'p13.2', 'p13.1', 'p12.3', 'p12.2', 'p12.1', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11', 'q12', 'q13.11', 'q13.12', 'q13.13', 'q13.2', 'q13.3', 'q14.1', 'q14.2', 'q14.3', 'q15', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22', 'q23.1', 'q23.2', 'q23.3', 'q24.11', 'q24.12', 'q24.13', 'q24.21', 'q24.22', 'q24.23', 'q24.31', 'q24.32', 'q24.33', 'p13', 'p12', 'p11.2', 'p11.1', 'q11', 'q12.11', 'q12.12', 'q12.13', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.3', 'q14.11', 'q14.12', 'q14.13', 'q14.2', 'q14.3', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22.1', 'q22.2', 'q22.3', 'q31.1', 'q31.2', 'q31.3', 'q32.1', 'q32.2', 'q32.3', 'q33.1', 'q33.2', 'q33.3', 'q34', 'p13', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q13.1', 'q13.2', 'q13.3', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q31.1', 'q31.2', 'q31.3', 'q32.11', 'q32.12', 'q32.13', 'q32.2', 'q32.31', 'q32.32', 'q32.33', 'p13', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q13.1', 'q13.2', 'q13.3', 'q14', 'q15.1', 'q15.2', 'q15.3', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.31', 'q22.32', 'q22.33', 'q23', 'q24.1', 'q24.2', 'q24.3', 'q25.1', 'q25.2', 'q25.3', 'q26.1', 'q26.2', 'q26.3', 'p13.3', 'p13.2', 'p13.13', 'p13.12', 'p13.11', 'p12.3', 'p12.2', 'p12.1', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q13', 'q21', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q25.1', 'q25.2', 'q25.3', 'p11.32', 'p11.31', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q12.3', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22.1', 'q22.2', 'q22.3', 'q23', 'p13.3', 'p13.2', 'p13.13', 'p13.12', 'p13.11', 'p12', 'p11', 'q11', 'q12', 'q13.11', 'q13.12', 'q13.13', 'q13.2', 'q13.31', 'q13.32', 'q13.33', 'q13.41', 'q13.42', 'q13.43', 'p13', 'p12.3', 'p12.2', 'p12.1', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q12', 'q13.11', 'q13.12', 'q13.13', 'q13.2', 'q13.31', 'q13.32', 'q13.33', 'p13', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q21.1', 'q21.2', 'q21.3', 'q22.11', 'q22.12', 'q22.13', 'q22.2', 'q22.3', 'p13', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q12.1', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.31', 'q13.32', 'q13.33', 'p22.33', 'p22.32', 'p22.31', 'p22.2', 'p22.13', 'p22.12', 'p22.11', 'p21.3', 'p21.2', 'p21.1', 'p11.4', 'p11.3', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q13.1', 'q13.2', 'q13.3', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22.1', 'q22.2', 'q22.3', 'q23', 'q24', 'q25', 'q26.1', 'q26.2', 'q26.3', 'q27.1', 'q27.2', 'q27.3', 'q28', 'p11.32', 'p11.31', 'p11.2', 'p11.1', 'q11.1', 'q11.21', 'q11.221', 'q11.222', 'q11.223', 'q11.23', 'q12', '']
-    
-    tilename = models.BigIntegerField(primary_key=True, editable=False, db_index=True) 
-    start_tag = models.CharField(max_length=24)
-    end_tag = models.CharField(max_length=24)
+
+    tilename = models.BigIntegerField(primary_key=True, editable=False, db_index=True)
+    start_tag = models.CharField(max_length=TAG_LENGTH)
+    end_tag = models.CharField(max_length=TAG_LENGTH)
     created = models.DateTimeField(auto_now_add=True)
-    
+
     def getTileString(self):
         """Displays hex indexing for tile """
         return fns.get_position_string_from_position_int(int(self.tilename))
@@ -68,7 +66,6 @@ class Tile(models.Model):
     class Meta:
         #Ensures ordering by tilename
         ordering = ['tilename']
-
 
 class TileVariant(models.Model):
     """
@@ -110,8 +107,8 @@ class TileVariant(models.Model):
     sequence = models.TextField()
     start_tag = models.TextField(blank=True)
     end_tag = models.TextField(blank=True)
-    
-    
+
+
     def getString(self):
         """Displays hex indexing for tile variant"""
         return fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_name))
@@ -145,7 +142,6 @@ class TileVariant(models.Model):
         except IndexError:
             raise Exception('Malformed tile: length is not the length of the sequence')
 
-    
     def __unicode__(self):
         return self.getString()
     class Meta:
@@ -154,11 +150,11 @@ class TileVariant(models.Model):
 
 class GenomeVariant(models.Model):
     """
-    Implements a variant (SNP, SUB, or INDEL) for a TileVariant. 
+    Implements a variant (SNP, SUB, or INDEL) for a TileVariant.
     Many-to-Many relation with TileVariant.
     2 ForeignKey relations with Tile to indicate the start and end position of the GenomeVariant
     When uploading a GenomeVariant, start_tile_position and end_tile_position are checked to ensure they are on the same chromosome
-    
+
     Values in database:
         id (big integer field): the id of the GenomeVariant. For indexing, when converted into hex,
             the first 3 integers are the path the genomevariant is on
@@ -199,11 +195,11 @@ class GenomeVariant(models.Model):
     start_increment = models.PositiveIntegerField()
     end_tile_position = models.ForeignKey(Tile, related_name='ending_genome_variants', db_index=True)
     end_increment = models.PositiveIntegerField()
-    
+
     tile_variants = models.ManyToManyField(TileVariant, through='GenomeVariantTranslation',
                                            through_fields=('genome_variant', 'tile_variant'),
                                            related_name='genome_variants', db_index=True)
-    
+
     names = models.TextField(help_text="Tab-separated aliases for this variant (rsID tags, RefSNP id, etc.",
                              blank=True)
     reference_bases = models.TextField(
@@ -238,7 +234,7 @@ class GenomeVariant(models.Model):
 class GenomeVariantTranslation(models.Model):
     """
     Implements the Many-to-Many relation between GenomeVariant and TileVariant as well as easy translation between
-    
+
     Values in database:
         tile_variant (foreignkey): the id of the TileVariant
         genome_variant(foreignkey): the id of the GenomeVariant
@@ -346,7 +342,7 @@ class TileLocusAnnotation(models.Model):
     begin_int = models.PositiveIntegerField(db_index=True)
     end_int = models.PositiveIntegerField(db_index=True)
     chromosome_name = models.CharField(max_length=100)
-    tile = models.ForeignKey(Tile, related_name="tile_locus_annotations")
+    tile = models.ForeignKey(Tile, related_name="tile_locus_annotations", db_index=True)
     def get_readable_chr_name(self):
         if self.chromosome == 26:
             return self.chromosome_name
@@ -361,7 +357,6 @@ class TileLocusAnnotation(models.Model):
         #Ensures ordering by tilename
         ordering = ['tile']
         unique_together = ("tile", "assembly")
-
 
 class GenomeStatistic(models.Model):
     """
@@ -425,9 +420,9 @@ class GenomeStatistic(models.Model):
         (CHR_OTHER, 'Other Chromosomes'),
         (PATH, 'Path'),
     )
-    
+
     statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=NAME_CHOICES)
-    
+
     path_name = models.PositiveIntegerField(db_index=True, blank=True, null=True)
 
     position_num = models.BigIntegerField()
@@ -435,10 +430,10 @@ class GenomeStatistic(models.Model):
 
     avg_num_positions_spanned = models.DecimalField(null=True, max_digits=15, decimal_places=3)
     max_num_positions_spanned = models.PositiveIntegerField(null=True)
-    
+
     avg_variant_val = models.DecimalField(null=True, max_digits=15, decimal_places=3)
     max_variant_val = models.PositiveIntegerField(null=True)
-    
+
     min_length = models.PositiveIntegerField(null=True)
     avg_length = models.DecimalField(null=True, max_digits=15, decimal_places=3)
     max_length = models.PositiveIntegerField(null=True)
@@ -456,8 +451,3 @@ class GenomeStatistic(models.Model):
             return "Path " + str(self.path_name) + " Statistics"
     class Meta:
         unique_together = ("statistics_type", "path_name")
-
-  
-
-
-    

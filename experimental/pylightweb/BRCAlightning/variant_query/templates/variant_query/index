@@ -29,16 +29,18 @@
 					<thead>
 						<tr>
 							<th>Sample Name</th>
-							<th>Base call at that position (including {{response.actual_number|intcomma}} bases around the query)</th>
-							<th>Tile Variant Queries</th>
+							<th>Phase A call at that position</th>
+							<th>Phase B call at that position</th>
+							<th>Phases well defined?</th>
 						</tr>
 					</thead>
 					<tbody>
 						{% for human in response.humans %}
 							<tr>
-								<td>{{ human.name }}</td>
-								<td>{{ human.base|upper }}</td>
-								<td>{{ human.tile_variants }}</td>
+								<td>{{ human.human_name }}</td>
+								<td>{{ human.phase_A_sequence }}</td>
+								<td>{{ human.phase_B_sequence }}</td>
+								<td>{{ human.phased|yesno }}</td>
 							</tr>
 						{% endfor %}
 					</tbody>
@@ -48,4 +50,3 @@
 	{% endif %}
 </div>
 {% endblock %}
-

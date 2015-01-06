@@ -55,13 +55,19 @@ INSTALLED_APPS = (
     'django.contrib.humanize',
     'django_extensions',
     'bootstrapform',
+    'rest_framework',
     'home',
     'slippy',
     'humans',
     'tile_library',
     'genes',
     'variant_query',
+    'api',
 )
+
+REST_FRAMEWORK = {
+    'PAGINATE_BY': 10
+}
 
 GRAPH_MODELS = {
     'all_applications':True,

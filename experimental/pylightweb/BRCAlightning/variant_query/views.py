@@ -2,86 +2,24 @@ import time
 import json
 import requests
 import re
+import urllib
 
 from django.shortcuts import render
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
 from django.db.models import Q
+from django.core.urlresolvers import reverse
 
 from variant_query.forms import SearchForm
 from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant
 import tile_library.basic_functions as basic_fns
 import tile_library.functions as fns
+import tile_library.query_functions as query_fns
 
-def query_population_base_range(lower_base_position, higher_base_position, tile_position_int, spanning_tiles_to_check):
-    def get_population_repr_of_tile_var(cgf_string):
-        post_data = {
-                'Type':'sample-tile-group-match',
-                'Dataset':'all',
-                'Note':'expect population set to be returned from a match of variant',
-                'SampleId':[],
-                'TileGroupVariantId':[[cgf_string]]
-            }
-        post_data = json.dumps(post_data)
-        post_response = requests.post(url="http://localhost:8080", data=post_data)
-        response = json.loads(post_response.text)
-        assert "success" == response['Type'], "Lantern-communication failure:" + foo['Message']
-        large_file_names = response['Result']
-        retlist = [name.strip('" ').split('/')[-1] for name in large_file_names]
-        return retlist
-    humans = {}
-    low_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int)
-    high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
-    tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
-    for tile_variant in tile_variants:
-        cgf_str = tile_variant.conversion_to_cgf
-        if lower_base_position == higher_base_position:
-            bases = tile_variant.getBaseAtPosition(lower_base_position)
-        else:
-            bases = tile_variant.getBaseGroupBetweenPositions(lower_base_position, higher_base_position)
-        matching_humans = get_population_repr_of_tile_var(cgf_str)
-        for hu in matching_humans:
-            if hu != '':
-                if hu in humans:
-                    humans[hu][0] += ", "+bases
-                    humans[hu][1] += ", "+cgf_str
-                else:
-                    humans[hu] = [bases, cgf_str]
-    for tile_variant in spanning_tiles_to_check:
-        cgf_str = tile_variant.conversion_to_cgf
-        if lower_base_position == higher_base_position:
-            bases = tile_variant.getBaseAtPosition(lower_base_position)
-        else:
-            bases = tile_variant.getBaseGroupBetweenPositions(lower_base_position, higher_base_position)
-        matching_humans = get_population_repr_of_tile_var(cgf_str)
-        for hu in matching_humans:
-            if hu != '':
-                if hu in humans:
-                    humans[hu][0] += ", "+bases
-                    humans[hu][1] += ", "+cgf_str
-                else:
-                    humans[hu] = [bases, cgf_str]
-    ## humans expected to be list of dictionaries with keys "name" and "base"
-    retlist = []
-    for human in humans:
-        retlist.append({'name':human, 'base':humans[human][0], 'tile_variants':humans[human][1]})
-    return retlist
-
-def get_spanning_tiles(tile_position_int):
-    """ ignores any spanning tiles started at the given position. Only looks backward
-        returns an empty list if no spanning tiles overlap with that position """
-    spanning_tile_variants = []
-    path_int, version_int, step_int = basic_fns.get_position_ints_from_position_int(tile_position_int)
-    num_tiles_spanned = int(GenomeStatistic.objects.get(path_name=path_int).max_num_positions_spanned)
-    num_tiles_spanned = min(num_tiles_spanned, step_int+1)
-    if num_tiles_spanned > 1:
-        for i in range(2, num_tiles_spanned+1):
-            if i == 2:
-                curr_Q = (Q(tile_id=tile_position_int-i) & Q(num_positions_spanned__gte=i))
-            else:
-                curr_Q = curr_Q | (Q(tile_id=tile_position_int-i) & Q(num_positions_spanned__gte=i))
-        spanning_tile_variants = TileVariant.objects.filter(curr_Q).all()
-    return spanning_tile_variants
+def send_internal_api_request(request, GET_dictionary):
+    GET_url_section = urllib.urlencode(GET_dictionary)
+    query_url = request.build_absolute_uri(reverse('api:variant_query'))+'?'+GET_url_section
+    return requests.get(url=query_url)
 
 def index(request):
     """
@@ -109,37 +47,16 @@ def index(request):
         #We were asked for something!
         data = request.GET
         form = SearchForm(possible_assemblies, possible_chromosomes, data)
-        assembly = data['assembly']
-        chromosome = data['chromosome']
-        base_int = int(data['target_base'])
-        if int(data['indexing']) == 1:
-            base_int -= 1
-        number_around = int(data['number_around'])
         t5 = time.time()
-        base_query = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome)
-        try:
-            locus = base_query.filter(begin_int__lte=base_int).filter(end_int__gt=base_int).get()
-            tile_position = locus.tile
-            tile_position_int = int(tile_position.tilename)
-            tile_position_name = basic_fns.get_position_string_from_position_int(tile_position_int)
-            position_base_int = base_int - int(locus.begin_int)
-            distance_from_end = int(locus.end_int) - (base_int+1)
-            number_around = min(position_base_int, number_around, distance_from_end)
-            #This tile_position_name can be used to query the majority of the population.
-            #   However, we still need to get spanning tiles that don't start on this position
-            #   but still overlap it
-            spanning_tile_variants = get_spanning_tiles(tile_position_int)
-            humans = query_population_base_range(position_base_int-number_around, position_base_int+number_around, tile_position_int, spanning_tile_variants)
-            response = {'text':'Success!', 'humans':humans, 'actual_number':number_around}
-        except ObjectDoesNotExist:
-            smallest_int = base_query.order_by('begin_int').first().begin_int
-            largest_int = base_query.order_by('begin_int').reverse().first().end_int
-            response_text = "That locus is not loaded into this library. Try a number in the range %i to %i." % (smallest_int, largest_int)
-            response = {'text': response_text}
+        api_response = send_internal_api_request(request, data)
+        if api_response.status_code == 200:
+            humans = json.loads(api_response.text)
+            response = {'text':'Success!', 'humans':humans}
+        else:
+            response = {'text':'Error: ' + api_response.text}
         t6 = time.time()
         response['time'] = t6-t5
     else:
         form=SearchForm(possible_assemblies, possible_chromosomes)
         response = None
     return render(request, 'variant_query/index', {'form':form, 'time1':t3-t2, 'time2':t4-t3, 'response': response})
-
