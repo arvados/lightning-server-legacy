@@ -132,11 +132,12 @@ class TileVariant(models.Model):
             upper_position_int = int(upper_position_int)
         except ValueError:
             raise Exception('Position integer must be able to convert into an integer')
-        assert lower_position_int < self.length, "Expects the lower position integer to be 0-indexed and less than the length of the sequence"
-        assert upper_position_int < self.length, "Expects the upper position integer to be 0-indexed and less than the length of the sequence"
-        assert lower_position_int > -1, "Expects the lower position integer to be positive"
-        assert upper_position_int > -1, "Expects the upper position integer to be positive"
-        assert lower_position_int < upper_position_int, "Expects lower position_int to be strictly lower than upper position int"
+        info_str = "Lower position int:" + str(lower_position_int) + ", upper position int (inclusive):" + str(upper_position_int) + ", length of sequence" + str(self.length)
+        assert lower_position_int < self.length, "Expects the lower position integer to be 0-indexed and less than the length of the sequence. " + info_str
+        assert upper_position_int < self.length, "Expects the upper position integer to be 0-indexed and less than the length of the sequence. " + info_str
+        assert lower_position_int > -1, "Expects the lower position integer to be positive. " + info_str
+        assert upper_position_int > -1, "Expects the upper position integer to be positive. " + info_str
+        assert lower_position_int < upper_position_int, "Expects lower position_int to be strictly lower than upper position int. " + info_str
         try:
             return self.sequence[lower_position_int:upper_position_int+1]
         except IndexError:

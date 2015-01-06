@@ -37,11 +37,11 @@ class PopulationVariantQuery(APIView):
         tile_position_int = basic_fns.convert_tile_variant_int_to_position_int(int(tile_variant.tile_variant_name))
         locus = TileLocusAnnotation.object.filter(assembly=assembly).get(tile_id=tile_position_int)
         start_locus_int = int(locus.start_int)
-        end_locus_int = int(locus.end_int)
-        return self.get_tile_variant_cgf_str_and_bases_fast(tile_variant, low_int, high_int, start_locus_int, end_locus_int)
+        return self.get_tile_variant_cgf_str_and_bases_fast(tile_variant, low_int, high_int, start_locus_int)
 
-    def get_tile_variant_cgf_str_and_bases_fast(self, tile_variant, low_int, high_int, start_locus_int, end_locus_int):
+    def get_tile_variant_cgf_str_and_bases_fast(self, tile_variant, low_int, high_int, start_locus_int):
         cgf_str = tile_variant.conversion_to_cgf
+        end_locus_int = start_locus_int + int(tile_variant.length)
         if cgf_str == "":
             #Backwards compatability
             cgf_str = tile_variant.getString()
@@ -84,7 +84,6 @@ class PopulationVariantQuery(APIView):
         for i, locus in enumerate(locuses):
             tile_position_int = int(locus.tile_id)
             start_locus_int = int(locus.begin_int)
-            end_locus_int = int(locus.end_int)
             if i == 0: #Note these can be the same!
                 spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(tile_position_int)
                 for var in spanning_tile_variants:
@@ -94,7 +93,7 @@ class PopulationVariantQuery(APIView):
             high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
             tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
             for var in tile_variants:
-                cgf_str, bases = self.get_tile_variant_cgf_str_and_bases_fast(var, low_int, high_int, start_locus_int, end_locus_int)
+                cgf_str, bases = self.get_tile_variant_cgf_str_and_bases_fast(var, low_int, high_int, start_locus_int)
                 variants_to_query[i].append({'cgf':cgf_str, 'bases':bases})
         return variants_to_query
 
