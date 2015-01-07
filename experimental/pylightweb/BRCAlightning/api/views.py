@@ -25,13 +25,7 @@ class TileVariantDetail(generics.RetrieveAPIView):
 
 class PopulationVariantQuery(APIView):
     """
-    Retrieve population sequences at specific position
-    To get the ending loci in that chromosome and assembly
-        base_query = TileLocusAnnotation.object.filter(assembly=data['assembly']).filter(chromosome=data['chromosome'])
-        smallest_int = base_query.order_by('begin_int').first().begin_int
-        largest_int = base_query.order_by('begin_int').reverse().first().end_int
-        response_text = "That locus is not loaded into this library. Try a number in the range %i to %i." % (smallest_int, largest_int)
-        response = {'text': response_text}
+    Retrieve population sequences at position "target_base" (with "number_around" bases around "target_base" also retrieved)
     """
     def get_tile_variant_cgf_str_and_bases(self, tile_variant, low_int, high_int, assembly):
         tile_position_int = basic_fns.convert_tile_variant_int_to_position_int(int(tile_variant.tile_variant_name))
@@ -84,7 +78,7 @@ class PopulationVariantQuery(APIView):
         for i, locus in enumerate(locuses):
             tile_position_int = int(locus.tile_id)
             start_locus_int = int(locus.begin_int)
-            if i == 0: #Note these can be the same!
+            if i == 0:
                 spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(tile_position_int)
                 for var in spanning_tile_variants:
                     cgf_str, bases = self.get_tile_variant_cgf_str_and_bases(var, low_int, high_int, assembly)
@@ -98,7 +92,6 @@ class PopulationVariantQuery(APIView):
         return variants_to_query
 
     def get_population_sequences_from_variants(self, variants_to_query):
-        humans = {}
         for i, variants in enumerate(variants_to_query):
             human_seq_at_curr_position = {}
             for variant in variants:
@@ -113,11 +106,13 @@ class PopulationVariantQuery(APIView):
                             human_seq_at_curr_position[hu] = {'A': variant['bases'], 'B': variant['bases']}
             if i == 0:
                 humans = human_seq_at_curr_position
-            elif i > 1:
+            else:
                 for human in human_seq_at_curr_position:
+                    assert human in humans, "Human %s was not included in the first pass" % (human)
+                    assert humans[human]['A'][-TAG_LENGTH:] == human_seq_at_curr_position[human]['A'][:TAG_LENGTH], "phase A tags do not match for human %s at position %i" % (human, i)
+                    assert humans[human]['B'][-TAG_LENGTH:] == human_seq_at_curr_position[human]['B'][:TAG_LENGTH], "phase B tags do not match for human %s at position %i" % (human, i)
                     humans[human]['A'] += human_seq_at_curr_position[human]['A'][TAG_LENGTH:]
                     humans[human]['B'] += human_seq_at_curr_position[human]['B'][TAG_LENGTH:]
-
         humans_with_sequences = []
         for human in humans:
             humans_with_sequences.append(
