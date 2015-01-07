@@ -58,3 +58,29 @@ def get_population_with_tile_variant(cgf_string):
     large_file_names = response['Result']
     retlist = [name.strip('" ').split('/')[-1] for name in large_file_names]
     return retlist
+
+def get_population_sequences_at_position(position_hex_string):
+    """
+    Submits a lantern query. Returns a list of people which contain the tile variant
+    """
+    post_data = {
+        'Type':'sample-tile-group-match',
+        'Dataset':'all',
+        'Note':'Expects population set that contains variant to be returned',
+        'SampleId':[],
+        'TileGroupVariantId':[[cgf_string]]
+    }
+    post_data = json.dumps(post_data)
+    post_response = requests.post(url="http://localhost:8080", data=post_data)
+    try:
+        response = json.loads(post_response.text)
+    except ValueError:
+        #first version of lantern doesn't return a valid json, so parse the return
+        m = re.match(r"(\[.*\])(\{.*\})", post_response.text)
+        response = json.loads(m.group(2))
+        result = json.loads('{"Result":' + m.group(1) +'}')
+        response['Result'] = result['Result']
+    assert "success" == response['Type'], "Lantern-communication failure:" + response['Message']
+    large_file_names = response['Result']
+    retlist = [name.strip('" ').split('/')[-1] for name in large_file_names]
+    return retlist
