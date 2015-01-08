@@ -169,11 +169,11 @@ class PopulationVariantQuery(APIView):
 
         end_variant_int = start_locus_int + int(tile_variant.length)
         if end_variant_int == end_locus_int: # tile is same length as reference. Everything is fine
-            higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
+            higher_base_position = min(high_int, end_locus_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
         elif end_variant_int < end_locus_int: # tile is missing at least one base
-            higher_base_position = min(high_int+1, end_variant_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
+            higher_base_position = min(high_int, end_variant_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
         else: #tile has at least an extra base
-            higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int+1) + (end_variant_int-end_locus_int) #add 1 for 0-indexing compatability
+            higher_base_position = min(high_int, end_locus_int) - (start_locus_int+1) + (end_variant_int-end_locus_int) #add 1 for 0-indexing compatability
 
         lower_base_position = max(low_int-start_locus_int, 0)
         if lower_base_position == higher_base_position+1:
@@ -243,70 +243,54 @@ class PopulationVariantQuery(APIView):
 
         return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator_by_position
 
+    def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator):
+        sequence = ""
+        for cgf_string in positions_queried:
+            if len(cgf_string.split('+')) > 1:
+                num_positions_spanned = int(cgf_string.split('+')[1])-1
+            else:
+                num_positions_spanned = 0
+            non_spanning_cgf_string = cgf_string.split('+')[0]
+            tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1], ''),16)
+            tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
+            assert last_tile_position_int >= tile_position_int, \
+                "CGF string went over expected max position (CGF string: %s, Max position: %s)" % (tile_position_str,
+                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
+            assert len(cgf_translator) > tile_position_int-first_tile_position_int, \
+                "Translator doesn't include enough positions (Translator length: %i, Number of needed positions: %i)" % (len(cgf_translator),
+                    tile_position_int-first_tile_position_int)
+            if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
+                if tile_position_int - first_tile_position_int < 0:
+                    tile_position_int = first_tile_position_int
+                if len(sequence) > 0:
+                    curr_ending_tag = sequence[-TAG_LENGTH:]
+                    new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
+                    if len(curr_ending_tag) >= len(new_starting_tag):
+                        assert curr_ending_tag.endswith(new_starting_tag), \
+                            "Tags do not match for human %s at position %s \n Ending Tag: %s \n Starting Tag: %s \n Positions Queried: %s" % (human_name,
+                                tile_position_str, curr_ending_tag, new_starting_tag, str(positions_queried))
+                    else:
+                        assert new_starting_tag.startswith(curr_ending_tag), \
+                            "Tags do not match for human %s at position %s \n Ending Tag: %s \n Starting Tag: %s \n Positions Queried: %s" % (human_name,
+                                tile_position_str, curr_ending_tag, new_starting_tag, str(positions_queried))
+                    sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
+                else:
+                    sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
+
     def get_population_sequences(self, first_tile_position_int, last_tile_position_int, max_num_spanning_variants, cgf_translator):
         humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
         human_sequence_dict = {}
         for human in humans:
-            human_sequence_dict[human] = {}
-            for cgf_string in humans[human][0]:
-                if len(cgf_string.split('+')) > 1:
-                    num_positions_spanned = int(cgf_string.split('+')[1])-1
-                else:
-                    num_positions_spanned = 0
-                non_spanning_cgf_string = cgf_string.split('+')[0]
-                tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1], ''),16)
-                tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
-#                assert last_tile_position_int >= tile_position_int, "cgf string went over expected max position (phase A) (%s, %s)" % (tile_position_str,
-#                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
-#                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase A problem) (%i, %i)" % (len(cgf_translator), tile_position_int-first_tile_position_int)
-                if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
-                    if tile_position_int - first_tile_position_int < 0:
-                        tile_position_int = first_tile_position_int
-                    if 'A' in human_sequence_dict[human]:
-                        curr_ending_tag = human_sequence_dict[human]['A'][-TAG_LENGTH:]
-                        new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
-                        if len(curr_ending_tag) >= len(new_starting_tag):
-                            assert curr_ending_tag.endswith(new_starting_tag), "phase A tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
-                                tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][0]))
-                        else:
-                            assert new_starting_tag.startswith(curr_ending_tag), "phase A tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
-                                tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][0]))
-                        human_sequence_dict[human]['A'] += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
-                    else:
-                        human_sequence_dict[human]['A'] = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
-
-            for cgf_string in humans[human][1]:
-                if len(cgf_string.split('+')) > 1:
-                    num_positions_spanned = int(cgf_string.split('+')[1])-1
-                else:
-                    num_positions_spanned = 0
-                non_spanning_cgf_string = cgf_string.split('+')[0]
-                tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1],''),16)
-                tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
-#                assert last_tile_position_int >= tile_position_int, "cgf string went over expected max position (phase B) (%s, %s)" % (tile_position_str,
-#                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
-#                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase B problem) (%i, %i)" % (len(cgf_translator), tile_position_int-first_tile_position_int)
-                if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
-                    if tile_position_int - first_tile_position_int < 0:
-                        tile_position_int = first_tile_position_int
-                    if 'B' in human_sequence_dict[human]:
-                        curr_ending_tag = human_sequence_dict[human]['B'][-TAG_LENGTH:]
-                        new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
-                        if len(curr_ending_tag) >= len(new_starting_tag):
-                            assert curr_ending_tag.endswith(new_starting_tag), "phase B tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
-                                tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][1]))
-                        else:
-                            assert new_starting_tag.startswith(curr_ending_tag), "phase B tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
-                                tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][1]))
-                        human_sequence_dict[human]['B'] += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
-                    else:
-                        human_sequence_dict[human]['B'] = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
+            short_name = human.strip('" ').split('/')[-1]
+            human_sequence_dict[human] = ['', '']
+            human_sequence_dict[human][0] = self.get_bases_for_human(short_name, humans[human][0], first_tile_position_int, last_tile_position_int, cgf_translator)
+            human_sequence_dict[human][1] = self.get_bases_for_human(short_name, humans[human][1], first_tile_position_int, last_tile_position_int, cgf_translator)
         humans_with_sequences = []
         for human in human_sequence_dict:
             humans_with_sequences.append(
                 {'human_name':human.strip('" ').split('/')[-1],
-                 'phase_A_sequence':human_sequence_dict[human]['A'],
-                 'phase_B_sequence':human_sequence_dict[human]['B'],
+                 'phase_A_sequence':human_sequence_dict[human][0],
+                 'phase_B_sequence':human_sequence_dict[human][1],
                  'phased':False}
                  )
         return humans_with_sequences

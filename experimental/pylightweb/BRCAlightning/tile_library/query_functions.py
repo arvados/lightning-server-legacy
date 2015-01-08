@@ -150,13 +150,13 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
     human_names = sorted(human_names)
     assert last_position_int >= first_position_int, "Expects first_position_int to be less than last_position_int"
     position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int)
-    length_to_retrieve = last_position_int - first_position_int + 1
+    length_to_retrieve = hex(last_position_int - first_position_int + 1).lstrip('0x')
     post_data = {
         'Type':'sample-position-variant',
         'Dataset':'all',
         'Note':'Expects entire population set to be returned with their phase A and phase B variant ids',
         'SampleId':[],
-        'Position':[position_hex_string+"+"+str(length_to_retrieve)]
+        'Position':[position_hex_string+"+"+length_to_retrieve]
     }
     post_data = json.dumps(post_data)
     try:
