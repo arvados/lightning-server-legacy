@@ -247,10 +247,10 @@ class PopulationVariantQuery(APIView):
                 non_spanning_cgf_string = cgf_string.split('+')[0]
                 tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1], ''),16)
                 tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
-                assert last_tile_position_int >= tile_position_int, "cgf string went over expected max position (phase A) (%s, %s)" % (tile_position_str,
-                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
-                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase A problem) (%i, %i)" % (len(cgf_translator), tile_position_int-first_tile_position_int)
-                if tile_position_int+num_positions_spanned >= first_tile_position_int:
+#                assert last_tile_position_int >= tile_position_int, "cgf string went over expected max position (phase A) (%s, %s)" % (tile_position_str,
+#                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
+#                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase A problem) (%i, %i)" % (len(cgf_translator), tile_position_int-first_tile_position_int)
+                if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
                     if tile_position_int - first_tile_position_int < 0:
                         tile_position_int = first_tile_position_int
                     if 'A' in human_sequence_dict[human]:
@@ -270,10 +270,10 @@ class PopulationVariantQuery(APIView):
                 non_spanning_cgf_string = cgf_string.split('+')[0]
                 tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1],''),16)
                 tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
-                assert last_tile_position_int >= tile_position_int, "cgf string went over expected max position (phase B) (%s, %s)" % (tile_position_str,
-                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
-                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase B problem) (%i, %i)" % (len(cgf_translator), tile_position_int-first_tile_position_int)
-                if tile_position_int+num_positions_spanned >= first_tile_position_int:
+#                assert last_tile_position_int >= tile_position_int, "cgf string went over expected max position (phase B) (%s, %s)" % (tile_position_str,
+#                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
+#                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase B problem) (%i, %i)" % (len(cgf_translator), tile_position_int-first_tile_position_int)
+                if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
                     if tile_position_int - first_tile_position_int < 0:
                         tile_position_int = first_tile_position_int
                     if 'B' in human_sequence_dict[human]:
