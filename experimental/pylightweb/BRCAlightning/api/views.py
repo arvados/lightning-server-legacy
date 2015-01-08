@@ -267,11 +267,11 @@ class PopulationVariantQuery(APIView):
                     human_sequence_dict[human]['B'] = cgf_translator[position_i][non_spanning_cgf_string][TAG_LENGTH:]
 
         humans_with_sequences = []
-        for human in human_sequences_dict:
+        for human in human_sequence_dict:
             humans_with_sequences.append(
                 {'human_name':human.strip('" ').split('/')[-1],
-                 'phase_A_sequence':human_sequences_dict[human]['A'],
-                 'phase_B_sequence':human_sequences_dict[human]['B'],
+                 'phase_A_sequence':human_sequence_dict[human]['A'],
+                 'phase_B_sequence':human_sequence_dict[human]['B'],
                  'phased':False}
                  )
         return humans_with_sequences
