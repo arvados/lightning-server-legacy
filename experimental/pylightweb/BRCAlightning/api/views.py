@@ -167,7 +167,7 @@ class PopulationVariantQuery(APIView):
         assert low_int <= end_locus_int, "Asked to get information of tile_variant that is before the low base of interest"
         assert high_int >= start_locus_int, "Asked to get information of tile_variant that is after the high base of interest"
         lower_base_position = max(low_int-start_locus_int, 0)
-        higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
+        higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int) #add 1 for 0-indexing compatability
         if lower_base_position == higher_base_position+1:
             bases = tile_variant.getBaseAtPosition(lower_base_position).upper()
         else:
