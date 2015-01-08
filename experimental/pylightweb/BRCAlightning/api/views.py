@@ -220,7 +220,7 @@ class PopulationVariantQuery(APIView):
         last_tile_position_int = int(locuses.last().tile_id)
 
         #Get maximum number of spanning tiles
-        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(tile_position_int)
+        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
 
         #Create cgf_translator for each position
         cgf_translator_by_position = self.get_cgf_translator(locuses)
