@@ -246,7 +246,7 @@ class PopulationVariantQuery(APIView):
                     num_positions_spanned = 0
                 non_spanning_cgf_string = cgf_string.split('+')[0]
                 tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1], ''),16)
-                assert len(cgf_translator) >= tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase A problem)"
+                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase A problem) (%i, %i)" % (len(cgf_translator), tile_position_int-first_tile_position_int)
                 if tile_position_int+num_positions_spanned >= first_tile_position_int:
                     if tile_position_int - first_tile_position_int < 0:
                         tile_position_int = first_tile_position_int
@@ -266,7 +266,7 @@ class PopulationVariantQuery(APIView):
                     num_positions_spanned = 0
                 non_spanning_cgf_string = cgf_string.split('+')[0]
                 tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1],''),16)
-                assert len(cgf_translator) >= tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase B problem)"
+                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions (phase B problem) (%i, %i)" % (len(cgf_translator), tile_position_int-first_tile_position_int)
                 if tile_position_int+num_positions_spanned >= first_tile_position_int:
                     if tile_position_int - first_tile_position_int < 0:
                         tile_position_int = first_tile_position_int
