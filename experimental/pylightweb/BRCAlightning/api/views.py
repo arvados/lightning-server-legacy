@@ -238,7 +238,6 @@ class PopulationVariantQuery(APIView):
         humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
         human_sequence_dict = {}
         for human in humans:
-            human_sequence_dict[human] = {'A':'', 'B':''}
             for position_i, cgf_string in enumerate(humans[human][0]):
                 if len(cgf_string.split('+')) > 1:
                     num_positions_spanned = int(cgf_string.split('+')[1])-1
