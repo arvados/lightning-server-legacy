@@ -158,16 +158,24 @@ class PopulationVariantQuery(APIView):
         tile_position_int = basic_fns.convert_tile_variant_int_to_position_int(int(tile_variant.tile_variant_name))
         locus = TileLocusAnnotation.object.filter(assembly=assembly).get(tile_id=tile_position_int)
         start_locus_int = int(locus.start_int)
-        return self.get_tile_variant_cgf_str_and_bases_fast(tile_variant, low_int, high_int, start_locus_int)
+        end_locus_int = int(locus.end_int)
+        return self.get_tile_variant_cgf_str_and_bases_fast(tile_variant, low_int, high_int, start_locus_int, end_locus_int)
 
-    def get_tile_variant_cgf_str_and_bases_fast(self, tile_variant, low_int, high_int, start_locus_int):
+    def get_tile_variant_cgf_str_and_bases_fast(self, tile_variant, low_int, high_int, start_locus_int, end_locus_int):
         cgf_str = tile_variant.conversion_to_cgf
-        end_locus_int = start_locus_int + int(tile_variant.length)
         assert cgf_str != "", "CGF translation required"
         assert low_int <= end_locus_int, "Asked to get information of tile_variant that is before the low base of interest"
         assert high_int >= start_locus_int, "Asked to get information of tile_variant that is after the high base of interest"
+
+        end_variant_int = start_locus_int + int(tile_variant.length)
+        if end_variant_int == end_locus_int: # tile is same length as reference. Everything is fine
+            higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
+        elif end_variant_int < end_locus_int: # tile is missing at least one base
+            higher_base_position = min(high_int+1, end_variant_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
+        else: #tile has at least an extra base
+            higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int+1) + (end_variant_int-end_locus_int) #add 1 for 0-indexing compatability
+
         lower_base_position = max(low_int-start_locus_int, 0)
-        higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
         if lower_base_position == higher_base_position+1:
             bases = tile_variant.getBaseAtPosition(lower_base_position).upper()
         else:
@@ -180,11 +188,12 @@ class PopulationVariantQuery(APIView):
         for i, locus in enumerate(locuses):
             tile_position_int = int(locus.tile_id)
             start_locus_int = int(locus.begin_int)
+            end_locus_int = int(locus.end_int)
             low_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int)
             high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
             tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
             for var in tile_variants:
-                cgf_str, bases = self.get_tile_variant_cgf_str_and_bases_fast(var, low_int, high_int, start_locus_int)
+                cgf_str, bases = self.get_tile_variant_cgf_str_and_bases_fast(var, low_int, high_int, start_locus_int, end_locus_int)
                 assert cgf_str not in cgf_translator[i], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
                 cgf_translator[i][cgf_str] = bases
         return cgf_translator
