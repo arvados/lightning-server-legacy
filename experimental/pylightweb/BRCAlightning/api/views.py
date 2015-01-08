@@ -248,7 +248,7 @@ class PopulationVariantQuery(APIView):
                 tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1], ''),16)
                 if tile_position_int+num_positions_spanned >= first_tile_position_int:
                     if 'A' in human_sequence_dict[human]:
-                        assert human_sequence_dict[human]['A'][-TAG_LENGTH:] == cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH],
+                        assert human_sequence_dict[human]['A'][-TAG_LENGTH:] == cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH], \
                             "phase A tags do not match for human %s at position %i" % (human, basic_fns.get_position_string_from_position_int(tile_position_int))
                         human_sequence_dict[human]['A'] += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
                     else:
@@ -263,7 +263,7 @@ class PopulationVariantQuery(APIView):
                 tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1],''),16)
                 if tile_position_int+num_positions_spanned >= first_tile_position_int:
                     if 'B' in human_sequence_dict[human]:
-                        assert human_sequence_dict[human]['B'][-TAG_LENGTH:] == cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH],
+                        assert human_sequence_dict[human]['B'][-TAG_LENGTH:] == cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH], \
                             "phase B tags do not match for human %s at position %i" % (human, basic_fns.get_position_string_from_position_int(tile_position_int))
                         human_sequence_dict[human]['B'] = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
                     else:
