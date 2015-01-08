@@ -174,7 +174,7 @@ class PopulationVariantQuery(APIView):
             bases = tile_variant.getBaseGroupBetweenPositions(lower_base_position, higher_base_position).upper()
         return cgf_str, bases
 
-    def get_cgf_translator(self, locuses):
+    def get_cgf_translator(self, locuses, low_int, high_int):
         num_locuses = locuses.count()
         cgf_translator = [{} for i in range(num_locuses)]
         for i, locus in enumerate(locuses):
@@ -223,7 +223,7 @@ class PopulationVariantQuery(APIView):
         max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
 
         #Create cgf_translator for each position
-        cgf_translator_by_position = self.get_cgf_translator(locuses)
+        cgf_translator_by_position = self.get_cgf_translator(locuses, low_int, high_int)
 
         #Add spanning tiles to cgf_translator
         spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(first_tile_position_int)
