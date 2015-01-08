@@ -265,8 +265,12 @@ class PopulationVariantQuery(APIView):
                     if 'A' in human_sequence_dict[human]:
                         curr_ending_tag = human_sequence_dict[human]['A'][-TAG_LENGTH:]
                         new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
-                        assert curr_ending_tag.endswith(new_starting_tag), "phase A tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
-                            tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][0]))
+                        if curr_ending_tag >= new_starting_tag:
+                            assert curr_ending_tag.endswith(new_starting_tag), "phase A tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
+                                tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][0]))
+                        else:
+                            assert new_starting_tag.startswith(curr_ending_tag), "phase A tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
+                                tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][0]))
                         human_sequence_dict[human]['A'] += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
                     else:
                         human_sequence_dict[human]['A'] = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
@@ -288,8 +292,12 @@ class PopulationVariantQuery(APIView):
                     if 'B' in human_sequence_dict[human]:
                         curr_ending_tag = human_sequence_dict[human]['B'][-TAG_LENGTH:]
                         new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
-                        assert curr_ending_tag.endswith(new_starting_tag), "phase B tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
-                            tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][1]))
+                        if curr_ending_tag >= new_starting_tag
+                            assert curr_ending_tag.endswith(new_starting_tag), "phase B tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
+                                tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][1]))
+                        else:
+                            assert new_starting_tag.startswith(curr_ending_tag), "phase B tags do not match for human %s at position %s \n %s \n %s \n%s" % (human,
+                                tile_position_str, curr_ending_tag, new_starting_tag, str(humans[human][1]))
                         human_sequence_dict[human]['B'] += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
                     else:
                         human_sequence_dict[human]['B'] = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
