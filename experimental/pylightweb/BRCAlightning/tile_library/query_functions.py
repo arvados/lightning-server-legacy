@@ -119,7 +119,7 @@ def get_population_sequences_at_position(position_hex_string, error_check=True, 
         'Dataset':'all',
         'Note':'Expects entire population set to be returned with their phase A and phase B variant ids',
         'SampleId':[],
-        'TileGroupVariantId':[position_hex_string]
+        'TilePosition': [position_hex_string]
     }
     post_data = json.dumps(post_data)
     try:
@@ -156,7 +156,7 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
         'Dataset':'all',
         'Note':'Expects entire population set to be returned with their phase A and phase B variant ids',
         'SampleId':[],
-        'TileGroupVariantId':[position_hex_string+"+"+str(length_to_retrieve)]
+        'TilePosition':[position_hex_string+"+"+str(length_to_retrieve)]
     }
     post_data = json.dumps(post_data)
     try:
