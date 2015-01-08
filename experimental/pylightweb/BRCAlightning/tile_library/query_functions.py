@@ -109,7 +109,7 @@ def get_population_sequences_at_position(position_hex_string, error_check=True, 
         (dictionary. keys are human names, values are [phase_A_cgf_string, phase_B_cgf_string])
     """
     if error_check:
-        human_names = get_population_and_check_lantern_version()
+        human_names = get_population_names_and_check_lantern_version()
         human_names = sorted(human_names)
     else:
         assert human_names != None, "Must supply list of human names if not error checking"
@@ -146,7 +146,7 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
     Returns the phase A and phase B variant ids of the entire population at the position pointed to by position_hex_string
         (dictionary. keys are human names, values are [[phase_A_cgf_string1, phase_A_cgf_string2, ...], [phase_B_cgf_string1, phase_B_cgf_string2, ...]])
     """
-    human_names = get_population_and_check_lantern_version()
+    human_names = get_population_names_and_check_lantern_version()
     human_names = sorted(human_names)
     assert last_position_int >= first_position_int, "Expects first_position_int to be less than last_position_int"
     position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int)
