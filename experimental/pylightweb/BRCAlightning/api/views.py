@@ -151,8 +151,8 @@ class PopulationVariantQueryLantern001(APIView):
 
 class PopulationVariantQuery(APIView):
     """
-    Retrieve population sequences at position "target_base" (with "number_around" bases around "target_base" also retrieved)
-    Requires lantern 0.0.3
+    Retrieve population sequences at position "target_base" (with "number_around" bases around "target_base" also retrieved).
+    Requires lantern version 0.0.3
     """
     def get_tile_variant_cgf_str_and_bases(self, tile_variant, low_int, high_int, assembly):
         tile_position_int = basic_fns.convert_tile_variant_int_to_position_int(int(tile_variant.tile_variant_name))
@@ -220,7 +220,7 @@ class PopulationVariantQuery(APIView):
         last_tile_position_int = int(locuses.last().tile_id)
 
         #Get maximum number of spanning tiles
-        max_num_spanning_tiles = get_max_num_tiles_spanned_at_position(tile_position_int)
+        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(tile_position_int)
 
         #Create cgf_translator for each position
         cgf_translator_by_position = self.get_cgf_translator(locuses)
