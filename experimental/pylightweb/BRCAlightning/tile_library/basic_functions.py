@@ -33,7 +33,7 @@ def get_position_string_from_position_int(position_int):
     """
     path, version, step = convert_position_int_to_position_hex_str(position_int)
     return string.join([path, version, step], ".")
-    
+
 def get_position_ints_from_position_int(position_int):
     """Returns integers for path, version, and step for tile position
     Expects integer, returns 3 integers
@@ -47,7 +47,7 @@ def get_tile_variant_string_from_tile_variant_int(tile_variant_int):
     """
     path, version, step, var = convert_tile_variant_int_to_tile_hex_str(tile_variant_int)
     return string.join([path, version, step, var], ".")
- 
+
 def get_tile_variant_ints_from_tile_variant_int(tile_variant_int):
     """Returns integers for path, version, step, and variant for tile variant
     Expects integer, returns 4 integers
@@ -68,4 +68,3 @@ def convert_tile_variant_int_to_position_int(tile_variant_int):
     """
     path, version, step, var = convert_tile_variant_int_to_tile_hex_str(tile_variant_int)
     return int(path+version+step,16)
-
