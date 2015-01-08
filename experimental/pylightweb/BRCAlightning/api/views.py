@@ -169,11 +169,11 @@ class PopulationVariantQuery(APIView):
 
         end_variant_int = start_locus_int + int(tile_variant.length)
         if end_variant_int == end_locus_int: # tile is same length as reference. Everything is fine
-            higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
+            higher_base_position = min(high_int+1, end_locus_int+1) - (start_locus_int+1) #add 1 for 0-indexing compatability
         elif end_variant_int < end_locus_int: # tile is missing at least one base
-            higher_base_position = min(high_int+1, end_variant_int) - (start_locus_int+1) #add 1 for 0-indexing compatability
+            higher_base_position = min(high_int+1, end_variant_int+1) - (start_locus_int+1) #add 1 for 0-indexing compatability
         else: #tile has at least an extra base
-            higher_base_position = min(high_int+1, end_locus_int) - (start_locus_int+1) + (end_variant_int-end_locus_int) #add 1 for 0-indexing compatability
+            higher_base_position = min(high_int+1, end_locus_int+1) - (start_locus_int+1) + (end_variant_int-end_locus_int) #add 1 for 0-indexing compatability
 
         lower_base_position = max(low_int-start_locus_int, 0)
         if lower_base_position == higher_base_position+1:
@@ -276,6 +276,7 @@ class PopulationVariantQuery(APIView):
                     sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
                 else:
                     sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
+        return sequence
 
     def get_population_sequences(self, first_tile_position_int, last_tile_position_int, max_num_spanning_variants, cgf_translator):
         humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
