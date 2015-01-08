@@ -246,6 +246,7 @@ class PopulationVariantQuery(APIView):
                     num_positions_spanned = 0
                 non_spanning_cgf_string = cgf_string.split('+')[0]
                 tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1], ''),16)
+                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions"
                 if tile_position_int+num_positions_spanned >= first_tile_position_int:
                     if 'A' in human_sequence_dict[human]:
                         curr_ending_tag = human_sequence_dict[human]['A'][-TAG_LENGTH:]
@@ -263,13 +264,14 @@ class PopulationVariantQuery(APIView):
                     num_positions_spanned = 0
                 non_spanning_cgf_string = cgf_string.split('+')[0]
                 tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1],''),16)
+                assert len(cgf_translator) > tile_position_int-first_tile_position_int, "Translator doesn't include enough positions"
                 if tile_position_int+num_positions_spanned >= first_tile_position_int:
                     if 'B' in human_sequence_dict[human]:
                         curr_ending_tag = human_sequence_dict[human]['B'][-TAG_LENGTH:]
                         new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
-                        assert curr_ending_tag.ednswith(new_starting_tag), "phase B tags do not match for human %s at position %s \n %s \n %s" % (human,
+                        assert curr_ending_tag.endswith(new_starting_tag), "phase B tags do not match for human %s at position %s \n %s \n %s" % (human,
                             basic_fns.get_position_string_from_position_int(tile_position_int), curr_ending_tag, new_starting_tag)
-                        human_sequence_dict[human]['B'] = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
+                        human_sequence_dict[human]['B'] += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
                     else:
                         human_sequence_dict[human]['B'] = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
         humans_with_sequences = []
