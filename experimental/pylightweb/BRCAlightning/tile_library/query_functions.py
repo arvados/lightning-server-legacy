@@ -76,7 +76,7 @@ def get_cgf_translator(locuses, low_int, high_int):
         high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
         tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
         for var in tile_variants:
-            cgf_str, bases = self.get_tile_variant_cgf_str_and_bases_fast(var, low_int, high_int, start_locus_int, end_locus_int)
+            cgf_str, bases = get_tile_variant_cgf_str_and_bases_fast(var, low_int, high_int, start_locus_int, end_locus_int)
             assert cgf_str not in cgf_translator[i], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
             cgf_translator[i][cgf_str] = bases
     return cgf_translator
