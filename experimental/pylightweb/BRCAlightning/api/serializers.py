@@ -12,6 +12,16 @@ class LocusSerializer(serializers.ModelSerializer):
         model = TileLocusAnnotation
         fields = ('assembly', 'chromosome', 'begin_int', 'end_int')
 
+class GenomeVariantInTileVariantSerializer(serializers.Serializer):
+    tile_variant_hex_string = serializers.CharField(max_length=15)
+    start_locus_relative_to_tile = serializers.IntegerField()
+    end_locus_relative_to_tile = serializers.IntegerField()
+    start_locus_relative_to_ref = serializers.IntegerField()
+    end_locus_relative_to_ref = serializers.IntegerField()
+    reference_bases = serializers.CharField()
+    alternate_bases = serializers.CharField()
+
+
 class PopulationVariantSerializer(serializers.Serializer):
     human_name = serializers.CharField(max_length=200)
     phase_A_sequence = serializers.CharField(style={'type': 'textarea'})

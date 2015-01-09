@@ -1,6 +1,7 @@
 import json
 import requests
 import re
+import string
 
 from django.db.models import Q
 
@@ -40,30 +41,98 @@ def get_tile_variants_spanning_into_position(tile_position_int):
         spanning_tile_variants = TileVariant.objects.filter(curr_Q).all()
     return spanning_tile_variants
 
-def get_tile_variant_cgf_str_and_bases(tile_variant, low_int, high_int, assembly):
+def get_tile_variant_cgf_str_and_n_bases_after(tile_variant, n):
+    cgf_str = tile_variant.conversion_to_cgf
+    actual_n = min(n, tile_variant.length)
+    bases = tile_variant.getBaseGroupBetweenPositions(0, actual_n).upper()
+    return cgf_str, bases
+
+def get_tile_variant_cgf_str_and_n_bases_before(tile_variant, n):
+    cgf_str = tile_variant.conversion_to_cgf
+    tile_length = tile_variant.length
+    actual_n = min(n, tile_length)
+    bases = tile_variant.getBaseGroupBetweenPositions(tile_length-actual_n, tile_length).upper()
+    return cgf_str, bases
+
+def get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(tile_variant, low_int, high_int, assembly):
     tile_position_int = basic_fns.convert_tile_variant_int_to_position_int(int(tile_variant.tile_variant_name))
     locus = TileLocusAnnotation.object.filter(assembly=assembly).get(tile_id=tile_position_int)
     start_locus_int = int(locus.start_int)
     end_locus_int = int(locus.end_int)
-    return get_tile_variant_cgf_str_and_bases_fast(tile_variant, low_int, high_int, start_locus_int, end_locus_int)
+    return get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, low_int, high_int, start_locus_int, end_locus_int)
 
-def get_tile_variant_cgf_str_and_bases_fast(tile_variant, low_int, high_int, start_locus_int, end_locus_int):
+def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, low_int, high_int, start_locus_int, end_locus_int):
     cgf_str = tile_variant.conversion_to_cgf
     assert cgf_str != "", "CGF translation required"
     assert low_int <= end_locus_int, "Asked to get information of tile_variant that is before the low base of interest"
     assert high_int >= start_locus_int, "Asked to get information of tile_variant that is after the high base of interest"
-
-    end_variant_int = start_locus_int + int(tile_variant.length)
-    if end_variant_int == end_locus_int: # tile is same length as reference. Everything is fine
-        higher_base_position = min(high_int, end_locus_int) - start_locus_int #add 1
-    else: # tile is a different length from the default
-        #Need to weigh high_int so we actually retrieve the correct locus!
-        amt_to_add = end_variant_int - end_locus_int
-        higher_base_position = min(high_int+amt_to_add, end_variant_int) - (start_locus_int)
-
-    lower_base_position = max(low_int-start_locus_int, 0)
-    bases = tile_variant.getBaseGroupBetweenPositions(lower_base_position, higher_base_position).upper()
-    return cgf_str, bases
+    #If we are asked to retrieve the entire tile, our job is easy:
+    if end_locus_int <= high_int and start_locus_int >= low_int:
+        return cgf_str, tile_variant.sequence.upper()
+    else:
+        assert end_locus_int >= start_locus_int, \
+            "TileLocusAnnotation for tile %s is-malformed. The end locus is smaller than the start locus." % (string.join(cgf_str.split('.')[:-1], '.'))
+        tile_variant_end_position = start_locus_int + int(tile_variant.length)
+        reference_to_tile_variant = [(start_locus_int, start_locus_int), (end_locus_int, tile_variant_end_position)]
+        genome_variant_positions = tile_variant.translation_to_genome_variant.all()
+        for translation in genome_variant_positions:
+            genome_variant_start_position = translation.start + start_locus_int
+            genome_variant_end_position = translation.end + start_locus_int
+            assert genome_variant_start_position >= start_locus_int, \
+                "%s is malformed.  The start position of the variant is smaller than the start locus." % (str(translation))
+            assert genome_variant_end_position >= start_locus_int, \
+                "%s is malformed.  The end position of the variant is smaller than the start locus." % (str(translation))
+            assert genome_variant_start_position <= tile_variant_end_position, \
+                "%s is malformed.  The start position of the variant is larger than the variant length." % (str(translation))
+            assert genome_variant_end_position <= tile_variant_end_position, \
+                "%s is malformed.  The end position of the variant is larger than the variant length." % (str(translation))
+            assert genome_variant_start_position <= genome_variant_end_position, \
+                "%s is malformed. The variant ends before it begins." %s (str(translation))
+            # we only need to add if the variant is an INDEL
+            if genome_variant_start_position != genome_variant_end_position+1:
+                genome_variant_locus_start_position = translation.genome_variant.start_increment + start_locus_int
+                genome_variant_locus_end_position = translation.genome_variant.end_increment + start_locus_int
+                assert (genome_variant_locus_start_position, genome_variant_start_position) not in reference_to_tile_variant, \
+                    "Database is malformed. Two variants at the exact same place" + str(sorted(reference_to_tile_variant))
+                reference_to_tile_variant.append((genome_variant_locus_start_position, genome_variant_start_position))
+                reference_to_tile_variant.append((genome_variant_locus_end_position, genome_variant_end_position))
+        reference_to_tile_variant.sort()
+        if len(reference_to_tile_variant) == 2: #Only have SNPs, no calls, or the tile is reference. Positional numbers don't change
+            higher_base_index = min(high_int, end_locus_int) - start_locus_int
+            lower_base_index = max(low_int-start_locus_int, 0)
+        else:
+            higher_base_index = end_locus_int - start_locus_int
+            for i, (locus_point, variant_point) in enumerate(reference_to_tile_variant[1:]):
+                prev_locus_point = reference_to_tile_variant[i][0]
+                prev_variant_point = reference_to_tile_variant[i][1]
+                length_of_ref = locus_point - prev_locus_point
+                length_of_var = variant_point - prev_variant_point
+                if length_of_var == 0:
+                    #We are in a deletion
+                    assert length_of_ref > 0, "Reference length is 0 and variant length is 0. WTF?"
+                    if low_int <= locus_point:
+                        lower_base_index = prev_variant_point
+                    if high_int <= locus_point:
+                        higher_base_index = prev_variant_point
+                elif length_of_ref == length_of_var:
+                    #We are in one of the consistent areas
+                    if low_int <= locus_point:
+                        length_of_query = low_int - prev_locus_point
+                        lower_base_index = prev_variant_point + length_of_query
+                    if high_int <= locus_point:
+                        length_of_query = high_int - prev_locus_point
+                        higher_base_index = prev_variant_point + length_of_query
+                else:
+                    #The way I believe variants are built, we will never be in an insertion
+                    #We are in a substitution. All hopes are lost
+                    if low_int <= locus_point:
+                        length_of_query = low_int - prev_locus_point
+                        lower_base_index = prev_variant_point + min(length_of_query, length_of_var)
+                    if high_int <= locus_point:
+                        length_of_query = high_int - prev_locus_point
+                        higher_base_index = prev_variant_point + min(length_of_query, length_of_var)
+        bases = tile_variant.getBaseGroupBetweenPositions(lower_base_index, higher_base_index).upper()
+        return cgf_str, bases
 
 def get_cgf_translator(locuses, low_int, high_int):
     num_locuses = locuses.count()
@@ -76,7 +145,7 @@ def get_cgf_translator(locuses, low_int, high_int):
         high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
         tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
         for var in tile_variants:
-            cgf_str, bases = get_tile_variant_cgf_str_and_bases_fast(var, low_int, high_int, start_locus_int, end_locus_int)
+            cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, end_locus_int)
             assert cgf_str not in cgf_translator[i], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
             cgf_translator[i][cgf_str] = bases
     return cgf_translator
