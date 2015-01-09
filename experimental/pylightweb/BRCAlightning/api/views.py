@@ -1,7 +1,7 @@
 import string
 
 from django.http import Http404
-from api.serializers import VariantSerializer, LocusSerializer, GenomeVariantInTileVariantSerializer, PopulationQuerySerializer, PopulationVariantSerializer
+from api.serializers import VariantSerializer, LocusSerializer, GenomeVariantInTileVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer, PopulationVariantSerializer
 from rest_framework import generics
 from rest_framework import permissions
 from rest_framework import status
