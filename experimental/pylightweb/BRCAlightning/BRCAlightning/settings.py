@@ -51,7 +51,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'django_extensions',
-    'debug_toolbar',
+#    'debug_toolbar',
     'bootstrapform',
     'rest_framework',
     'home',
