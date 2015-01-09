@@ -235,7 +235,7 @@ class GenomeVariant(models.Model):
 
 class GenomeVariantTranslation(models.Model):
     """
-    Implements the Many-to-Many relation between GenomeVariant and TileVariant as well as easy translation between
+    Implements the Many-to-Many relation between GenomeVariant and TileVariant as well the translation between them
 
     Values in database:
         tile_variant (foreignkey): the id of the TileVariant
@@ -248,19 +248,17 @@ class GenomeVariantTranslation(models.Model):
     start = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant")
     end = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant. Exclusive")
     def __unicode__(self):
-        return tile_variant.__unicode__() + " translation to Genome Variant id " + str(genome_variant.id)
+        return self.tile_variant.__unicode__() + " translation to Genome Variant. (id: " + str(self.genome_variant.id) + ")"
     class Meta:
         unique_together = ("tile_variant", "genome_variant")
 
 class TileLocusAnnotation(models.Model):
     """
-    Implements mapping to enable translations between assembly loci and tile id
+    Implements mapping to enable translations between assembly loci and tile id.
 
     Example input from FASTJ:
-        Tile x  : {"build":"hg19 chr9 135900000-24 135900225"} => begin_int: 135899976; end_int: 135900225
+        Tile x  : {"build":"hg19 chr9 135900000-24 135900225"} => begin_int: 135900000; end_int: 135900225
         Tile x+1: {"build":"hg19 chr9 135900201 135900450"} => begin_int: 135900201; end_int: 135900450
-    begin_int: max(0, eval(input["build"][2]))
-    end_int: eval(input["build"][3])
 
     Values in database:
         assembly(positive small integer): the integer mapping to the name of the assembly;
