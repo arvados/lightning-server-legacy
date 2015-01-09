@@ -189,17 +189,19 @@ class PopulationVariantQueryBetweenLoci(APIView):
         return humans_with_sequences
 
     def get(self, request, format=None):
-        query_serializer = PopulationQuerySerializer(data=request.query_params)
+        query_serializer = PopulationRangeQuerySerializer(data=request.query_params)
         if query_serializer.is_valid():
             try:
-                target_base = int(query_serializer.data['target_base'])
+                lower_base = int(query_serializer.data['lower_base'])
+                upper_base = int(query_serializer.data['upper_base'])
                 if query_serializer.data['indexing'] == 1:
-                    target_base -= 1
+                    lower_base -= 1
+                    upper_base -= 1
                 first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator = self.get_variants_and_bases(
                     int(query_serializer.data['assembly']),
                     int(query_serializer.data['chromosome']),
-                    target_base,
-                    int(query_serializer.data['number_around']))
+                    lower_base,
+                    upper_base)
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator)
             except AssertionError as e:
                 return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)

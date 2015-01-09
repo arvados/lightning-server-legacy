@@ -38,3 +38,14 @@ class PopulationQuerySerializer(serializers.Serializer):
     indexing = serializers.ChoiceField(choices=INDEX_CHOICES)
     target_base = serializers.IntegerField()
     number_around = serializers.IntegerField()
+
+class PopulationRangeQuerySerializer(serializers.Serializer):
+    INDEX_CHOICES = (
+        (0, '0-indexed'),
+        (1, '1-indexed'),
+        )
+    assembly = serializers.ChoiceField(choices=TileLocusAnnotation.SUPPORTED_ASSEMBLY_CHOICES)
+    chromosome = serializers.ChoiceField(choices=TileLocusAnnotation.CHR_CHOICES)
+    indexing = serializers.ChoiceField(choices=INDEX_CHOICES)
+    lower_base = serializers.IntegerField()
+    upper_base = serializers.IntegerField()
