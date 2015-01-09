@@ -7,10 +7,10 @@ class VariantSerializer(serializers.ModelSerializer):
         model = TileVariant
         fields = ('tile_variant_name', 'num_positions_spanned', 'conversion_to_cgf', 'length', 'sequence', 'start_tag', 'end_tag')
 
-class VariantSerializer(serializers.ModelSerializer):
+class LocusSerializer(serializers.ModelSerializer):
     class Meta:
         model = TileLocusAnnotation
-        fields = ('assembly', 'chromosome', 'begin_int', 'end_int', 'tile')
+        fields = ('assembly', 'chromosome', 'begin_int', 'end_int')
 
 class PopulationVariantSerializer(serializers.Serializer):
     human_name = serializers.CharField(max_length=200)

@@ -31,7 +31,7 @@ class TileLocusAnnotationList(APIView):
     """
     def get(self, request, tile_hex_string, format=None):
         tile_id = int(tile_hex_string.replace('.', ''), 16)
-        locuses = TileLocusAnnotations.objects.filter(tile_id=tile_id).all()
+        locuses = TileLocusAnnotation.objects.filter(tile_id=tile_id).all()
         serializer = LocusSerializer(locuses, many=True)
         return Response(serializer.data)
 
