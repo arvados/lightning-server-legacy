@@ -49,7 +49,7 @@ class PopulationVariantQuery(APIView):
         Each entry in the list corresponds
         """
         low_int = target_base_int - number_bases_around
-        high_int = target_base_int + number_bases_around + 1
+        high_int = target_base_int + number_bases_around + 1 #non_inclusive!
         locuses = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
             begin_int__lt=high_int).filter(end_int__gte=low_int)
         num_locuses = locuses.count()
