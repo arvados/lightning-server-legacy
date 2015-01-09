@@ -405,6 +405,27 @@ func TestLookups( t *testing.T ) {
   s,found := cg.LookupABVCharCode( p )
   _ = s
   _ = found
+
+  /*
+  for i:=0; i<cg.ReservedCharCount; i++ {
+    ch,found := cg.LookupABVCharCode( 64-i )
+    if !found { t.Error( fmt.Errorf("LookupABVCharCode(%d) not found!", 64-i ) ) }
+    if ch != "#" {
+      t.Error( fmt.Errorf("LookupABVCharCode(%d) returned %s!", 64-i, ch) )
+    }
+  }
+  */
+
+  /*
+  for i:=0; i<(64-cg.ReservedCharCount); i++ {
+    ch,found := cg.LookupABVCharCode( i )
+    if !found { t.Error( fmt.Errorf("LookupABVCharCode(%d) not found!", i ) ) }
+    if (ch == "#") || (ch == "-") || (ch == "*") {
+      t.Error( fmt.Errorf("LookupABVCharCode(%d) returned %s!", i, ch) )
+    }
+  }
+  */
+
 }
 
 func TestLoad( t *testing.T ) {

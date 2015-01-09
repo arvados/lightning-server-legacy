@@ -119,6 +119,19 @@ func sample_position_variant_handler( w http.ResponseWriter, resp *LanternRespon
               p,s,tmv,e := gCGF[cgf_ind].LookupABVStartTileMapVariant( int(path), int(step) )
               if e!=nil { continue }
 
+              str_path := fmt.Sprintf("%x", path)
+              abv := gCGF[cgf_ind].ABV[str_path]
+              if (step>=0) && (int(step)<len(abv)) {
+                fmt.Printf(">>>> len(abv) %d, path %x (%s) step %x %s\n", len(abv), int(path), str_path, step, abv[step:step+1]  )
+              }
+
+              fmt.Printf(">>> tmv %d lentilemap %d \n", tmv, len(gCGF[0].TileMap) )
+
+              if tmv<0 {
+                fmt.Printf(">>> WARNING tmv (%d) < 0! for %s, path %x, step %x\n", tmv, name, int(path), int(step) )
+                continue
+              }
+
               tme := gCGF[0].TileMap[tmv]
 
               for allele:=0; allele<len(tme.Variant); allele++ {

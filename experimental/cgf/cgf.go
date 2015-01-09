@@ -10,7 +10,7 @@ import "strings"
 
 import "sort"
 
-var VERSION_STR string = "1.0"
+var VERSION_STR string = "1.1"
 var CGF_VERSION string = "0.4"
 
 type TileMapEntry struct {
@@ -668,16 +668,13 @@ func ( cg *CGF ) LookupABVStartTileMapVariant( path, step int ) ( p,s,v int, err
 // otherwise.
 //
 func ( cg *CGF ) LookupABVCharCode( tileMapPos int ) (string, bool) {
+
   if (tileMapPos < 0) || (tileMapPos >= len(cg.TileMap)) {
     return "#", false
   }
 
-  if tileMapPos >= len(cg.CanonicalCharMap) {
+  if tileMapPos >= (64-cg.ReservedCharCount) {
     return "#", true
-  }
-
-  if tileMapPos >= (len(cg.CanonicalCharMap)-cg.ReservedCharCount) {
-    return cg.CanonicalCharMap[tileMapPos:tileMapPos+1], true
   }
 
   return cg.CanonicalCharMap[tileMapPos:tileMapPos+1], true
