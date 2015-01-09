@@ -56,10 +56,10 @@ def get_tile_variant_cgf_str_and_bases_fast(tile_variant, low_int, high_int, sta
     end_variant_int = start_locus_int + int(tile_variant.length)
     if end_variant_int == end_locus_int: # tile is same length as reference. Everything is fine
         higher_base_position = min(high_int, end_locus_int) - start_locus_int #add 1
-    elif end_variant_int < end_locus_int: # tile is missing at least one base
-        higher_base_position = min(high_int, end_variant_int) - (start_locus_int)
-    else: #tile has at least an extra base
-        higher_base_position = min(high_int, end_variant_int) - (start_locus_int)
+    else: # tile is a different length from the default
+        #Need to weigh high_int so we actually retrieve the correct locus!
+        amt_to_add = end_variant_int - end_locus_int
+        higher_base_position = min(high_int+amt_to_add, end_variant_int) - (start_locus_int)
 
     lower_base_position = max(low_int-start_locus_int, 0)
     bases = tile_variant.getBaseGroupBetweenPositions(lower_base_position, higher_base_position).upper()
