@@ -25,12 +25,16 @@ class TileVariantDetail(generics.RetrieveAPIView):
     queryset = TileVariant.objects.all()
     serializer_class = VariantSerializer
 
-class TileLocusAnnotation(generics.RetrieveAPIView):
+class TileLocusAnnotationList(APIView):
     """
-    Retrieve a tile locus annotation
+    Retrieve the tile locus annotations for the tile position given by tile_hex_string
     """
-    queryset = TileLocusAnnotation.objects.all()
-    serializer_class = LocusSerializer
+    def get(self, request, tile_hex_string, format=None):
+        tile_id = int(tile_hex_string.replace('.', ''), 16)
+        locuses = TileLocusAnnotations.objects.filter(tile_id=tile_id).all()
+        serializer = LocusSerializer(locuses, many=True)
+        return Response(serializer.data)
+
 
 class PopulationVariantQuery(APIView):
     """
