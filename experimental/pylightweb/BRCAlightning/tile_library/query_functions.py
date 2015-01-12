@@ -72,29 +72,37 @@ def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, lo
     else:
         assert end_locus_int >= start_locus_int, \
             "TileLocusAnnotation for tile %s is-malformed. The end locus is smaller than the start locus." % (string.join(cgf_str.split('.')[:-1], '.'))
-        tile_variant_end_position = start_locus_int + int(tile_variant.length)
-        reference_to_tile_variant = [(start_locus_int, start_locus_int), (end_locus_int, tile_variant_end_position)]
+        reference_to_tile_variant = [(0, 0), (end_locus_int-start_locus_int, tile_variant.length)]
         genome_variant_positions = tile_variant.translation_to_genome_variant.all()
         for translation in genome_variant_positions:
-            genome_variant_start_position = translation.start + start_locus_int
-            genome_variant_end_position = translation.end + start_locus_int
-            assert genome_variant_start_position >= start_locus_int, \
+            ####################### ERROR CHECKING ######################################
+            genome_variant_start_position = translation.start
+            genome_variant_end_position = translation.end
+            assert genome_variant_start_position >= 0, \
                 "%s is malformed.  The start position of the variant is smaller than the start locus." % (str(translation))
-            assert genome_variant_end_position >= start_locus_int, \
+            assert genome_variant_end_position >= 0, \
                 "%s is malformed.  The end position of the variant is smaller than the start locus." % (str(translation))
-            assert genome_variant_start_position <= tile_variant_end_position, \
+            assert genome_variant_start_position <= tile_variant.length, \
                 "%s is malformed.  The start position of the variant is larger than the variant length." % (str(translation))
-            assert genome_variant_end_position <= tile_variant_end_position, \
+            assert genome_variant_end_position <= tile_variant.length, \
                 "%s is malformed.  The end position of the variant is larger than the variant length." % (str(translation))
             assert genome_variant_start_position <= genome_variant_end_position, \
                 "%s is malformed. The variant ends before it begins." %s (str(translation))
+            ####################### END OF ERROR CHECKING ###############################
             # we only need to add if the variant is an INDEL
-            if genome_variant_start_position != genome_variant_end_position+1:
-                genome_variant_locus_start_position = translation.genome_variant.start_increment + start_locus_int
-                genome_variant_locus_end_position = translation.genome_variant.end_increment + start_locus_int
+            genome_variant = translation.genome_variant
+            ref_bases = genome_variant.reference_bases
+            alt_bases = genome_variant.alternate_bases
+            if len(ref_bases) != len(alt_bases) or '-' in ref_bases or '-' in alt_bases:
+                genome_variant_locus_start_position = genome_variant.start_increment
+                genome_variant_locus_end_position = genome_variant.end_increment
                 assert (genome_variant_locus_start_position, genome_variant_start_position) not in reference_to_tile_variant, \
                     "Database is malformed. Two variants at the exact same place" + str(sorted(reference_to_tile_variant))
                 reference_to_tile_variant.append((genome_variant_locus_start_position, genome_variant_start_position))
+                if alt_bases == '-':
+                    end_index = genome_variant_start_position
+                else:
+                    end_index = genome_variant_start_position + len(alt_bases)
                 reference_to_tile_variant.append((genome_variant_locus_end_position, genome_variant_end_position))
         reference_to_tile_variant.sort()
         if len(reference_to_tile_variant) == 2: #Only have SNPs, no calls, or the tile is reference. Positional numbers don't change
@@ -109,7 +117,7 @@ def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, lo
                 length_of_var = variant_point - prev_variant_point
                 if length_of_var == 0:
                     #We are in a deletion
-                    assert length_of_ref > 0, "Reference length is 0 and variant length is 0. WTF?"
+                    assert length_of_ref > 0, "Reference length is 0 and variant length is 0. WTF? %s; %s" % (tile_variant, str(reference_to_tile_variant))
                     if low_int <= locus_point:
                         lower_base_index = prev_variant_point
                     if high_int <= locus_point:
