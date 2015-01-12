@@ -70,6 +70,8 @@ def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, lo
     if end_locus_int <= high_int and start_locus_int >= low_int:
         return cgf_str, tile_variant.sequence.upper()
     else:
+        low_int = max(low_int - start_locus_int, 0)
+        high_int -= start_locus_int
         assert end_locus_int >= start_locus_int, \
             "TileLocusAnnotation for tile %s is-malformed. The end locus is smaller than the start locus." % (string.join(cgf_str.split('.')[:-1], '.'))
         reference_to_tile_variant = [(0, 0), (end_locus_int-start_locus_int, tile_variant.length)]
@@ -103,44 +105,39 @@ def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, lo
                     end_index = genome_variant_start_position
                 else:
                     end_index = genome_variant_start_position + len(alt_bases)
-                reference_to_tile_variant.append((genome_variant_locus_end_position, genome_variant_end_position))
+                reference_to_tile_variant.append((genome_variant_locus_end_position, end_index))
         reference_to_tile_variant.sort()
         if len(reference_to_tile_variant) == 2: #Only have SNPs, no calls, or the tile is reference. Positional numbers don't change
-            higher_base_index = min(high_int, end_locus_int) - start_locus_int
-            lower_base_index = max(low_int-start_locus_int, 0)
+            lower_base_index = max(low_int, 0)
+            higher_base_index = min(high_int, end_locus_int-start_locus_int)
         else:
-            higher_base_index = end_locus_int - start_locus_int
-            for i, (locus_point, variant_point) in enumerate(reference_to_tile_variant[1:]):
-                prev_locus_point = reference_to_tile_variant[i][0]
-                prev_variant_point = reference_to_tile_variant[i][1]
-                length_of_ref = locus_point - prev_locus_point
-                length_of_var = variant_point - prev_variant_point
-                if length_of_var == 0:
-                    #We are in a deletion
-                    assert length_of_ref > 0, "Reference length is 0 and variant length is 0. WTF? %s; %s" % (tile_variant, str(reference_to_tile_variant))
-                    if low_int <= locus_point:
-                        lower_base_index = prev_variant_point
-                    if high_int <= locus_point:
-                        higher_base_index = prev_variant_point
-                elif length_of_ref == length_of_var:
-                    #We are in one of the consistent areas
-                    if low_int <= locus_point:
-                        length_of_query = low_int - prev_locus_point
-                        lower_base_index = prev_variant_point + length_of_query
-                    if high_int <= locus_point:
-                        length_of_query = high_int - prev_locus_point
-                        higher_base_index = prev_variant_point + length_of_query
-                else:
-                    #The way I believe variants are built, we will never be in an insertion
-                    #We are in a substitution. All hopes are lost
-                    if low_int <= locus_point:
-                        length_of_query = low_int - prev_locus_point
-                        lower_base_index = prev_variant_point + min(length_of_query, length_of_var)
-                    if high_int <= locus_point:
-                        length_of_query = high_int - prev_locus_point
-                        higher_base_index = prev_variant_point + min(length_of_query, length_of_var)
+            lower_base_index = get_index(low_int, reference_to_tile_variant)
+            higher_base_index = get_index(high_int, reference_to_tile_variant)
         bases = tile_variant.getBaseGroupBetweenPositions(lower_base_index, higher_base_index).upper()
         return cgf_str, bases
+
+def get_index(locus_bound, locus_converter):
+    prev_locus_point, prev_variant_point = locus_converter[0]
+    for locus_point, variant point in locus_converter[1:]:
+        if locus_bound <= locus_point:
+            break
+        prev_locus_point, prev_variant_point = locus_point, variant_point
+    if locus_bound > locus_point:
+        return variant_point
+    length_of_ref = locus_point - prev_locus_point
+    length_of_var = variant_point - prev_variant_point
+    length_of_query = locus_bound - prev_locus_point
+    if length_of_var == 0:
+        # we are in a deletion
+        assert length_of_ref > 0, "Reference length and variant length are 0. Variant: %s; Conversion list: %s. " % (tile_variant, str(reference_to_tile_variant))
+        return prev_variant_point
+    elif length_of_ref == length_of_var:
+        # we are in a consistent area
+        return prev_variant_point + length_of_query
+    else:
+        #The way I believe variants are built, we will never be in an insertion
+        #We are in a substitution. All hopes are lost
+        return prev_variant_point + min(length_of_query, length_of_var)
 
 def get_cgf_translator(locuses, low_int, high_int):
     num_locuses = locuses.count()
