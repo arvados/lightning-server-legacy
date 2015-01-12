@@ -56,14 +56,14 @@ def get_tile_variant_cgf_str_and_n_bases_before(tile_variant, n):
 
 def get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(tile_variant, low_int, high_int, assembly):
     lower_tile_position_int = basic_fns.convert_tile_variant_int_to_position_int(int(tile_variant.tile_variant_name))
-    lower_locus = TileLocusAnnotation.object.filter(assembly=assembly).get(tile_id=tile_position_int)
-    start_locus_int = int(lower_locus.start_int)
+    lower_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=lower_tile_position_int)
+    start_locus_int = int(lower_locus.begin_int)
     if tile_variant.num_positions_spanned == 1:
         end_locus_int = int(locus.end_int)
         return get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, low_int, high_int, start_locus_int, end_locus_int)
     else:
         upper_tile_position_int = lower_tile_position_int + tile_variant.num_positions_spanned - 1
-        upper_locus = TileLocusAnnotation.object.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
+        upper_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
         end_locus_int = int(upper_locus.end_int)
         return get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, low_int, high_int, start_locus_int, end_locus_int)
 
@@ -158,10 +158,11 @@ def get_cgf_translator(locuses, low_int, high_int, assembly):
         for var in tile_variants:
             if var.num_positions_spanned != 1:
                 upper_tile_position_int = tile_position_int + var.num_positions_spanned - 1
-                upper_locus = TileLocusAnnotation.object.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
+                upper_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
                 large_end_locus_int = int(upper_locus.end_int)
                 cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, large_end_locus_int)
-            cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, end_locus_int)
+            else:
+                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, end_locus_int)
             assert cgf_str not in cgf_translator[i], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
             cgf_translator[i][cgf_str] = bases
     return cgf_translator

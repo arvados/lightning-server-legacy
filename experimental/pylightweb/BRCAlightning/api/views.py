@@ -154,7 +154,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
             if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
                 if tile_position_int - first_tile_position_int < 0:
                     tile_position_int = first_tile_position_int
-                assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], "Translator doesn't include %s in position %i" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int)
+                assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, str(cgf_translator))
                 if len(sequence) > 0:
                     curr_ending_tag = sequence[-TAG_LENGTH:]
                     new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
