@@ -125,7 +125,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
         max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
 
         #Create cgf_translator for each position
-        cgf_translator_by_position = query_fns.get_cgf_translator(locuses, low_int, high_int)
+        cgf_translator_by_position = query_fns.get_cgf_translator(locuses, low_int, high_int, assembly)
 
         #Add spanning tiles to cgf_translator
         spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(first_tile_position_int)
@@ -154,6 +154,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
             if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
                 if tile_position_int - first_tile_position_int < 0:
                     tile_position_int = first_tile_position_int
+                assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], "Translator doesn't include %s in position %i" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int)
                 if len(sequence) > 0:
                     curr_ending_tag = sequence[-TAG_LENGTH:]
                     new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
