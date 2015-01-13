@@ -267,9 +267,9 @@ class PopulationVariantQuery(APIView):
 
         return first_tile_position_int, last_tile_position_int, cgf_translator_by_position, center_cgf_translator
 
-    def helper_get_bases_forward(self, curr_sequence, cgf_string, translator, num_bases_around):
+    def helper_get_bases_forward(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print):
         non_spanning_cgf_string = cgf_string.split('+')[0]
-        assert non_spanning_cgf_string in translator, "Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(translator))
+        assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(sorted(translator.keys())))
         if len(curr_sequence) > 1:
             curr_ending_tag = curr_sequence[-TAG_LENGTH:]
             new_starting_tag = translator[non_spanning_cgf_string][:TAG_LENGTH]
@@ -288,9 +288,9 @@ class PopulationVariantQuery(APIView):
         else:
             return new_sequence, False
 
-    def helper_get_bases_reverse(self, curr_sequence, cgf_string, translator, num_bases_around):
+    def helper_get_bases_reverse(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print):
         non_spanning_cgf_string = cgf_string.split('+')[0]
-        assert non_spanning_cgf_string in translator, "Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(translator))
+        assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(sorted(translator.keys())))
         if len(curr_sequence) > 1:
             curr_starting_tag = curr_sequence[:TAG_LENGTH]
             new_ending_tag = translator[non_spanning_cgf_string][-TAG_LENGTH:]
@@ -323,9 +323,11 @@ class PopulationVariantQuery(APIView):
         #Go forward
         for i, cgf_string in enumerate(sequence_of_tile_variants[middle_index:]):
             if i == 0:
-                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around)
+                string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, forward strand, position %s " % (len(cgf_translator), cgf_string)
+                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around, string_to_print)
             else:
-                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[i+middle_index+1], num_bases_around)
+                string_to_print += "(Success). Query: cgf_translator, index %i, middle_index %i, position %s " % (i+middle_index, middle_index, cgf_string)
+                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[i+middle_index], num_bases_around, string_to_print)
             forward_sequence += new_sequence
             if finished:
                 break
@@ -334,9 +336,11 @@ class PopulationVariantQuery(APIView):
         backward_tile_variant_seq.reverse()
         for i, cgf_string in enumerate(backward_tile_variant_seq):
             if i == 0:
-                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around)
+                string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, reverse strand, position %s " % (len(cgf_translator), cgf_string)
+                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around, string_to_print)
             else:
-                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, cgf_translator[middle_index - i], num_bases_around)
+                string_to_print += "(Success). Query: cgf_translator, index %i, middle_index %i, position %s " % (middle_index-i, middle_index, cgf_string)
+                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, cgf_translator[middle_index - i], num_bases_around, string_to_print)
             reverse_sequence = new_sequence + reverse_sequence
             if finished:
                 break
