@@ -254,16 +254,16 @@ class PopulationVariantQuery(APIView):
         locuses = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
             begin_int__lt=rough_high_int).filter(end_int__gte=rough_low_int).order_by('begin_int')
 
-        #Get maximum number of spanning tiles
-        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(int(locuses.first().tile_id))
-
         #Get framing tile position ints
-        first_tile_position_int =  int(locuses.first().tile_id) - max_num_spanning_tiles
-        last_tile_position_int = max(int(locuses.last().tile_id), int(locuses.first().tile_id))
+        first_tile_position_int =  int(locuses.first().tile_id)
+        last_tile_position_int = max(int(locuses.last().tile_id), first_tile_position_int)
+
+        #Get maximum number of spanning tiles
+        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
 
         #Create cgf_translator for each position
-        center_cgf_translator, cgf_translator_by_position = query_fns.get_cgf_translator_and_center_cgf_translator(locuses,
-            target_base_int, center_tile_position_int-first_tile_position_int, max_num_spanning_tiles)
+        center_index = center_tile_position_int-first_tile_position_int
+        center_cgf_translator, cgf_translator_by_position = query_fns.get_cgf_translator_and_center_cgf_translator(locuses, target_base_int, center_index, max_num_spanning_tiles, assembly)
 
         return first_tile_position_int, last_tile_position_int, cgf_translator_by_position, center_cgf_translator
 
@@ -314,13 +314,13 @@ class PopulationVariantQuery(APIView):
             non_spanning_cgf_string = cgf_string.split('+')[0]
             if non_spanning_cgf_string in center_cgf_translator[1]:
                 middle_index = i
-        assert middle_index != None, "Human %s did not have a cgf_string in the center_cgf_translator (%s)" % (human_name, str(center_cgf_translator))
+        assert middle_index != None, "Human %s did not have a cgf_string in the center_cgf_translator: %s" % (human_name, str(center_cgf_translator))
 
         sequence = center_cgf_translator[1][sequence_of_tile_variants[middle_index].split('+')[0]]
         forward_sequence = sequence
         reverse_sequence = sequence
         #Go forward
-        for i, cgf_string in enumerate(sequence_of_tile_variants[1+middle_index:]):
+        for i, cgf_string in enumerate(sequence_of_tile_variants[middle_index:]):
             if i == 0:
                 new_sequence, keep_going = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around)
             else:
@@ -329,13 +329,13 @@ class PopulationVariantQuery(APIView):
             if not keep_going:
                 break
         #go backward
-        backward_seq = sequence_of_tile_variants[:middle_index]
-        backward_seq.reverse()
-        for i, cgf_string in enumerate(backward_seq):
+        backward_tile_variant_seq = sequence_of_tile_variants[:middle_index+1]
+        backward_tile_variant_seq.reverse()
+        for i, cgf_string in enumerate(backward_tile_variant_seq):
             if i == 0:
-                new_sequence, keep_going = self.helper_get_bases_forward(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around)
+                new_sequence, keep_going = self.helper_get_bases_reverse(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around)
             else:
-                new_sequence, keep_going = self.helper_get_bases_forward(reverse_sequence, cgf_string, cgf_translator[middle_index - i], num_bases_around)
+                new_sequence, keep_going = self.helper_get_bases_reverse(reverse_sequence, cgf_string, cgf_translator[middle_index - i], num_bases_around)
             reverse_sequence = new_sequence + reverse_sequence
             if not keep_going:
                 break
