@@ -14,7 +14,7 @@ def get_max_num_tiles_spanned_at_position(tile_position_int):
     #raises AssertionError if tile_position_int is not an integer, negative, or an invalid tile position
     try:
         num_tiles_spanned = int(GenomeStatistic.objects.get(path_name=path_int).max_num_positions_spanned)
-        num_tiles_spanned = min(num_tiles_spanned, step_int+1) #Only need to look back as far as there are steps in this path
+        num_tiles_spanned = min(num_tiles_spanned-1, step_int) #Only need to look back as far as there are steps in this path
         return num_tiles_spanned
     except GenomeStatistic.DoesNotExist:
         raise Exception('GenomeStatistic for that path does not exist')
@@ -173,7 +173,7 @@ def get_cgf_translator(locuses, low_int, high_int, assembly):
     return cgf_translator
 
 def crosses_center_index(variant, i, center_index, max_num_spanned):
-    for num in range(max_num_spanned):
+    for num in range(max_num_spanned+1):
         if center_index-num == i and variant.num_positions_spanned > num+1:
             return True
     return False
@@ -323,8 +323,8 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
     human_names = get_population_names_and_check_lantern_version()
     human_names = sorted(human_names)
     position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int)
-    last_position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int)
-    assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" %s (position_hex_string, last_position_hex_string)
+    last_position_hex_string = basic_fns.get_position_string_from_position_int(last_position_int)
+    assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string, last_position_hex_string)
     length_to_retrieve = hex(last_position_int - first_position_int + 1).lstrip('0x')
     post_data = {
         'Type':'sample-position-variant',

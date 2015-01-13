@@ -258,11 +258,12 @@ class PopulationVariantQuery(APIView):
         max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(int(locuses.first().tile_id))
 
         #Get framing tile position ints
-        first_tile_position_int = max_num_spanning_tiles + int(locuses.first().tile_id)
-        last_tile_position_int = int(locuses.last().tile_id)
+        first_tile_position_int =  int(locuses.first().tile_id) - max_num_spanning_tiles
+        last_tile_position_int = max(int(locuses.last().tile_id), int(locuses.first().tile_id))
 
         #Create cgf_translator for each position
-        center_cgf_translator, cgf_translator_by_position = query_fns.get_cgf_translator_and_center_cgf_translator(locuses, target_base_int, center_tile_position_int-first_tile_position_int, max_num_spanning_tiles)
+        center_cgf_translator, cgf_translator_by_position = query_fns.get_cgf_translator_and_center_cgf_translator(locuses,
+            target_base_int, center_tile_position_int-first_tile_position_int, max_num_spanning_tiles)
 
         return first_tile_position_int, last_tile_position_int, cgf_translator_by_position, center_cgf_translator
 
@@ -347,10 +348,8 @@ class PopulationVariantQuery(APIView):
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = ['', '']
             human_sequence_dict[human][0] = self.get_bases_for_human(short_name, humans[human][0],
-                                                                     first_tile_position_int, last_tile_position_int,
                                                                      cgf_translator, center_cgf_translator, num_bases_around)
             human_sequence_dict[human][1] = self.get_bases_for_human(short_name, humans[human][1],
-                                                                     first_tile_position_int, last_tile_position_int,
                                                                      cgf_translator, center_cgf_translator, num_bases_around)
         humans_with_sequences = []
         for human in human_sequence_dict:
