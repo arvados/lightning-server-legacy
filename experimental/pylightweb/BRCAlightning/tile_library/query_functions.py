@@ -35,9 +35,9 @@ def get_tile_variants_spanning_into_position(tile_position_int):
     if num_tiles_spanned > 1:
         for i in range(2, num_tiles_spanned+1):
             if i == 2:
-                curr_Q = (Q(tile_id=tile_position_int-i) & Q(num_positions_spanned__gte=i))
+                curr_Q = (Q(tile_id=tile_position_int-i) & Q(num_positions_spanned__gt=i))
             else:
-                curr_Q = curr_Q | (Q(tile_id=tile_position_int-i) & Q(num_positions_spanned__gte=i))
+                curr_Q = curr_Q | (Q(tile_id=tile_position_int-i) & Q(num_positions_spanned__gt=i))
         spanning_tile_variants = TileVariant.objects.filter(curr_Q).all()
     return spanning_tile_variants
 
@@ -62,8 +62,8 @@ def get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(tile_variant, 
 def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, low_int, high_int, start_locus_int, end_locus_int):
     cgf_str = tile_variant.conversion_to_cgf
     assert cgf_str != "", "CGF translation required"
-    assert low_int <= end_locus_int, "Asked to get information of tile_variant that is before the low base of interest"
-    assert high_int >= start_locus_int, "Asked to get information of tile_variant that is after the high base of interest"
+    assert low_int <= end_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (str(tile_variant), low_int, high_int, start_locus_int, end_locus_int)
+    assert high_int >= start_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (str(tile_variant), low_int, high_int, start_locus_int, end_locus_int)
     #If we are asked to retrieve the entire tile, our job is easy:
     if end_locus_int <= high_int and start_locus_int >= low_int:
         return cgf_str, tile_variant.sequence.upper()
@@ -169,9 +169,9 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
     def manage_center_cgfs(center_cgf_translator, variant, start_locus_int, end_locus_int):
         lower_tile_position_int = int(variant.tile_id)
         if variant.num_positions_spanned != 1:
-            lower_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
-            start_locus_int = int(start_locus.begin_int)
-            upper_tile_position_int = tile_position_int + var.num_positions_spanned - 1
+            lower_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=lower_tile_position_int)
+            start_locus_int = int(lower_locus.begin_int)
+            upper_tile_position_int = lower_tile_position_int + var.num_positions_spanned - 1
             upper_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
             end_locus_int = int(upper_locus.end_int)
         cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, start_locus_int, target_base, start_locus_int, end_locus_int)
@@ -197,9 +197,11 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
         end_locus_int = int(locus.end_int)
         low_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int)
         high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
-        tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
+        tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()[:]
         if i == center_index:
-            tile_variants.extend(get_tile_variants_spanning_into_position(tile_position_int))
+            spanning_tile_variants = get_tile_variants_spanning_into_position(tile_position_int)
+            for var in spanning_tile_variants:
+                center_cgf_translator = manage_center_cgfs(center_cgf_translator, var, start_locus_int, end_locus_int)
         for var in tile_variants:
             if crosses_center_index(var, i, center_index, max_num_spanned):
                 center_cgf_translator = manage_center_cgfs(center_cgf_translator, var, start_locus_int, end_locus_int)

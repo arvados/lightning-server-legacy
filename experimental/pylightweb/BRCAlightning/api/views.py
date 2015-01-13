@@ -290,20 +290,20 @@ class PopulationVariantQuery(APIView):
     def helper_get_bases_reverse(self, curr_sequence, cgf_string, translator, num_bases_around):
         non_spanning_cgf_string = cgf_string.split('+')[0]
         if len(curr_sequence) > 1:
-            curr_ending_tag = curr_sequence[:TAG_LENGTH]
-            new_starting_tag = translator[non_spanning_cgf_string][-TAG_LENGTH:]
-            if len(curr_ending_tag) >= len(new_starting_tag):
-                assert curr_ending_tag.endswith(new_starting_tag), \
-                    "Tags do not match. Ending Tag: %s, Starting Tag: %s." % (curr_ending_tag, new_starting_tag)
+            curr_starting_tag = curr_sequence[:TAG_LENGTH]
+            new_ending_tag = translator[non_spanning_cgf_string][-TAG_LENGTH:]
+            if len(curr_starting_tag) >= len(new_ending_tag):
+                assert curr_starting_tag.startswith(new_ending_tag), \
+                    "Tags do not match. Prev Starting Tag: %s, New Ending Tag: %s." % (curr_starting_tag, new_ending_tag)
             else:
-                assert new_starting_tag.startswith(curr_ending_tag), \
-                    "Tags do not match. Ending Tag: %s, Starting Tag: %s." % (curr_ending_tag, new_starting_tag)
+                assert new_ending_tag.endswith(curr_starting_tag), \
+                    "Tags do not match. Prev Starting Tag: %s, New Ending Tag: %s." % (curr_starting_tag, new_ending_tag)
             new_sequence = translator[non_spanning_cgf_string][:-TAG_LENGTH]
         else:
             new_sequence = translator[non_spanning_cgf_string]
         if len(curr_sequence) + len(new_sequence) >= num_bases_around + 1:
-            amt_to_index_into = num_bases_around + 1 - len(curr_sequence)
-            return new_sequence[-amt_to_index_into:], True
+            amt_to_index_into = len(new_sequence) + len(curr_sequence) - (num_bases_around + 1)
+            return new_sequence[amt_to_index_into:], True
         else:
             return new_sequence, False
 
@@ -322,22 +322,22 @@ class PopulationVariantQuery(APIView):
         #Go forward
         for i, cgf_string in enumerate(sequence_of_tile_variants[middle_index:]):
             if i == 0:
-                new_sequence, keep_going = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around)
+                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around)
             else:
-                new_sequence, keep_going = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[i+middle_index], num_bases_around)
+                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[i+middle_index], num_bases_around)
             forward_sequence += new_sequence
-            if not keep_going:
+            if finished:
                 break
         #go backward
         backward_tile_variant_seq = sequence_of_tile_variants[:middle_index+1]
         backward_tile_variant_seq.reverse()
         for i, cgf_string in enumerate(backward_tile_variant_seq):
             if i == 0:
-                new_sequence, keep_going = self.helper_get_bases_reverse(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around)
+                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around)
             else:
-                new_sequence, keep_going = self.helper_get_bases_reverse(reverse_sequence, cgf_string, cgf_translator[middle_index - i], num_bases_around)
+                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, cgf_translator[middle_index - i], num_bases_around)
             reverse_sequence = new_sequence + reverse_sequence
-            if not keep_going:
+            if finished:
                 break
         return reverse_sequence + forward_sequence[1:]
 
