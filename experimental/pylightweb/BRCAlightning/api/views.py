@@ -1,4 +1,6 @@
 import string
+import traceback
+import sys
 
 from django.http import Http404
 from api.serializers import VariantSerializer, LocusSerializer, GenomeVariantInTileVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer, PopulationVariantSerializer
@@ -367,7 +369,6 @@ class PopulationVariantQuery(APIView):
                 target_base = int(query_serializer.data['target_base'])
                 if query_serializer.data['indexing'] == 1:
                     target_base -= 1
-                first_tile_position_int, last_tile_position_int, cgf_translator_by_position, center_cgf_translator
                 first_tile_position_int, last_tile_position_int, cgf_translator, center_cgf_translator = self.get_variants_and_bases(
                     int(query_serializer.data['assembly']),
                     int(query_serializer.data['chromosome']),
@@ -376,9 +377,9 @@ class PopulationVariantQuery(APIView):
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int,
                     cgf_translator, center_cgf_translator, int(query_serializer.data['number_around']))
             except AssertionError as e:
-                return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR )
             except Exception as e:
-                return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR )
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
