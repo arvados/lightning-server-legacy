@@ -8,6 +8,7 @@ urlpatterns = [
     url(r'^genomevariantsbytile/(?P<tile_hex_string>[0-9a-f\.]+)/$', views.GenomeVariantsInTileList.as_view()),
     url(r'^genomevariants/(?P<tile_variant_hex_string>[0-9a-f\.]+)/$', views.GenomeVariantsInTileVariantList.as_view()),
     url(r'^population/$', views.PopulationVariantQueryBetweenLoci.as_view(), name="variant_query"),
+    url(r'^around_locus_query/$', views.PopulationVariantQuery.as_view(), name="variant_query_n_bases"),
     url(r'^loci/(?P<tile_hex_string>[0-9a-f\.]+)/$', views.TileLocusAnnotationList.as_view(), name="locus_query"),
 ]
 

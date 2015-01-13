@@ -41,6 +41,11 @@ def get_tile_variants_spanning_into_position(tile_position_int):
         spanning_tile_variants = TileVariant.objects.filter(curr_Q).all()
     return spanning_tile_variants
 
+def get_tile_variant_cgf_str_and_all_bases(tile_variant):
+    cgf_str = tile_variant.conversion_to_cgf
+    bases = tile_variant.sequence.upper()
+    return cgf_str, bases
+
 def get_tile_variant_cgf_str_and_n_bases_after(tile_variant, n):
     cgf_str = tile_variant.conversion_to_cgf
     actual_n = min(n, tile_variant.length)
@@ -166,6 +171,48 @@ def get_cgf_translator(locuses, low_int, high_int, assembly):
             assert cgf_str not in cgf_translator[i], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
             cgf_translator[i][cgf_str] = bases
     return cgf_translator
+
+def crosses_center_index(variant, i, center_index, max_num_spanned):
+    for num in range(max_num_spanned):
+        if center_index-num == i and variant.num_positions_spanned > num+1:
+            return True
+    return False
+
+def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_index, max_num_spanned):
+    num_locuses = locuses.count()
+    cgf_translator = [{} for i in range(num_locuses)]
+    center_cgf_translator = [{}, {}, {}]
+
+    for i, locus in enumerate(locuses):
+        tile_position_int = int(locus.tile_id)
+        start_locus_int = int(locus.begin_int)
+        end_locus_int = int(locus.end_int)
+        low_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int)
+        high_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
+        tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()
+        for var in tile_variants:
+            if crosses_center_index(var, i, center_index, max_num_spanned):
+                if var.num_positions_spanned != 1:
+                    upper_tile_position_int = tile_position_int + var.num_positions_spanned - 1
+                    upper_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
+                    end_locus_int = int(upper_locus.end_int)
+                ##########################
+                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, start_locus_int, target_base, start_locus_int, end_locus_int)
+                assert cgf_str not in cgf_translator[0], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+                center_cgf_translator[0][cgf_str] = bases
+                ##########################
+                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, target_base, target_base+1, start_locus_int, end_locus_int)
+                assert cgf_str not in cgf_translator[1], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+                center_cgf_translator[1][cgf_str] = bases
+                ##########################
+                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, target_base+1, end_locus_int, start_locus_int, end_locus_int)
+                assert cgf_str not in cgf_translator[2], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+                center_cgf_translator[2][cgf_str] = bases
+            else:
+                cgf_str, bases = get_tile_variant_cgf_str_and_all_bases(var)
+                assert cgf_str not in cgf_translator[i], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+                cgf_translator[i][cgf_str] = bases
+    return center_cgf_translator, cgf_translator
 
 def get_population_with_tile_variant_long_names(cgf_string):
     """
