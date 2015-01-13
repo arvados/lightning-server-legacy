@@ -351,11 +351,13 @@ class PopulationVariantQuery(APIView):
             reverse_sequence = new_sequence + reverse_sequence
             if finished:
                 break
+            #Break before try to get the next one
             try:
-                if len(cgf_string.split('+')) == 1:
+                next_cgf_string = backward_tile_variant_seq[i+1]
+                if len(next_cgf_string.split('+')) == 1:
                     curr_cgf_translator_index -= 1
                 else:
-                    curr_cgf_translator_index -= int(cgf_string.split('+')[1],16)
+                    curr_cgf_translator_index -= int(next_cgf_string.split('+')[1],16)
             except IndexError:
                 raise Exception("Didn't query far enough backward.")
         return reverse_sequence + forward_sequence[1:]
