@@ -89,6 +89,7 @@ class GenomeVariantsInTileVariantList(APIView):
             return Response(serializer.data)
         except TileVariant.DoesNotExist:
             raise Http404
+
 class PopulationVariantQueryBetweenLoci(APIView):
     """
     Retrieve population sequences between position "lower_base" and "upper_base" (upper base is exclusive)
@@ -226,11 +227,19 @@ class PopulationVariantQuery(APIView):
             cgf_string : bases of interest. Includes tags!
         Each entry in the list corresponds to a position
         """
+        ######### Get center position #########
+        center_locus = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
+            begin_int__lte=target_base_int).filter(end_int__gt=target_base_int)
+        center_locus = locus.order_by('begin_int').first()
+        center_tile_position_int = int(center_locus.tile_id)
+
+        ######### Get locuses #########
         rough_low_int = target_base_int - number_bases_around
         rough_high_int = target_base_int + number_bases_around + 1 #non_inclusive!
         locuses = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
-            begin_int__lt=rough_high_int).filter(end_int__gte=rough_low_int)
+            begin_int__lt=rough_high_int).filter(end_int__gte=rough_low_int).prder_by('begin_int')
         num_locuses = locuses.count()
+
         #Return useful info if cannot complete query
         if num_locuses == 0:
             base_query = TileLocusAnnotation.objects.filter(assembly=assembly)
@@ -246,26 +255,19 @@ class PopulationVariantQuery(APIView):
                     response_text = "That locus is not loaded in this server. Try a number in the range %i to %i." % (smallest_int, largest_int)
             assert num_locuses > 0, response_text
 
+        #Get maximum number of spanning tiles
+        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(int(locuses.first().tile_id))
+
         #Get framing tile position ints
-        first_tile_position_int = int(locuses.first().tile_id)
+        first_tile_position_int = max_num_spanning_tiles + int(locuses.first().tile_id)
         last_tile_position_int = int(locuses.last().tile_id)
 
-        #Get maximum number of spanning tiles
-        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
-
         #Create cgf_translator for each position
-        cgf_translator_by_position = query_fns.get_cgf_translator(locuses, low_int, high_int)
+        center_cgf_translator, cgf_translator_by_position = query_fns.get_cgf_translator_and_center_cgf_translator(locuses, target_base_int, center_tile_position_int-first_tile_position_int, max_num_spanning_tiles)
 
-        #Add spanning tiles to cgf_translator
-        spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(first_tile_position_int)
-        for var in spanning_tile_variants:
-            cgf_str, bases = query_fns.get_tile_variant_cgf_str_and_bases(var, low_int, high_int, assembly)
-            assert cgf_str not in cgf_translator_by_position[0], "Repeat spanning cgf_string in position %s" % (string.join(cgf_str.split('.')[:-1]), '.')
-            cgf_translator_by_position[0][cgf_str] = bases
+        return first_tile_position_int, last_tile_position_int, center_tile_position, cgf_translator_by_position, center_cgf_translator
 
-        return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator_by_position
-
-    def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator):
+    def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator, center_cgf_translator):
         sequence = ""
         for cgf_string in positions_queried:
             if len(cgf_string.split('+')) > 1:
@@ -275,12 +277,6 @@ class PopulationVariantQuery(APIView):
             non_spanning_cgf_string = cgf_string.split('+')[0]
             tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1], ''),16)
             tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
-            assert last_tile_position_int >= tile_position_int, \
-                "CGF string went over expected max position (CGF string: %s, Max position: %s)" % (tile_position_str,
-                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
-            assert len(cgf_translator) > tile_position_int-first_tile_position_int, \
-                "Translator doesn't include enough positions (Translator length: %i, Number of needed positions: %i)" % (len(cgf_translator),
-                    tile_position_int-first_tile_position_int)
             if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
                 if tile_position_int - first_tile_position_int < 0:
                     tile_position_int = first_tile_position_int
@@ -300,14 +296,18 @@ class PopulationVariantQuery(APIView):
                     sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
         return sequence
 
-    def get_population_sequences(self, first_tile_position_int, last_tile_position_int, max_num_spanning_variants, cgf_translator):
-        humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
+    def get_population_sequences(self, first_tile_position_int, last_tile_position_int, cgf_translator, center_cgf_translator):
+        humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int, last_tile_position_int)
         human_sequence_dict = {}
         for human in humans:
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = ['', '']
-            human_sequence_dict[human][0] = self.get_bases_for_human(short_name, humans[human][0], first_tile_position_int, last_tile_position_int, cgf_translator)
-            human_sequence_dict[human][1] = self.get_bases_for_human(short_name, humans[human][1], first_tile_position_int, last_tile_position_int, cgf_translator)
+            human_sequence_dict[human][0] = self.get_bases_for_human(short_name, humans[human][0],
+                                                                     first_tile_position_int, last_tile_position_int,
+                                                                     cgf_translator, center_cgf_translator)
+            human_sequence_dict[human][1] = self.get_bases_for_human(short_name, humans[human][1],
+                                                                     first_tile_position_int, last_tile_position_int,
+                                                                     cgf_translator, center_cgf_translator)
         humans_with_sequences = []
         for human in human_sequence_dict:
             humans_with_sequences.append(
