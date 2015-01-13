@@ -269,6 +269,7 @@ class PopulationVariantQuery(APIView):
 
     def helper_get_bases_forward(self, curr_sequence, cgf_string, translator, num_bases_around):
         non_spanning_cgf_string = cgf_string.split('+')[0]
+        assert non_spanning_cgf_string in translator, "Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(translator))
         if len(curr_sequence) > 1:
             curr_ending_tag = curr_sequence[-TAG_LENGTH:]
             new_starting_tag = translator[non_spanning_cgf_string][:TAG_LENGTH]
@@ -289,6 +290,7 @@ class PopulationVariantQuery(APIView):
 
     def helper_get_bases_reverse(self, curr_sequence, cgf_string, translator, num_bases_around):
         non_spanning_cgf_string = cgf_string.split('+')[0]
+        assert non_spanning_cgf_string in translator, "Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(translator))
         if len(curr_sequence) > 1:
             curr_starting_tag = curr_sequence[:TAG_LENGTH]
             new_ending_tag = translator[non_spanning_cgf_string][-TAG_LENGTH:]
@@ -307,15 +309,14 @@ class PopulationVariantQuery(APIView):
         else:
             return new_sequence, False
 
-    def get_bases_for_human(self, human_name, sequence_of_tile_variants, cgf_translator, center_cgf_translator, num_bases_around):
-        #Find middle
+    def get_bases_for_human(self, human_name, sequence_of_tile_variants, cgf_translator, center_cgf_translator, num_bases_around, middle_position):
+        middle_position_str = basic_fns.get_position_string_from_position_int(middle_position)
         middle_index = None
         for i, cgf_string in enumerate(sequence_of_tile_variants):
-            non_spanning_cgf_string = cgf_string.split('+')[0]
-            if non_spanning_cgf_string in center_cgf_translator[1]:
+            curr_position = int(string.join(cgf_string.split('+')[0].split('.')[:-1], ''), 16)
+            if curr_position <= middle_position:
                 middle_index = i
-        assert middle_index != None, "Human %s did not have a cgf_string in the center_cgf_translator: %s" % (human_name, str(center_cgf_translator))
-
+        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. (%s)" % (human_name, middle_position_st, str(center_cgf_translator))
         sequence = center_cgf_translator[1][sequence_of_tile_variants[middle_index].split('+')[0]]
         forward_sequence = sequence
         reverse_sequence = sequence
@@ -324,7 +325,7 @@ class PopulationVariantQuery(APIView):
             if i == 0:
                 new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around)
             else:
-                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[i+middle_index], num_bases_around)
+                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[i+middle_index+1], num_bases_around)
             forward_sequence += new_sequence
             if finished:
                 break
@@ -342,15 +343,22 @@ class PopulationVariantQuery(APIView):
         return reverse_sequence + forward_sequence[1:]
 
     def get_population_sequences(self, first_tile_position_int, last_tile_position_int, cgf_translator, center_cgf_translator, num_bases_around):
+        #Find middle
+        middle_position = None
+        for i, translator_dict in enumerate(cgf_translator):
+            if len(translator_dict) == 0:
+                assert middle_position == None, "Expect only one empty dictionary in cgf_translator"
+                middle_position = i + first_tile_position_int
+        assert middle_position != None, "cgf_translator did not have an empty dictionary"
         humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int, last_tile_position_int)
         human_sequence_dict = {}
         for human in humans:
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = ['', '']
             human_sequence_dict[human][0] = self.get_bases_for_human(short_name, humans[human][0],
-                                                                     cgf_translator, center_cgf_translator, num_bases_around)
+                                                                     cgf_translator, center_cgf_translator, num_bases_around, middle_position)
             human_sequence_dict[human][1] = self.get_bases_for_human(short_name, humans[human][1],
-                                                                     cgf_translator, center_cgf_translator, num_bases_around)
+                                                                     cgf_translator, center_cgf_translator, num_bases_around, middle_position)
         humans_with_sequences = []
         for human in human_sequence_dict:
             humans_with_sequences.append(
