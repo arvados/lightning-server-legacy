@@ -44,6 +44,7 @@ def get_tile_variants_spanning_into_position(tile_position_int):
 def get_tile_variant_cgf_str_and_all_bases(tile_variant):
     cgf_str = tile_variant.conversion_to_cgf
     bases = tile_variant.sequence.upper()
+    return cgf_str, bases
 
 def get_tile_variant_cgf_str_and_n_bases_after(tile_variant, n):
     cgf_str = tile_variant.conversion_to_cgf
