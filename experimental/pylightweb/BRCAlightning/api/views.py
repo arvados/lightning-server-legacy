@@ -322,6 +322,7 @@ class PopulationVariantQuery(APIView):
         curr_call = []
         while len(curr_call) == 0:
             curr_call = query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase]
+            curr_position -= 1
         cgf_string = curr_call[0]
         #Get bases (tile_variant from cgf_string)
         bases = query_fns.get_bases_from_cgf_str(cgf_string)
@@ -354,9 +355,9 @@ class PopulationVariantQuery(APIView):
             if finished:
                 break
         while not finished:
-            cgf_string, bases = self.get_one_more_tile_forwards(human_name, phase, cgf_string)
+            cgf_string, bases = self.get_one_more_tile_forwards(human, phase, cgf_string)
             string_to_print += "(Success). Query: go forward one, position %s" % (cgf_string)
-            new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, {cgf_string:bases}, num_bases_around, string_to_print)
+            new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, {cgf_string.split('+')[0]:bases}, num_bases_around, string_to_print)
             forward_sequence += new_sequence
         ##################################################
         #go backward
@@ -382,9 +383,9 @@ class PopulationVariantQuery(APIView):
             except IndexError:
                 break
         while not finished:
-            cgf_string, bases = self.get_one_more_tile_backwards(human_name, phase, cgf_string)
+            cgf_string, bases = self.get_one_more_tile_backwards(human, phase, cgf_string)
             string_to_print += "(Success). Query: go backward one, position %s" % (cgf_string)
-            new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, {cgf_string:bases}, num_bases_around, string_to_print)
+            new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, {cgf_string.split('+')[0]:bases}, num_bases_around, string_to_print)
             reverse_sequence = new_sequence + reverse_sequence
         return reverse_sequence + forward_sequence[1:]
 
