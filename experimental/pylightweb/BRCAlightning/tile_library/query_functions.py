@@ -277,6 +277,21 @@ def get_population_names_and_check_lantern_version():
     human_names = response['SampleId']
     return human_names
 
+def make_sample_position_variant_query(position_query_string, human_subsection=[]):
+    post_data = {
+        'Type':'sample-position-variant',
+        'Dataset':'all',
+        'Note':'Expects entire population set to be returned with their phase A and phase B variant ids',
+        'SampleId':human_subsection,
+        'Position': [position_query_string]
+    }
+    post_data = json.dumps(post_data)
+    try:
+        post_response = requests.post(url="http://localhost:8080", data=post_data)
+        return json.loads(post_response.text)
+    except requests.ConnectionError:
+        raise requests.ConnectionError, "Lantern not responding on port 8080"
+
 def get_population_sequences_at_position(position_hex_string, error_check=True, human_names=None):
     """
     Submits 'sample-position-variant' lantern query.
@@ -294,19 +309,7 @@ def get_population_sequences_at_position(position_hex_string, error_check=True, 
     else:
         assert human_names != None, "Must supply list of human names if not error checking"
         human_names = sorted(human_names)
-    post_data = {
-        'Type':'sample-position-variant',
-        'Dataset':'all',
-        'Note':'Expects entire population set to be returned with their phase A and phase B variant ids',
-        'SampleId':[],
-        'Position': [position_hex_string]
-    }
-    post_data = json.dumps(post_data)
-    try:
-        post_response = requests.post(url="http://localhost:8080", data=post_data)
-        response = json.loads(post_response.text)
-    except requests.ConnectionError:
-        raise requests.ConnectionError, "Lantern not responding on port 8080"
+    response = make_sample_position_variant_query(position_hex_string)
     assert "success" == response['Type'], "Lantern-communication failure: " + response['Message']
     humans = response['Result']
     human_names_returned = sorted(humans.keys())
@@ -326,33 +329,43 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
     Returns the phase A and phase B variant ids of the entire population at the position pointed to by position_hex_string
         (dictionary. keys are human names, values are [[phase_A_cgf_string1, phase_A_cgf_string2, ...], [phase_B_cgf_string1, phase_B_cgf_string2, ...]])
     """
-    def make_request(query_string):
-        post_data = {
-            'Type':'sample-position-variant',
-            'Dataset':'all',
-            'Note':'Expects entire population set to be returned with their phase A and phase B variant ids',
-            'SampleId':[],
-            'Position':[query_string]
-        }
-        post_data = json.dumps(post_data)
-        try:
-            post_response = requests.post(url="http://localhost:8080", data=post_data)
-            return json.loads(post_response.text)
-        except requests.ConnectionError:
-            raise requests.ConnectionError, "Lantern not responding on port 8080"
     human_names = get_population_names_and_check_lantern_version()
     human_names = sorted(human_names)
     position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int)
     last_position_hex_string = basic_fns.get_position_string_from_position_int(last_position_int)
     assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string, last_position_hex_string)
     length_to_retrieve = hex(last_position_int - first_position_int + 1).lstrip('0x')
-    response = make_request(position_hex_string+"+"+length_to_retrieve)
+    response = make_sample_position_variant_query(position_hex_string+"+"+length_to_retrieve)
+    assert "success" == response['Type'], "Lantern-communication failure: " + response['Message']
+    humans = response['Result']
+    human_names_returned = sorted(humans.keys())
+    assert human_names_returned == human_names, "Lantern error: Returned list of human samples does not match the samples in lantern"
+    return humans
+
+def get_population_sequences_over_position_range_force_large_query(first_position_int, last_position_int):
+    """
+    Expects range to be inclusive
+    Submits 'sample-position-variant' lantern query.
+    Runs get_population_names_and_check_lantern_version() and uses that result to check all humans are returned.
+        This hits the lantern database
+    Checks to make sure no humans were added or subtracted in the result
+    Returns the phase A and phase B variant ids of the entire population at the position pointed to by position_hex_string
+        (dictionary. keys are human names, values are [[phase_A_cgf_string1, phase_A_cgf_string2, ...], [phase_B_cgf_string1, phase_B_cgf_string2, ...]])
+    """
+    human_names = get_population_names_and_check_lantern_version()
+    human_names = sorted(human_names)
+    position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int)
+    last_position_hex_string = basic_fns.get_position_string_from_position_int(last_position_int)
+    assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string, last_position_hex_string)
+    length_to_retrieve = hex(last_position_int - first_position_int + 1).lstrip('0x')
+    response = make_sample_position_variant_query(position_hex_string+"+"+length_to_retrieve)
     if "success" != response['Type'] and response['Message'] == "max elements exceeded":
-        response1 = make_request(position_hex_string+"+"+length_to_retrieve/2)
-        assert "success" == response1['Type'], "Lantern-communication failure: " + response1['Message'] + ". Tried cutting query in half. Failed on first half"
-        next_position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int + length_to_retrieve/2)
-        response2 = make_request(next_position_hex_string+"+"+length_to_retrieve/2)
-        assert "success" == response2['Type'], "Lantern-communication failure: " + response2['Message'] + ". Tried cutting query in half. Failed on second half"
+        half_length_to_retrieve = hex((last_position_int - first_position_int + 1)/2).lstrip('0x')
+        response1 = make_sample_position_variant_query(position_hex_string+"+"+half_length_to_retrieve)
+        assert "success" == response1['Type'], "Lantern-communication failure: " + response1['Message'] + ". Tried cutting query in half. Failed on first half (%s)" % (position_hex_string+"+"+half_length_to_retrieve)
+        next_position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int + last_position_int/2)
+        response2 = make_sample_position_variant_query(next_position_hex_string+"+"+half_length_to_retrieve)
+        assert "success" == response2['Type'], "Lantern-communication failure: " + response2['Message'] + ". Tried cutting query in half. Failed on second half (%s)" % (next_position_hex_string+"+"+half_length_to_retrieve)
         humans = {}
         humans1 = response1['Result']
         humans2 = response2['Result']
@@ -361,7 +374,10 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
         assert human_names_returned1 == human_names, "Lantern error: Returned list of human samples does not match the samples in lantern"
         assert human_names_returned2 == human_names, "Lantern error: Returned list of human samples does not match the samples in lantern"
         for human in humans1:
-            humans[human] = humans1[human]+humans2[human]
+            max_num_phases = max(len(humans1[human]), len(humans2[human]))
+            humans[human] = [[] for i in range(max_num_phases)]
+            for i in range(max_num_phases):
+                humans[human][i] = humans1[human][i] + humans2[human][i]
     else:
         assert "success" == response['Type'], "Lantern-communication failure: " + response['Message']
         humans = response['Result']
@@ -379,23 +395,14 @@ def get_sub_population_sequences_over_position_range(list_of_humans, first_posit
     Returns the phase A and phase B variant ids of the entire population at the position pointed to by position_hex_string
         (dictionary. keys are human names, values are [[phase_A_cgf_string1, phase_A_cgf_string2, ...], [phase_B_cgf_string1, phase_B_cgf_string2, ...]])
     """
+    human_names = get_population_names_and_check_lantern_version()
+    for human in list_of_humans:
+        assert human in human_names, "%s is not loaded into this server" % (human)
     position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int)
     last_position_hex_string = basic_fns.get_position_string_from_position_int(last_position_int)
     assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string, last_position_hex_string)
     length_to_retrieve = hex(last_position_int - first_position_int + 1).lstrip('0x')
-    post_data = {
-        'Type':'sample-position-variant',
-        'Dataset':'all',
-        'Note':'Expects entire population set to be returned with their phase A and phase B variant ids',
-        'SampleId':list_of_humans,
-        'Position':[position_hex_string+"+"+length_to_retrieve]
-    }
-    post_data = json.dumps(post_data)
-    try:
-        post_response = requests.post(url="http://localhost:8080", data=post_data)
-        response = json.loads(post_response.text)
-    except requests.ConnectionError:
-        raise requests.ConnectionError, "Lantern not responding on port 8080"
+    response = make_sample_position_variant_query(position_hex_string+"+"+length_to_retrieve, human_subsection=list_of_humans)
     assert "success" == response['Type'], "Lantern-communication failure: " + response['Message']
     humans = response['Result']
     return humans
