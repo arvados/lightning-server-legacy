@@ -46,6 +46,12 @@ def get_tile_variant_cgf_str_and_all_bases(tile_variant):
     bases = tile_variant.sequence.upper()
     return cgf_str, bases
 
+def get_bases_from_cgf_str(cgf_str):
+    tile_position_int = basic_fns.get_position_from_cgf_string(cgf_str)
+    variant = TileVariant.objects.filter(tile_id=tile_position_int).get(conversion_to_cgf=cgf_str)
+    bases = variant.sequence.upper()
+    return bases
+
 def get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(tile_variant, low_int, high_int, assembly):
     lower_tile_position_int = basic_fns.convert_tile_variant_int_to_position_int(int(tile_variant.tile_variant_name))
     lower_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=lower_tile_position_int)
@@ -340,4 +346,35 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
     humans = response['Result']
     human_names_returned = sorted(humans.keys())
     assert human_names_returned == human_names, "Returned list of human samples does not match the samples provided (or returned by error checking)"
+    return humans
+
+def get_sub_population_sequences_over_position_range(list_of_humans, first_position_int, last_position_int):
+    """
+    Expects range to be inclusive
+    Submits 'sample-position-variant' lantern query.
+    Runs get_population_names_and_check_lantern_version() and uses that result to check all humans are returned.
+        This hits the lantern database
+    Checks to make sure no humans were added or subtracted in the result
+    Returns the phase A and phase B variant ids of the entire population at the position pointed to by position_hex_string
+        (dictionary. keys are human names, values are [[phase_A_cgf_string1, phase_A_cgf_string2, ...], [phase_B_cgf_string1, phase_B_cgf_string2, ...]])
+    """
+    position_hex_string = basic_fns.get_position_string_from_position_int(first_position_int)
+    last_position_hex_string = basic_fns.get_position_string_from_position_int(last_position_int)
+    assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string, last_position_hex_string)
+    length_to_retrieve = hex(last_position_int - first_position_int + 1).lstrip('0x')
+    post_data = {
+        'Type':'sample-position-variant',
+        'Dataset':'all',
+        'Note':'Expects entire population set to be returned with their phase A and phase B variant ids',
+        'SampleId':list_of_humans,
+        'Position':[position_hex_string+"+"+length_to_retrieve]
+    }
+    post_data = json.dumps(post_data)
+    try:
+        post_response = requests.post(url="http://localhost:8080", data=post_data)
+        response = json.loads(post_response.text)
+    except requests.ConnectionError:
+        raise requests.ConnectionError, "Lantern not responding on port 8080"
+    assert "success" == response['Type'], "Lantern-communication failure:" + response['Message']
+    humans = response['Result']
     return humans
