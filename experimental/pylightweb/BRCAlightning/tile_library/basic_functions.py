@@ -71,14 +71,20 @@ def convert_tile_variant_int_to_position_int(tile_variant_int):
     return int(path+version+step,16)
 
 def get_position_from_cgf_string(cgf_str):
-    assert type(cgf_str) == str, "Expects cgf_str to be of type string"
-    matching = re.match('([0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4})\.[0-9a-f]{3}[+]?[0-9a-f]*', cgf_string)
+    try:
+        cgf_str = str(cgf_str)
+    except Exception:
+        raise Exception("Unable to cast %s as type string" % (cgf_str))
+    matching = re.match('([0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4})\.[0-9a-f]{3}[+]?[0-9a-f]*', cgf_str)
     assert matching != None, "%s does not match expected regex of cgf_string" % (cgf_str)
     return int(string.join(matching.group(1).split('.'), ''), 16)
 
 def get_number_of_tiles_spanned(cgf_str):
-    assert type(cgf_str) == str, "Expects cgf_str to be of type string"
-    matching = re.match('[0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4}\.[0-9a-f]{3}[+]?([0-9a-f]*)', cgf_string)
+    try:
+        cgf_str = str(cgf_str)
+    except Exception:
+        raise Exception("Unable to cast %s as type string" % (cgf_str))
+    matching = re.match('[0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4}\.[0-9a-f]{3}[+]?([0-9a-f]*)', cgf_str)
     assert matching != None, "%s does not match expected regex of cgf_string" % (cgf_str)
     if matching.group(1) == 0:
         return 1
