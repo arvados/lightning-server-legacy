@@ -141,12 +141,9 @@ class PopulationVariantQueryBetweenLoci(APIView):
     def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator):
         sequence = ""
         for cgf_string in positions_queried:
-            if len(cgf_string.split('+')) > 1:
-                num_positions_spanned = int(cgf_string.split('+')[1])-1
-            else:
-                num_positions_spanned = 0
+            num_positions_spanned = basic_fns.get_number_of_tiles_spanned(cgf_string) - 1
             non_spanning_cgf_string = cgf_string.split('+')[0]
-            tile_position_int = int(string.join(non_spanning_cgf_string.split('.')[:-1], ''),16)
+            tile_position_int = basic_fns.get_position_from_cgf_string(cgf_string)
             tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
             assert last_tile_position_int >= tile_position_int, \
                 "CGF string went over expected max position (CGF string: %s, Max position: %s)" % (tile_position_str,
@@ -309,14 +306,35 @@ class PopulationVariantQuery(APIView):
         else:
             return new_sequence, False
 
-    def get_bases_for_human(self, human_name, sequence_of_tile_variants, cgf_translator, center_cgf_translator, num_bases_around, middle_position, cgf_translator_middle_index):
+    def get_one_more_tile_forwards(self, human_name, phase, prev_cgf_string):
+        prev_position = basic_fns.get_position_from_cgf_string(prev_cgf_string)
+        curr_position = prev_position + basic_fns.get_number_of_tiles_spanned(prev_cgf_string)
+        #Query lantern to get call at the next position
+        cgf_string = query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase][0]
+        #Get bases (tile_variant from cgf_string)
+        bases = query_fns.get_bases_from_cgf_str(cgf_string)
+        return cgf_string, bases
+
+    def get_one_more_tile_backwards(self, human_name, phase, prev_cgf_string):
+        prev_position = basic_fns.get_position_from_cgf_string(prev_cgf_string)
+        curr_position = prev_position - 1 #First assume that the previous tile wasn't spanning...
+        #Query lantern to get call at the next position
+        curr_call = []
+        while len(curr_call) == 0:
+            curr_call = query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase]
+        cgf_string = curr_call[0]
+        #Get bases (tile_variant from cgf_string)
+        bases = query_fns.get_bases_from_cgf_str(cgf_string)
+        return cgf_string, bases
+    
+    def get_bases_for_human(self, human, sequence_of_tile_variants, cgf_translator, center_cgf_translator, num_bases_around, middle_position, cgf_translator_middle_index, phase):
         middle_position_str = basic_fns.get_position_string_from_position_int(middle_position)
         middle_index = None
         for i, cgf_string in enumerate(sequence_of_tile_variants):
-            curr_position = int(string.join(cgf_string.split('+')[0].split('.')[:-1], ''), 16)
+            curr_position = basic_fns.get_position_from_cgf_string(cgf_string)
             if curr_position <= middle_position:
                 middle_index = i
-        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. (%s)" % (human_name, middle_position_str, str(center_cgf_translator))
+        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. (%s)" % (human, middle_position_str, str(center_cgf_translator))
         sequence = center_cgf_translator[1][sequence_of_tile_variants[middle_index].split('+')[0]]
         forward_sequence = sequence
         reverse_sequence = sequence
@@ -330,13 +348,15 @@ class PopulationVariantQuery(APIView):
                 string_to_print += "(Success). Query: cgf_translator, index %i, position %s " % (curr_cgf_translator_index, cgf_string)
                 new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[curr_cgf_translator_index], num_bases_around, string_to_print)
             forward_sequence += new_sequence
-            if len(cgf_string.split('+')) == 1:
-                curr_cgf_translator_index += 1
-            else:
-                curr_cgf_translator_index += int(cgf_string.split('+')[1],16)
+            curr_cgf_translator_index += basic_fns.get_number_of_tiles_spanned(cgf_string)
             if finished:
                 break
-        assert finished, "Didn't query far enough forward."
+        while not finished:
+            cgf_string, bases = self.get_one_more_tile_forwards(human_name, phase, cgf_string)
+            string_to_print += "(Success). Query: go forward one, position %s" % (cgf_string)
+            new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, {cgf_string:bases}, num_bases_around, string_to_print)
+            forward_sequence += new_sequence
+        ##################################################
         #go backward
         backward_tile_variant_seq = sequence_of_tile_variants[:middle_index+1]
         backward_tile_variant_seq.reverse()
@@ -351,15 +371,17 @@ class PopulationVariantQuery(APIView):
             reverse_sequence = new_sequence + reverse_sequence
             if finished:
                 break
-            #Break before try to get the next one
+            #Break before we try to get the next one, since at the end of the loop we will hit an index error
             try:
                 next_cgf_string = backward_tile_variant_seq[i+1]
-                if len(next_cgf_string.split('+')) == 1:
-                    curr_cgf_translator_index -= 1
-                else:
-                    curr_cgf_translator_index -= int(next_cgf_string.split('+')[1],16)
+                curr_cgf_translator_index -= basic_fns.get_number_of_tiles_spanned(next_cgf_string)
             except IndexError:
-                raise Exception("Didn't query far enough backward.")
+                assert cgf_string == backward_tile_variant_seq[-1], "Not at the end of the list when we hit Index error. Going backwards doesn't make sense"
+        while not finished:
+            cgf_string, bases = self.get_one_more_tile_backwards(human_name, phase, cgf_string)
+            string_to_print += "(Success). Query: go backward one, position %s" % (cgf_string)
+            new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, {cgf_string:bases}, num_bases_around, string_to_print)
+            reverse_sequence = new_sequence + reverse_sequence
         return reverse_sequence + forward_sequence[1:]
 
     def get_population_sequences(self, first_tile_position_int, last_tile_position_int, cgf_translator, center_cgf_translator, num_bases_around):
@@ -378,9 +400,11 @@ class PopulationVariantQuery(APIView):
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = ['', '']
             human_sequence_dict[human][0] = self.get_bases_for_human(short_name, humans[human][0],
-                                                                     cgf_translator, center_cgf_translator, num_bases_around, middle_position, middle_index)
+                                                                     cgf_translator, center_cgf_translator, num_bases_around,
+                                                                     middle_position, middle_index, 0)
             human_sequence_dict[human][1] = self.get_bases_for_human(short_name, humans[human][1],
-                                                                     cgf_translator, center_cgf_translator, num_bases_around, middle_position, middle_index)
+                                                                     cgf_translator, center_cgf_translator, num_bases_around,
+                                                                     middle_position, middle_index, 1)
         humans_with_sequences = []
         for human in human_sequence_dict:
             humans_with_sequences.append(
