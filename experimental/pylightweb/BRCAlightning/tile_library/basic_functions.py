@@ -1,5 +1,6 @@
 #basic functions without dependencies: used for converting hex to int pieces and vice versa
 import string
+import re
 
 def convert_position_int_to_position_hex_str(pos_int):
     """Returns path, version, step, and var
@@ -68,3 +69,18 @@ def convert_tile_variant_int_to_position_int(tile_variant_int):
     """
     path, version, step, var = convert_tile_variant_int_to_tile_hex_str(tile_variant_int)
     return int(path+version+step,16)
+
+def get_position_from_cgf_string(cgf_str):
+    assert type(cgf_str) == str, "Expects cgf_str to be of type string"
+    matching = re.match('([0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4})\.[0-9a-f]{3}[+]?[0-9a-f]*', cgf_string)
+    assert matching != None, "%s does not match expected regex of cgf_string" % (cgf_str)
+    return int(string.join(matching.group(1).split('.'), ''), 16)
+
+def get_number_of_tiles_spanned(cgf_str):
+    assert type(cgf_str) == str, "Expects cgf_str to be of type string"
+    matching = re.match('[0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4}\.[0-9a-f]{3}[+]?([0-9a-f]*)', cgf_string)
+    assert matching != None, "%s does not match expected regex of cgf_string" % (cgf_str)
+    if matching.group(1) == 0:
+        return 1
+    else:
+        return int(matching.group(1), 16)
