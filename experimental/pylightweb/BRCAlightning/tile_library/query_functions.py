@@ -48,7 +48,10 @@ def get_tile_variant_cgf_str_and_all_bases(tile_variant):
 
 def get_bases_from_cgf_str(cgf_str):
     tile_position_int = basic_fns.get_position_from_cgf_string(cgf_str)
-    variant = TileVariant.objects.filter(tile_id=tile_position_int).get(conversion_to_cgf=cgf_str)
+    try:
+        variant = TileVariant.objects.filter(tile_id=tile_position_int).get(conversion_to_cgf=cgf_str.split('+')[0])
+    except TileVariant.DoesNotExist:
+        raise Exception("Unable to find a tile variant matching %s" % (cgf_str))
     bases = variant.sequence.upper()
     return bases
 
