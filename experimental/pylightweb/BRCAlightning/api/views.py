@@ -326,7 +326,7 @@ class PopulationVariantQuery(APIView):
         #Get bases (tile_variant from cgf_string)
         bases = query_fns.get_bases_from_cgf_str(cgf_string)
         return cgf_string, bases
-    
+
     def get_bases_for_human(self, human, sequence_of_tile_variants, cgf_translator, center_cgf_translator, num_bases_around, middle_position, cgf_translator_middle_index, phase):
         middle_position_str = basic_fns.get_position_string_from_position_int(middle_position)
         middle_index = None
@@ -345,10 +345,12 @@ class PopulationVariantQuery(APIView):
                 string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, forward strand, position %s " % (len(cgf_translator), cgf_string)
                 new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around, string_to_print)
             else:
-                string_to_print += "(Success). Query: cgf_translator, index %i, position %s " % (curr_cgf_translator_index, cgf_string)
+                string_to_print += "Query: position %s " % (cgf_string)
                 new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[curr_cgf_translator_index], num_bases_around, string_to_print)
             forward_sequence += new_sequence
+            prev_cgf_translator_index = curr_cgf_translator_index
             curr_cgf_translator_index += basic_fns.get_number_of_tiles_spanned(cgf_string)
+            string_to_print += "(Success). Prev_cgf_translator_index: %i, new one: %i. " % (prev_cgf_translator_index, curr_cgf_translator_index)
             if finished:
                 break
         while not finished:
@@ -366,7 +368,7 @@ class PopulationVariantQuery(APIView):
                 string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, reverse strand, position %s " % (len(cgf_translator), cgf_string)
                 new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around, string_to_print)
             else:
-                string_to_print += "(Success). Query: cgf_translator, index %i, position %s " % (curr_cgf_translator_index, cgf_string)
+                string_to_print += "Query: position %s " % (cgf_string)
                 new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, cgf_translator[curr_cgf_translator_index], num_bases_around, string_to_print)
             reverse_sequence = new_sequence + reverse_sequence
             if finished:
@@ -374,9 +376,11 @@ class PopulationVariantQuery(APIView):
             #Break before we try to get the next one, since at the end of the loop we will hit an index error
             try:
                 next_cgf_string = backward_tile_variant_seq[i+1]
+                prev_cgf_translator_index = curr_cgf_translator_index
                 curr_cgf_translator_index -= basic_fns.get_number_of_tiles_spanned(next_cgf_string)
+                string_to_print += "(Success). Prev_cgf_translator_index: %i, new one: %i. " % (prev_cgf_translator_index, curr_cgf_translator_index)
             except IndexError:
-                assert cgf_string == backward_tile_variant_seq[-1], "Not at the end of the list when we hit Index error. Going backwards doesn't make sense"
+                break
         while not finished:
             cgf_string, bases = self.get_one_more_tile_backwards(human_name, phase, cgf_string)
             string_to_print += "(Success). Query: go backward one, position %s" % (cgf_string)
@@ -399,10 +403,10 @@ class PopulationVariantQuery(APIView):
         for human in humans:
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = ['', '']
-            human_sequence_dict[human][0] = self.get_bases_for_human(short_name, humans[human][0],
+            human_sequence_dict[human][0] = self.get_bases_for_human(human, humans[human][0],
                                                                      cgf_translator, center_cgf_translator, num_bases_around,
                                                                      middle_position, middle_index, 0)
-            human_sequence_dict[human][1] = self.get_bases_for_human(short_name, humans[human][1],
+            human_sequence_dict[human][1] = self.get_bases_for_human(human, humans[human][1],
                                                                      cgf_translator, center_cgf_translator, num_bases_around,
                                                                      middle_position, middle_index, 1)
         humans_with_sequences = []
