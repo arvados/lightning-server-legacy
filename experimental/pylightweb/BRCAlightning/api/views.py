@@ -279,7 +279,7 @@ class PopulationVariantQuery(APIView):
         non_spanning_cgf_string = cgf_string.split('+')[0]
         step_int = int(non_spanning_cgf_string.split('.')[2], 16)
         assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(sorted(translator.keys())))
-        if len(curr_sequence) > 1 and step_ind > 0:
+        if len(curr_sequence) > 1 and step_int > 0:
             curr_ending_tag = curr_sequence[-TAG_LENGTH:]
             new_starting_tag = translator[non_spanning_cgf_string][:TAG_LENGTH]
             if len(curr_ending_tag) >= len(new_starting_tag):
@@ -299,9 +299,10 @@ class PopulationVariantQuery(APIView):
 
     def helper_get_bases_reverse(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print):
         non_spanning_cgf_string = cgf_string.split('+')[0]
-        step_int = int(non_spanning_cgf_string.split('.')[2], 16)
+        path, path_version, step, ignore = non_spanning_cgf_string.split('.')
+        edge_path_int, edge_path_version, edge_path_step = basic_fns.get_position_ints_from_position_int(query_fns.get_highest_position_int_in_path(int(path,16)))
         assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(sorted(translator.keys())))
-        if len(curr_sequence) > 1 and step_int > 0: # Tags will only overlap if we are on the same path
+        if len(curr_sequence) > 1 and int(step,16) < edge_path_step: # Tags will only overlap if we are on the same path
             curr_starting_tag = curr_sequence[:TAG_LENGTH]
             new_ending_tag = translator[non_spanning_cgf_string][-TAG_LENGTH:]
             if len(curr_starting_tag) >= len(new_ending_tag):
@@ -354,7 +355,7 @@ class PopulationVariantQuery(APIView):
             else:
                 curr_position -= 1
             curr_path, curr_path_version, curr_step = basic_fns.get_position_ints_from_position_int(curr_position)
-            
+
         cgf_string = curr_call[0]
         #Get bases (tile_variant from cgf_string)
         bases = query_fns.get_bases_from_cgf_str(cgf_string)
