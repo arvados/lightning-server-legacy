@@ -104,9 +104,10 @@ class PopulationVariantQueryBetweenLoci(APIView):
         Each entry in the list corresponds to a position
         """
         locuses = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
-            begin_int__lt=high_int).filter(end_int__gte=low_int)
+            begin_int__lt=high_int).filter(end_int__gt=low_int).order_by('begin_int')
         num_locuses = locuses.count()
         #Return useful info if cannot complete query
+        response_text = "Expect at least one locus to match the query"
         if num_locuses == 0:
             base_query = TileLocusAnnotation.objects.filter(assembly=assembly)
             if base_query.count() == 0:
@@ -122,7 +123,8 @@ class PopulationVariantQueryBetweenLoci(APIView):
         assert num_locuses > 0, response_text
         #Get framing tile position ints
         first_tile_position_int = int(locuses.first().tile_id)
-        last_tile_position_int = int(locuses.last().tile_id)
+        last_tile_position_int = max(int(locuses.last().tile_id), first_tile_position_int) # unsure if this max is required
+        # but the max prevents choosing a last tile position that's smaller than the first tile position
 
         #Get maximum number of spanning tiles
         max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
@@ -154,17 +156,18 @@ class PopulationVariantQueryBetweenLoci(APIView):
             if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
                 if tile_position_int - first_tile_position_int < 0:
                     tile_position_int = first_tile_position_int
-                assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, str(cgf_translator))
+                assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], \
+                    "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, str(cgf_translator))
                 if len(sequence) > 0:
                     curr_ending_tag = sequence[-TAG_LENGTH:]
                     new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
                     if len(curr_ending_tag) >= len(new_starting_tag):
                         assert curr_ending_tag.endswith(new_starting_tag), \
-                            "Tags do not match for human %s at position %s \n Ending Tag: %s \n Starting Tag: %s \n Positions Queried: %s" % (human_name,
+                            "Tags do not match for human %s at position %s. Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
                                 tile_position_str, curr_ending_tag, new_starting_tag, str(positions_queried))
                     else:
                         assert new_starting_tag.startswith(curr_ending_tag), \
-                            "Tags do not match for human %s at position %s \n Ending Tag: %s \n Starting Tag: %s \n Positions Queried: %s" % (human_name,
+                            "Tags do not match for human %s at position %s. Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
                                 tile_position_str, curr_ending_tag, new_starting_tag, str(positions_queried))
                     sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
                 else:
@@ -205,9 +208,9 @@ class PopulationVariantQueryBetweenLoci(APIView):
                     upper_base)
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator)
             except AssertionError as e:
-                return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             except Exception as e:
-                return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
@@ -249,7 +252,7 @@ class PopulationVariantQuery(APIView):
         rough_low_int = target_base_int - number_bases_around
         rough_high_int = target_base_int + number_bases_around + 1 #non_inclusive!
         locuses = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
-            begin_int__lt=rough_high_int).filter(end_int__gte=rough_low_int).order_by('begin_int')
+            begin_int__lt=rough_high_int).filter(end_int__gt=rough_low_int).order_by('begin_int')
 
         #Get framing tile position ints
         first_tile_position_int =  int(locuses.first().tile_id)
@@ -259,7 +262,15 @@ class PopulationVariantQuery(APIView):
         max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
 
         #Create cgf_translator for each position
-        center_index = center_tile_position_int-first_tile_position_int
+        if locuses.count() == last_tile_position_int - first_tile_position_int + 1:
+            center_index = center_tile_position_int-first_tile_position_int
+        else:
+            center_index = None
+            for i, locus in enumerate(locuses):
+                if locus.tile_id == center_tile_position_int:
+                    assert center_index == None, "multiple center locuses"
+                    center_index = i
+            assert center_index != None, "No center index"
         center_cgf_translator, cgf_translator_by_position = query_fns.get_cgf_translator_and_center_cgf_translator(locuses, target_base_int, center_index, max_num_spanning_tiles, assembly)
 
         return first_tile_position_int, last_tile_position_int, cgf_translator_by_position, center_cgf_translator
@@ -353,6 +364,8 @@ class PopulationVariantQuery(APIView):
             curr_cgf_translator_index += basic_fns.get_number_of_tiles_spanned(cgf_string)
             string_to_print += "(Success). Prev_cgf_translator_index: %i, new one: %i. " % (prev_cgf_translator_index, curr_cgf_translator_index)
             if finished:
+                break
+            if curr_cgf_translator_index >= len(cgf_translator):
                 break
         while not finished:
             cgf_string, bases = self.get_one_more_tile_forwards(human, phase, cgf_string)
