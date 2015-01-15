@@ -1,25 +1,31 @@
-from django.forms import widgets
 from rest_framework import serializers
-from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant
 
-class VariantSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TileVariant
-        fields = ('tile_variant_name', 'num_positions_spanned', 'conversion_to_cgf', 'length', 'sequence', 'start_tag', 'end_tag')
+from tile_library.models import TileLocusAnnotation
+
+##################### For returning information ######################
+
+class GenomeVariantSerializer(serializers.Serializer):
+    tile_variant_start_locus = serializers.IntegerField()
+    tile_variant_end_locus = serializers.IntegerField()
+    ref_start_locus = serializers.IntegerField()
+    ref_end_locus = serializers.IntegerField()
+    reference_bases = serializers.CharField()
+    alternate_bases = serializers.CharField()
+
+class TileVariantSerializer(serializers.Serializer):
+    tile_variant_hex_string = serializers.CharField(max_length=15)
+    tile_variant_cgf_string = serializers.CharField(max_length=16)
+    tile_variant_int = serializers.IntegerField()
+    num_positions_spanned = serializers.IntegerField()
+    length = serializers.IntegerField()
+    genome_variants = GenomeVariantSerializer(many=True)
+    md5sum = serializers.CharField(max_length=40)
+    sequence = serializers.CharField()
 
 class LocusSerializer(serializers.ModelSerializer):
     class Meta:
         model = TileLocusAnnotation
         fields = ('assembly', 'chromosome', 'begin_int', 'end_int')
-
-class GenomeVariantInTileVariantSerializer(serializers.Serializer):
-    tile_variant_hex_string = serializers.CharField(max_length=15)
-    start_locus_relative_to_tile = serializers.IntegerField()
-    end_locus_relative_to_tile = serializers.IntegerField()
-    start_locus_relative_to_ref = serializers.IntegerField()
-    end_locus_relative_to_ref = serializers.IntegerField()
-    reference_bases = serializers.CharField()
-    alternate_bases = serializers.CharField()
 
 
 class PopulationVariantSerializer(serializers.Serializer):
@@ -27,6 +33,8 @@ class PopulationVariantSerializer(serializers.Serializer):
     phase_A_sequence = serializers.CharField(style={'type': 'textarea'})
     phase_B_sequence = serializers.CharField(style={'type': 'textarea'})
     phase_groups_known = serializers.BooleanField(default=False)
+
+################## For User Inputs ##################################
 
 class PopulationQuerySerializer(serializers.Serializer):
     INDEX_CHOICES = (

@@ -18,7 +18,7 @@ import tile_library.query_functions as query_fns
 
 def send_internal_api_request(request, GET_dictionary):
     GET_url_section = urllib.urlencode(GET_dictionary)
-    query_url = request.build_absolute_uri(reverse('api:variant_query_n_bases'))+'?'+GET_url_section
+    query_url = request.build_absolute_uri(reverse('api:pop_around_locus'))+'?'+GET_url_section
     return requests.get(url=query_url)
 
 def index(request):

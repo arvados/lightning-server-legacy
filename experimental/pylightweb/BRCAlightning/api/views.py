@@ -1,100 +1,99 @@
 import string
 import traceback
 import sys
+import re
 
 from django.http import Http404
-from api.serializers import VariantSerializer, LocusSerializer, GenomeVariantInTileVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer, PopulationVariantSerializer
+from api.serializers import TileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
 from rest_framework import generics
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from tile_library.models import TileVariant, TileLocusAnnotation, TAG_LENGTH
+from tile_library.models import Tile, TileVariant, TileLocusAnnotation, TAG_LENGTH
 import tile_library.query_functions as query_fns
 import tile_library.basic_functions as basic_fns
 
-class TileVariantList(generics.ListAPIView):
+class TileVariantQuery(APIView):
     """
-    List tile variants
+    Retrieve a tile variant (by its hex string) or retrieve all tile variants at a tile position (by a tile position hex string).
     """
-    queryset = TileVariant.objects.all()
-    serializer_class = VariantSerializer
+    def get_tile_variant_info(self, tile_variant):
+        tile_variant_info = {
+            'tile_variant_hex_string': tile_variant.getString(),
+            'tile_variant_cgf_string': tile_variant.conversion_to_cgf,
+            'tile_variant_int': tile_variant.tile_variant_name,
+            'num_positions_spanned': tile_variant.num_positions_spanned,
+            'length': tile_variant.length,
+            'genome_variants': [],
+            'md5sum': tile_variant.md5sum,
+            'sequence': tile_variant.sequence
+        }
+        translations = tile_variant.translation_to_genome_variant.all()
+        for translation in translations:
+            genome_variant = translation.genome_variant
+            genome_variant_info = {
+                'tile_variant_start_locus': translation.start,
+                'tile_variant_end_locus': translation.end,
+                'ref_start_locus': genome_variant.start_increment,
+                'ref_end_locus': genome_variant.end_increment,
+                'reference_bases': genome_variant.reference_bases,
+                'alternate_bases': genome_variant.alternate_bases
+            }
+            tile_variant_info['genome_variants'].append(genome_variant_info)
+        tile_variant_info['genome_variants'] = sorted(tile_variant_info['genome_variants'], key=lambda d: d['tile_variant_start_locus'])
+        return tile_variant_info
 
-class TileVariantDetail(generics.RetrieveAPIView):
-    """
-    Retrieve a tile variant
-    """
-    queryset = TileVariant.objects.all()
-    serializer_class = VariantSerializer
+    def get(self, request, hex_string, format=None):
+        matching = re.match('^[0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4}(\.[0-9a-f]{3})?$', hex_string)
+        assert matching != None, "%s is not recognized as a valid tile position or tile variant hex representation" % hex_string
+        if len(hex_string.split('.')) == 4:
+            #Tile Variant
+            tile_variant_id = int(hex_string.replace('.', ''), 16)
+            try:
+                tile_variant = TileVariant.objects.get(tile_variant_name=tile_variant_id)
+            except TileVariant.DoesNotExist:
+                raise Http404
+            tile_variant_info = self.get_tile_variant_info(tile_variant)
+            serializer = TileVariantSerializer(tile_variant_info)
+        else:
+            tile_id = int(hex_string.replace('.', ''), 16)
+            try:
+                tile = Tile.objects.get(tilename=tile_id)
+            except Tile.DoesNotExist:
+                raise Http404
+            tile_variant_list = []
+            for tile_variant in tile.tile_variants.all():
+                tile_variant_list.append(self.get_tile_variant_info(tile_variant))
+            serializer = TileVariantSerializer(tile_variant_list, many=True)
+        return Response(serializer.data)
+
+
 
 class TileLocusAnnotationList(APIView):
     """
-    Retrieve the tile locus annotations for the tile position given by tile_hex_string
+    Retrieve the tile locus annotations for the tile position given by tile_hex_string.
     """
     def get(self, request, tile_hex_string, format=None):
+        matching = re.match('^[0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4}$', tile_hex_string)
+        assert matching != None, "%s is not recognized as a valid tile position" % tile_hex_string
         tile_id = int(tile_hex_string.replace('.', ''), 16)
-        locuses = TileLocusAnnotation.objects.filter(tile_id=tile_id).all()
-        serializer = LocusSerializer(locuses, many=True)
-        return Response(serializer.data)
-
-class GenomeVariantsInTileList(APIView):
-    """
-    Retrieve the GenomeVariants for the tile given by the tile_hex_string
-    """
-    def get(self, request, tile_hex_string, format=None):
         try:
-            tile_id = int(tile_hex_string.replace('.', ''), 16)
-            lower_tile_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_id)
-            upper_tile_variant_int = basic_fns.convert_position_int_to_tile_variant_int(tile_id+1)-1
-            tile_variants = TileVariant.objects.filter(tile_variant_name__range=(lower_tile_variant_int, upper_tile_variant_int))
-            wonky_info = []
-            for tile_variant in tile_variants:
-                translations = tile_variant.translation_to_genome_variant.all()
-                for translation in translations:
-                    genome_variant = translation.genome_variant
-                    wonky_info.append({
-                        'tile_variant_hex_string': tile_variant,
-                        'start_locus_relative_to_tile': translation.start,
-                        'end_locus_relative_to_tile': translation.end,
-                        'start_locus_relative_to_ref': genome_variant.start_increment,
-                        'end_locus_relative_to_ref': genome_variant.end_increment,
-                        'reference_bases': genome_variant.reference_bases,
-                        'alternate_bases': genome_variant.alternate_bases
-                    })
-            serializer = GenomeVariantInTileVariantSerializer(wonky_info, many=True)
+            tile = Tile.objects.get(tilename=tile_id)
+            locuses = TileLocusAnnotation.objects.get(tile_id=tile_id)
+            serializer = LocusSerializer(locuses)
             return Response(serializer.data)
-        except TileVariant.DoesNotExist:
+        except Tile.DoesNotExist:
             raise Http404
-
-class GenomeVariantsInTileVariantList(APIView):
-    """
-    Retrieve the GenomeVariants for the tile variant given by the tile_variant_hex_string
-    """
-    def get(self, request, tile_variant_hex_string, format=None):
-        try:
-            tile_variant_id = int(tile_variant_hex_string.replace('.', ''), 16)
-            translations = TileVariant.objects.get(tile_variant_name=tile_variant_id).translation_to_genome_variant.all()
-            wonky_info = []
-            for translation in translations:
-                genome_variant = translation.genome_variant
-                wonky_info.append({
-                    'tile_variant_hex_string': tile_variant_hex_string,
-                    'start_locus_relative_to_tile': translation.start,
-                    'end_locus_relative_to_tile': translation.end,
-                    'start_locus_relative_to_ref': genome_variant.start_increment,
-                    'end_locus_relative_to_ref': genome_variant.end_increment,
-                    'reference_bases': genome_variant.reference_bases,
-                    'alternate_bases': genome_variant.alternate_bases
-                })
-            serializer = GenomeVariantInTileVariantSerializer(wonky_info, many=True)
-            return Response(serializer.data)
-        except TileVariant.DoesNotExist:
+        except TileLocusAnnotation.DoesNotExist:
             raise Http404
 
 class PopulationVariantQueryBetweenLoci(APIView):
     """
-    Retrieve population sequences between position "lower_base" and "upper_base" (upper base is exclusive)
+    Retrieve population sequences between position "lower_base" and "upper_base" (upper base is exclusive).
+    If the positions are 1-indexed, set "indexing" to 1.
+    Requires lantern version 0.0.3
     """
     def get_variants_and_bases(self, assembly, chromosome, low_int, high_int):
         """
@@ -217,9 +216,10 @@ class PopulationVariantQueryBetweenLoci(APIView):
             return Response(return_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(query_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class PopulationVariantQuery(APIView):
+class PopulationVariantQueryAroundLocus(APIView):
     """
     Retrieve population sequences at position "target_base" (with "number_around" bases around "target_base" also retrieved).
+    If the positions are 1-indexed, set "indexing" to 1. Defaults to number_around=0.
     Requires lantern version 0.0.3
     """
     def get_variants_and_bases(self, assembly, chromosome, target_base_int, number_bases_around):
