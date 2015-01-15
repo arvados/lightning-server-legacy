@@ -327,8 +327,15 @@ class PopulationVariantQueryAroundLocus(APIView):
         #Check to make sure we didn't go over the maximum position in the path
         check_position = query_fns.get_highest_position_int_in_path(prev_path)
         if curr_position > check_position:
-            next_path_min_position, ignore = fns.get_min_position_and_tile_variant_from_path_int(prev_path+1)
-            curr_position = curr_position - (check_position+1) + next_path_min_posiiton
+            try:
+                next_path_min_position, ignore = fns.get_min_position_and_tile_variant_from_path_int(prev_path+1)
+                curr_position = curr_position - (check_position+1) + next_path_min_position
+                t = Tile.objects.get(tilename=curr_position)
+            except AssertionError:
+                raise query_fns.EmptyPathException("")
+            except Tile.DoesNotExist:
+                raise query_fns.EmptyPathException("")
+
         #Query lantern to get call at the next position
         cgf_string = query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase][0]
         #Get bases (tile_variant from cgf_string)
@@ -336,25 +343,21 @@ class PopulationVariantQueryAroundLocus(APIView):
         return cgf_string, bases
 
     def get_one_more_tile_backwards(self, human_name, phase, prev_cgf_string):
-        prev_path, prev_path_version, prev_step, ignore = prev_cgf_string.split('.')
-        prev_path = int(prev_path, 16)
-        prev_path_version = int(prev_path_version, 16)
-        prev_step = int(prev_path, 16)
+        def get_next_position(prev_position):
+            prev_path, prev_path_version, prev_step = basic_fns.get_position_ints_from_position_int(prev_position)
+            if prev_step == 0:
+                next_position = query_fns.get_highest_position_int_in_path(prev_path-1)
+            else:
+                next_position = prev_position - 1
+            return next_position
+
         prev_position = basic_fns.get_position_from_cgf_string(prev_cgf_string)
-        if prev_step == 0:
-            curr_position = query_fns.get_highest_position_int_in_path(prev_path-1)
-        else:
-            curr_position = prev_position - 1 #First assume that the previous tile wasn't spanning...
+        curr_position = get_next_position(prev_position)
         #Query lantern to get call at the next position
         curr_call = []
-        curr_path, curr_path_version, curr_step = basic_fns.get_position_ints_from_position_int(curr_position)
         while len(curr_call) == 0:
             curr_call = query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase]
-            if curr_step == 0:
-                curr_position = query_fns.get_highest_position_int_in_path(curr_path-1)
-            else:
-                curr_position -= 1
-            curr_path, curr_path_version, curr_step = basic_fns.get_position_ints_from_position_int(curr_position)
+            curr_position = get_next_position(curr_position)
 
         cgf_string = curr_call[0]
         #Get bases (tile_variant from cgf_string)
@@ -470,6 +473,8 @@ class PopulationVariantQueryAroundLocus(APIView):
                     int(query_serializer.data['number_around']))
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, center_position_int,
                     cgf_translator, center_cgf_translator, int(query_serializer.data['number_around']))
+            except query_fns.EmptyPathException:
+                return Response("Query includes loci that are not included in tile library", status=status.HTTP_404_NOT_FOUND)
             except AssertionError as e:
                 return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR )
             except Exception as e:

@@ -9,10 +9,18 @@ from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVarian
 import tile_library.basic_functions as basic_fns
 import tile_library.functions as fns
 
+class EmptyPathException(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 def get_highest_position_int_in_path(path_int):
     min_position, min_tile_var = fns.get_min_position_and_tile_variant_from_path_int(path_int)
     max_position, max_tile_var = fns.get_min_position_and_tile_variant_from_path_int(path_int+1)
     tile = Tile.objects.filter(tilename__range=(min_position, max_position-1)).last()
+    if tile == None:
+        raise EmptyPathException("No tiles are matched in path %s" % (hex(path_int).lstrip('0x').zfill(3)))
     return int(tile.tilename)
 
 def get_max_num_tiles_spanned_at_position(tile_position_int):
