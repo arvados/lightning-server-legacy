@@ -16,6 +16,8 @@ from django.test import TestCase
 #       TileLocusAnnotations must be 0 indexed, [start, end)
 #
 
+# Check queries work with different path versions as well >.<
+
 # Query Between Loci
 #   Order of checking: assembly, chromosome, low_int too low, high_int too high
 

@@ -277,8 +277,9 @@ class PopulationVariantQuery(APIView):
 
     def helper_get_bases_forward(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print):
         non_spanning_cgf_string = cgf_string.split('+')[0]
+        step_int = int(non_spanning_cgf_string.split('.')[2], 16)
         assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(sorted(translator.keys())))
-        if len(curr_sequence) > 1:
+        if len(curr_sequence) > 1 and step_ind > 0:
             curr_ending_tag = curr_sequence[-TAG_LENGTH:]
             new_starting_tag = translator[non_spanning_cgf_string][:TAG_LENGTH]
             if len(curr_ending_tag) >= len(new_starting_tag):
@@ -298,8 +299,9 @@ class PopulationVariantQuery(APIView):
 
     def helper_get_bases_reverse(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print):
         non_spanning_cgf_string = cgf_string.split('+')[0]
+        step_int = int(non_spanning_cgf_string.split('.')[2], 16)
         assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(sorted(translator.keys())))
-        if len(curr_sequence) > 1:
+        if len(curr_sequence) > 1 and step_int > 0: # Tags will only overlap if we are on the same path
             curr_starting_tag = curr_sequence[:TAG_LENGTH]
             new_ending_tag = translator[non_spanning_cgf_string][-TAG_LENGTH:]
             if len(curr_starting_tag) >= len(new_ending_tag):
@@ -318,8 +320,14 @@ class PopulationVariantQuery(APIView):
             return new_sequence, False
 
     def get_one_more_tile_forwards(self, human_name, phase, prev_cgf_string):
+        prev_path = int(prev_cgf_string.split('.')[0], 16)
         prev_position = basic_fns.get_position_from_cgf_string(prev_cgf_string)
         curr_position = prev_position + basic_fns.get_number_of_tiles_spanned(prev_cgf_string)
+        #Check to make sure we didn't go over the maximum position in the path
+        check_position = query_fns.get_highest_position_int_in_path(prev_path)
+        if curr_position > check_position:
+            next_path_min_position, ignore = fns.get_min_position_and_tile_variant_from_path_int(prev_path+1)
+            curr_position = curr_position - (check_position+1) + next_path_min_posiiton
         #Query lantern to get call at the next position
         cgf_string = query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase][0]
         #Get bases (tile_variant from cgf_string)
@@ -327,13 +335,26 @@ class PopulationVariantQuery(APIView):
         return cgf_string, bases
 
     def get_one_more_tile_backwards(self, human_name, phase, prev_cgf_string):
+        prev_path, prev_path_version, prev_step, ignore = prev_cgf_string.split('.')
+        prev_path = int(prev_path, 16)
+        prev_path_version = int(prev_path_version, 16)
+        prev_step = int(prev_path, 16)
         prev_position = basic_fns.get_position_from_cgf_string(prev_cgf_string)
-        curr_position = prev_position - 1 #First assume that the previous tile wasn't spanning...
+        if prev_step == 0:
+            curr_position = query_fns.get_highest_position_int_in_path(prev_path-1)
+        else:
+            curr_position = prev_position - 1 #First assume that the previous tile wasn't spanning...
         #Query lantern to get call at the next position
         curr_call = []
+        curr_path, curr_path_version, curr_step = basic_fns.get_position_ints_from_position_int(curr_position)
         while len(curr_call) == 0:
             curr_call = query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase]
-            curr_position -= 1
+            if curr_step == 0:
+                curr_position = query_fns.get_highest_position_int_in_path(curr_path-1)
+            else:
+                curr_position -= 1
+            curr_path, curr_path_version, curr_step = basic_fns.get_position_ints_from_position_int(curr_position)
+            
         cgf_string = curr_call[0]
         #Get bases (tile_variant from cgf_string)
         bases = query_fns.get_bases_from_cgf_str(cgf_string)
@@ -350,7 +371,7 @@ class PopulationVariantQuery(APIView):
         center_cgf_string = sequence_of_tile_variants[middle_index].split('+')[0]
         assert center_cgf_string in center_cgf_translator[1], \
             "CGF string %s at middle index %i (for middle position %s) is not in center_cgf_translator" % (center_cgf_string, middle_index, middle_position_str)
-        sequence = center_cgf_translator[1][central_cgf_string]
+        sequence = center_cgf_translator[1][center_cgf_string]
         forward_sequence = sequence
         reverse_sequence = sequence
         #Go forward
