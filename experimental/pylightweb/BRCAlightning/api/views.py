@@ -452,7 +452,7 @@ class PopulationVariantQuery(APIView):
                 {'human_name':human.strip('" ').split('/')[-1],
                  'phase_A_sequence':human_sequence_dict[human][0],
                  'phase_B_sequence':human_sequence_dict[human][1],
-                 'phased':False}
+                 'phase_groups_known':False}
                  )
         return humans_with_sequences
 

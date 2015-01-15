@@ -26,7 +26,7 @@ class PopulationVariantSerializer(serializers.Serializer):
     human_name = serializers.CharField(max_length=200)
     phase_A_sequence = serializers.CharField(style={'type': 'textarea'})
     phase_B_sequence = serializers.CharField(style={'type': 'textarea'})
-    phased = serializers.BooleanField(default=False)
+    phase_groups_known = serializers.BooleanField(default=False)
 
 class PopulationQuerySerializer(serializers.Serializer):
     INDEX_CHOICES = (
@@ -35,9 +35,9 @@ class PopulationQuerySerializer(serializers.Serializer):
         )
     assembly = serializers.ChoiceField(choices=TileLocusAnnotation.SUPPORTED_ASSEMBLY_CHOICES)
     chromosome = serializers.ChoiceField(choices=TileLocusAnnotation.CHR_CHOICES)
-    indexing = serializers.ChoiceField(choices=INDEX_CHOICES)
+    indexing = serializers.ChoiceField(choices=INDEX_CHOICES, default=0)
     target_base = serializers.IntegerField()
-    number_around = serializers.IntegerField()
+    number_around = serializers.IntegerField(default=0)
 
 class PopulationRangeQuerySerializer(serializers.Serializer):
     INDEX_CHOICES = (
@@ -46,6 +46,6 @@ class PopulationRangeQuerySerializer(serializers.Serializer):
         )
     assembly = serializers.ChoiceField(choices=TileLocusAnnotation.SUPPORTED_ASSEMBLY_CHOICES)
     chromosome = serializers.ChoiceField(choices=TileLocusAnnotation.CHR_CHOICES)
-    indexing = serializers.ChoiceField(choices=INDEX_CHOICES)
+    indexing = serializers.ChoiceField(choices=INDEX_CHOICES, default=0)
     lower_base = serializers.IntegerField()
     upper_base = serializers.IntegerField()
