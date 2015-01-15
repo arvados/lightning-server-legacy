@@ -15,6 +15,12 @@ from tile_library.models import Tile, TileVariant, TileLocusAnnotation, TAG_LENG
 import tile_library.query_functions as query_fns
 import tile_library.basic_functions as basic_fns
 
+class LocusOutOfRangeException(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class TileVariantQuery(APIView):
     """
     Retrieve a tile variant (by its hex string) or retrieve all tile variants at a tile position (by a tile position hex string).
@@ -69,8 +75,6 @@ class TileVariantQuery(APIView):
             serializer = TileVariantSerializer(tile_variant_list, many=True)
         return Response(serializer.data)
 
-
-
 class TileLocusAnnotationList(APIView):
     """
     Retrieve the tile locus annotations for the tile position given by tile_hex_string.
@@ -119,7 +123,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
                     smallest_int = base_query.order_by('begin_int').first().begin_int
                     largest_int = base_query.order_by('begin_int').reverse().first().end_int
                     response_text = "That locus is not loaded in this server. Try a number in the range %i to %i." % (smallest_int, largest_int)
-        assert num_locuses > 0, response_text
+            raise LocusOutOfRangeException(response_text)
         #Get framing tile position ints
         first_tile_position_int = int(locuses.first().tile_id)
         last_tile_position_int = max(int(locuses.last().tile_id), first_tile_position_int) # unsure if this max is required
@@ -206,6 +210,8 @@ class PopulationVariantQueryBetweenLoci(APIView):
                     lower_base,
                     upper_base)
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator)
+            except LocusOutOfRangeException as e:
+                return Response(str(e), status=status.HTTP_404_NOT_FOUND)
             except AssertionError as e:
                 return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             except Exception as e:
@@ -244,7 +250,7 @@ class PopulationVariantQueryAroundLocus(APIView):
                     smallest_int = base_query.order_by('begin_int').first().begin_int
                     largest_int = base_query.order_by('begin_int').reverse().first().end_int
                     response_text = "That locus is not loaded in this server. Try a number in the range %i to %i." % (smallest_int, largest_int)
-            assert False, response_text
+            raise LocusOutOfRangeException(response_text)
         center_locus = center_locus.order_by('begin_int').first()
         center_tile_position_int = int(center_locus.tile_id)
 
@@ -475,6 +481,8 @@ class PopulationVariantQueryAroundLocus(APIView):
                     cgf_translator, center_cgf_translator, int(query_serializer.data['number_around']))
             except query_fns.EmptyPathException:
                 return Response("Query includes loci that are not included in tile library", status=status.HTTP_404_NOT_FOUND)
+            except LocusOutOfRangeException as e:
+                return Response(str(e), status=status.HTTP_404_NOT_FOUND)
             except AssertionError as e:
                 return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR )
             except Exception as e:
