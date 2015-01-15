@@ -255,6 +255,9 @@ class GenomeVariantTranslation(models.Model):
 class TileLocusAnnotation(models.Model):
     """
     Implements mapping to enable translations between assembly loci and tile id.
+    From looking at UCSC Genome Browser definitions of chromosome bands, we deduce these are currently:
+        0-indexed.
+        [begin_int, end_int) (exclusive end int)
 
     Example input from FASTJ:
         Tile x  : {"build":"hg19 chr9 135900000-24 135900225"} => begin_int: 135900000; end_int: 135900225

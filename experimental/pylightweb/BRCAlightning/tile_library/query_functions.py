@@ -70,7 +70,8 @@ def get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(tile_variant, 
 
 def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, low_int, high_int, start_locus_int, end_locus_int):
     cgf_str = tile_variant.conversion_to_cgf
-    assert cgf_str != "", "CGF translation required"
+    if cgf_str == "": #if the cgf translation is empty, we will never get it returned by lantern
+        return "", ""
     assert low_int <= end_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (str(tile_variant), low_int, high_int, start_locus_int, end_locus_int)
     assert high_int >= start_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (str(tile_variant), low_int, high_int, start_locus_int, end_locus_int)
     #If we are asked to retrieve the entire tile, our job is easy:
