@@ -4,16 +4,153 @@ import sys
 import re
 
 from django.http import Http404
-from api.serializers import TileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
+from django.shortcuts import render
+from django.core.urlresolvers import reverse
 from rest_framework import generics
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from api.serializers import TileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, TAG_LENGTH
 import tile_library.query_functions as query_fns
 import tile_library.basic_functions as basic_fns
+
+def documentation(request):
+    """
+    For each GET API call, the template needs:
+	   id; title; description; GET_url; required_GET_parameters; optional_GET_parameters; request_body; RESPONSE_properties; try_it_url
+
+	for each required_GET_parameter, optional_GET_parameter, and RESPONSE_property, the template needs:
+		name; value; description
+    """
+    response = {
+        'api_calls': [
+            {
+                'id': 'around-locus',
+                'title': 'Find sequence around a specific locus',
+                'description':'Lists the bases around the specified locus for the entire population loaded into Lightning. Currently assumes the population has two phases.',
+                'GET_url':reverse('api:pop_around_locus'),
+                'required_GET_parameters': [
+                    {
+                        'name':'assembly',
+                        'value':'integer',
+                        'description':'The integer representation of the assembly to use.'
+                    },
+                    {
+                        'name':'chromosome',
+                        'value':'integer',
+                        'description':'The integer representation of the chromosome to query.'
+                    },
+                    {
+                        'name':'target_base',
+                        'value':'long',
+                        'description':'The locus to query around. (0-based).'
+                    }
+                ],
+                'optional_GET_parameters':[
+                    {
+                        'name':'number_around',
+                        'value':'long',
+                        'description':'The number of bases to retrieve around the locus. Defaults to 0.'
+                    },
+                    {
+                        'name':'indexing',
+                        'value':'integer',
+                        'description':'Specifies whether to use 0-indexing or 1-indexing. Defaults to 0.'
+                    }
+                ],
+                'request_body':'Do not supply a request body with this method.',
+                'RESPONSE_properties':[
+                    {
+                        'name':'human_name',
+                        'value':'string',
+                        'description':'A unique identifier for the human who has this sequence. Contains the Personal Genome Project person ID.'
+                    },
+                    {
+                        'name':'phase_A_sequence',
+                        'value':'string',
+                        'description':'<code>number_around</code> bases before locus <code>target_base</code>, the base at locus <code>target_base</code>,\
+                            and <code>number_around</code> bases after locus <code>target_base</code> called as phase A by the Complete genomics variant caller.'
+                    },
+                    {
+                        'name':'phase_B_sequence',
+                        'value':'string',
+                        'description':'<code>number_around</code> bases before locus <code>target_base</code>, the base at locus <code>target_base</code>,\
+                            and <code>number_around</code> bases after locus <code>target_base</code> called as phase B by the Complete genomics variant caller.'
+                    },
+                    {
+                        'name':'phase_groups_known',
+                        'value':'boolean',
+                        'description':'True if the sequence is well phased. False otherwise.'
+                    }
+                ],
+                'try_it_url':reverse('population_sequence_query:around_locus_form')
+            },
+            {
+                'id': 'between-loci',
+                'title': 'Find sequence between two loci',
+                'description':'Lists the bases between two loci for the entire population loaded into Lightning. Currently assumes the population has two phases.',
+                'GET_url':reverse('api:pop_between_loci'),
+                'required_GET_parameters': [
+                    {
+                        'name':'assembly',
+                        'value':'integer',
+                        'description':'The integer representation of the assembly to use.'
+                    },
+                    {
+                        'name':'chromosome',
+                        'value':'integer',
+                        'description':'The integer representation of the chromosome to query.'
+                    },
+                    {
+                        'name':'lower_base',
+                        'value':'long',
+                        'description':'The locus to start querying at. (0-based).'
+                    },
+                    {
+                        'name':'upper_base',
+                        'value':'long',
+                        'description':'The locus to end querying at. (0-based and exclusive).'
+                    }
+                ],
+                'optional_GET_parameters':[
+                    {
+                        'name':'indexing',
+                        'value':'integer',
+                        'description':'Specifies whether to use 0-indexing or 1-indexing. Defaults to 0.'
+                    }
+                ],
+                'request_body':'Do not supply a request body with this method.',
+                'RESPONSE_properties':[
+                    {
+                        'name':'human_name',
+                        'value':'string',
+                        'description':'A unique identifier for the human who has this sequence. Contains the Personal Genome Project person ID.'
+                    },
+                    {
+                        'name':'phase_A_sequence',
+                        'value':'string',
+                        'description':'Sequence called as phase A by the Complete genomics variant caller between <code>lower_base</code> and <code>upper_base</code>.'
+                    },
+                    {
+                        'name':'phase_B_sequence',
+                        'value':'string',
+                        'description':'Sequence called as phase B by the Complete genomics variant caller between <code>lower_base</code> and <code>upper_base</code>.'
+                    },
+                    {
+                        'name':'phase_groups_known',
+                        'value':'boolean',
+                        'description':'True if the sequence is well phased. False otherwise.'
+                    }
+                ],
+                'try_it_url':reverse('population_sequence_query:between_loci_form')
+            }
+
+        ]
+    }
+    return render(request, 'api/api_docs.html', response)
 
 class LocusOutOfRangeException(Exception):
     def __init__(self, value):
@@ -121,7 +258,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
                     response_text = "Specified locus is not in this server. Try a different chromosome"
                 else:
                     smallest_int = base_query.order_by('begin_int').first().begin_int
-                    largest_int = base_query.order_by('begin_int').reverse().first().end_int
+                    largest_int = base_query.order_by('begin_int').reverse().first().end_int - 1
                     response_text = "That locus is not loaded in this server. Try a number in the range %i to %i." % (smallest_int, largest_int)
             raise LocusOutOfRangeException(response_text)
         #Get framing tile position ints
@@ -248,7 +385,7 @@ class PopulationVariantQueryAroundLocus(APIView):
                     response_text = "Specified locus is not in this server. Try a different chromosome"
                 else:
                     smallest_int = base_query.order_by('begin_int').first().begin_int
-                    largest_int = base_query.order_by('begin_int').reverse().first().end_int
+                    largest_int = base_query.order_by('begin_int').reverse().first().end_int - 1
                     response_text = "That locus is not loaded in this server. Try a number in the range %i to %i." % (smallest_int, largest_int)
             raise LocusOutOfRangeException(response_text)
         center_locus = center_locus.order_by('begin_int').first()
@@ -377,7 +514,8 @@ class PopulationVariantQueryAroundLocus(APIView):
             curr_position = basic_fns.get_position_from_cgf_string(cgf_string)
             if curr_position <= middle_position:
                 middle_index = i
-        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. (%s)" % (human, middle_position_str, str(center_cgf_translator))
+        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. Positions: %s, center_cgf_translator: (%s)" % (human,
+            middle_position_str, str(positions), str(center_cgf_translator))
         center_cgf_string = sequence_of_tile_variants[middle_index].split('+')[0]
         assert center_cgf_string in center_cgf_translator[1], \
             "CGF string %s at middle index %i (for middle position %s) is not in center_cgf_translator" % (center_cgf_string, middle_index, middle_position_str)
