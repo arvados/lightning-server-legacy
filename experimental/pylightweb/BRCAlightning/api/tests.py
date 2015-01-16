@@ -26,3 +26,6 @@ from django.test import TestCase
 #   If assembly is an integer, but not loaded into the database, raise Exception
 #       (It would be nice if it responded with loaded assembly integers)
 #   If
+
+# Query Around Loci
+#   Currently unable to test behavior at the end of a chromosome, since TileVariants are still truncated...

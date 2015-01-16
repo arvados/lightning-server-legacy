@@ -3,17 +3,18 @@
 {% load bootstrap %}
 {% load humanize %}
 
-{% block title %}Lightning: Variant Query{% endblock %}
+{% block title %}Lightning: Population Sequence Query{% endblock %}
 
 {% block breadcrumbs %}
-	<li class="active"><a href="{% url 'variant_query:index' %}">Query</a></li>
+	<li class="active"><a href="#">{{form_name}}</a></li>
 {% endblock %}
-
 
 {% block content %}
 <div class="container">
 	<div class="page-header">
-		<h1>Submit form </h1>
+		<h1>{{form_name}} form </h1>
+		<p> Note: This form is not intended to display hundreds of bases. We suggest using <a href="{% url 'api:documentation' %}">the api</a>
+			for queries spanning more than a hundred bases. </p>
 		<p> Took {{time1|floatformat:3}} seconds to get assembly choices. Took {{time2|floatformat:3}} seconds to get chromosome choices.</p>
 	</div>
 	<form role="form" method="get">
@@ -22,16 +23,16 @@
 	</form>
 	{% if response %}
 		<h1>Response:</h1>
-		<p>{{ response.text }} This query took {{response.time|floatformat:3}} seconds.</p>
+		<p>{{ response.text|linebreaks }} This query took {{response.time|floatformat:3}} seconds.</p>
 		{% if response.humans %}
 			<div class="table-responsive">
 				<table class="table table-striped">
 					<thead>
 						<tr>
 							<th>Sample Name</th>
-							<th>Phase A call at that position</th>
-							<th>Phase B call at that position</th>
-							<th>Phases well defined?</th>
+							<th>Phase A call</th>
+							<th>Phase B call</th>
+							<th>Phases groups known?</th>
 						</tr>
 					</thead>
 					<tbody>

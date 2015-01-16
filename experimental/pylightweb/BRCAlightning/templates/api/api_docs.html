@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+
+{% block title %}Lightning API: Documentation {% endblock %}
+
+{% block breadcrumbs %}
+<li class="active"><a href="#">API Documentation</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div id="leftCol" class="col-md-2 col-sm-3 sidebar">
+      <ul id="sidebar" class="nav nav-sidebar nav-stacked affix">
+        {% for api_call in api_calls %}
+        <li><a href="#{{api_call.id}}">{{api_call.title}}</a></li>
+        {% endfor %}
+        <li><a href="#top">Back to Top</a></li>
+      </ul>
+    </div>
+    <div class="col-md-9">
+      <div id="top" class="page-header">
+        <h1 class="text-center">API Reference</h1>
+      </div>
+      <p class="lead text-center">This site is a work in progress and is open-source.
+        Please contact us <a href="https://arvados.org/projects/arvados/wiki/IRC_and_Mailing_lists">here</a> with questions,
+        unexpected behavior reports, and feature requests.</p>
+      {% for api_call in api_calls %}
+      <hr>
+      <div>
+        <h1 id="{{ api_call.id }}" class="section-header">{{ api_call.title }}:</h1>
+        <p>{{ api_call.description}}</p>
+
+        <h3 id="{{ api_call.id }}-request">Request</h3>
+
+        <hr class="bs-docs-separator">
+
+        <h4>HTTP request</h4>
+        <pre>GET {{ api_call.GET_url }}</pre>
+
+        <hr class="bs-docs-separator">
+
+        <h4 id="{{ api_call.id }}-request-parameters">GET Parameters</h4>
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Parameter name</th>
+                <th>Value</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="{{api_call.id}}-required-parameters">
+                <td colspan="3"><b>Required query parameters</b></td>
+              </tr>
+              {% for parameter in api_call.required_GET_parameters %}
+              <tr id="{{parameter.name}}">
+                <td><code>{{parameter.name}}</code></td>
+                <td><code class="apitype">{{parameter.value}}</code></td>
+                <td>{{parameter.description}}</td>
+              </tr>
+              {% empty %}
+              <tr id="{{api_call.id}}-required-parameters-none">
+                <td colspan="3">None</td>
+              </tr>
+              {% endfor %}
+              <tr id="{{api_call.id}}-optional-parameters">
+                <td colspan="3"><b>Optional query parameters</b></td>
+              </tr>
+              {% for parameter in api_call.optional_GET_parameters %}
+              <tr id="{{parameter.name}}">
+                <td><code>{{parameter.name}}</code></td>
+                <td><code class="apitype">{{parameter.value}}</code></td>
+                <td>{{parameter.description|safe}}</td>
+              </tr>
+              {% empty %}
+              <tr id="{{api_call.id}}-optional-parameters-none">
+                <td colspan="3">None</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <hr class="separator">
+
+        <h4 id="{{api_call.id}}-request-body">Request body</h4>
+        <p>{{api_call.request_body}}</p>
+        <hr>
+        <h3 id="{{api_call.id}}-response">Response</h3>
+        <p>If successful, this method returns a response body with the following structure:</p>
+        <pre>
+          { {% for property in api_call.RESPONSE_properties %}
+            {% if forloop.last %}{{property.name}}:{{property.value}}{% else %}{{property.name}}:{{property.value}},{% endif %}{% endfor %}
+          }</pre>
+        <div class="table-responsive">
+          <table class="table table-striped" id="{{api_call.id}}-response-properties">
+            <thead>
+              <tr>
+                <th>Property name</th>
+                <th>Value</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for property in api_call.RESPONSE_properties %}
+              <tr id="{{property.name}}">
+                <td><code>{{property.name}}</code></td>
+                <td><code class="apitype">{{property.value}}</code></td>
+                <td>{{property.description|safe}}</td>
+              </tr>
+              {% empty %}
+              <tr id="{{api_call.id}}-response-properties-none">
+                <td colspan="3">None</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <h3 id="{{api_call.id}}-try-it"><a href="{{api_call.try_it_url}}">Try it!</a></h3>
+      </div>
+      {% endfor %}
+    </div>
+</div>
+{% endblock %}
