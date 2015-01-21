@@ -30,8 +30,8 @@ class LocusSerializer(serializers.ModelSerializer):
 
 class PopulationVariantSerializer(serializers.Serializer):
     human_name = serializers.CharField(max_length=200)
-    phase_A_sequence = serializers.CharField(style={'type': 'textarea'})
-    phase_B_sequence = serializers.CharField(style={'type': 'textarea'})
+    phase_A_sequence = serializers.CharField(style={'type': 'textarea'}, allow_blank=True)
+    phase_B_sequence = serializers.CharField(style={'type': 'textarea'}, allow_blank=True)
     phase_groups_known = serializers.BooleanField(default=False)
 
 ################## For User Inputs ##################################
