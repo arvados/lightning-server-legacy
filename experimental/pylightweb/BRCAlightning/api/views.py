@@ -86,7 +86,8 @@ def documentation(request):
                         'description':'True if the sequence is well phased. False otherwise.'
                     }
                 ],
-                'try_it_url':reverse('population_sequence_query:around_locus_form')
+                'try_it_url':reverse('population_sequence_query:around_locus_form'),
+                'try_it_examples':[]
             },
             {
                 'id': 'between-loci',
@@ -145,12 +146,18 @@ def documentation(request):
                         'description':'True if the sequence is well phased. False otherwise.'
                     }
                 ],
-                'try_it_url':reverse('population_sequence_query:between_loci_form')
+                'try_it_url':reverse('population_sequence_query:between_loci_form'),
+                'try_it_examples':[]
             }
-
         ]
     }
     return render(request, 'api/api_docs.html', response)
+
+def print_friendly_cgf_translator(cgf_translator):
+    new_string = ""
+    for i in cgf_translator:
+        new_string += str(sorted(i.keys()))+'\n'
+    return new_string
 
 class LocusOutOfRangeException(Exception):
     def __init__(self, value):
@@ -276,7 +283,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
         spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(first_tile_position_int)
         for var in spanning_tile_variants:
             cgf_str, bases = query_fns.get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(var, low_int, high_int, assembly)
-            assert cgf_str not in cgf_translator_by_position[0], "Repeat spanning cgf_string in position %s" % (string.join(cgf_str.split('.')[:-1]), '.')
+            assert cgf_str not in cgf_translator_by_position[0], "Repeat spanning cgf_string: %s" % (cgf_str)
             cgf_translator_by_position[0][cgf_str] = bases
         return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator_by_position
 
@@ -297,7 +304,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 if tile_position_int - first_tile_position_int < 0:
                     tile_position_int = first_tile_position_int
                 assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], \
-                    "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, str(cgf_translator))
+                    "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, print_friendly_cgf_translator(cgf_translator))
                 if len(sequence) > 0:
                     curr_ending_tag = sequence[-TAG_LENGTH:]
                     new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
@@ -514,8 +521,8 @@ class PopulationVariantQueryAroundLocus(APIView):
             curr_position = basic_fns.get_position_from_cgf_string(cgf_string)
             if curr_position <= middle_position:
                 middle_index = i
-        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. Positions: %s, center_cgf_translator: (%s)" % (human,
-            middle_position_str, str(positions), str(center_cgf_translator))
+        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. Positions: %s, center_cgf_translator keys: (%s), not center_cgf_translator keys: (%s)" % (human,
+            middle_position_str, str(sequence_of_tile_variants), print_friendly_cgf_translator(center_cgf_translator), print_friendly_cgf_translator(cgf_translator))
         center_cgf_string = sequence_of_tile_variants[middle_index].split('+')[0]
         assert center_cgf_string in center_cgf_translator[1], \
             "CGF string %s at middle index %i (for middle position %s) is not in center_cgf_translator" % (center_cgf_string, middle_index, middle_position_str)
