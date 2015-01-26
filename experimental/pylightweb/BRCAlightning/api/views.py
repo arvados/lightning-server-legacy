@@ -153,11 +153,6 @@ def documentation(request):
     }
     return render(request, 'api/api_docs.html', response)
 
-def print_friendly_cgf_translator(cgf_translator):
-    new_string = ""
-    for i in cgf_translator:
-        new_string += str(sorted(i.keys()))+'\n'
-    return new_string
 
 class LocusOutOfRangeException(Exception):
     def __init__(self, value):
@@ -304,7 +299,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 if tile_position_int - first_tile_position_int < 0:
                     tile_position_int = first_tile_position_int
                 assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], \
-                    "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, print_friendly_cgf_translator(cgf_translator))
+                    "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, query_fns.print_friendly_cgf_translator(cgf_translator))
                 if len(sequence) > 0:
                     curr_ending_tag = sequence[-TAG_LENGTH:]
                     new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
@@ -522,7 +517,7 @@ class PopulationVariantQueryAroundLocus(APIView):
             if curr_position <= middle_position:
                 middle_index = i
         assert middle_index != None, "Human %s did not have a position less than the middle_position %s. Positions: %s, center_cgf_translator keys: (%s), not center_cgf_translator keys: (%s)" % (human,
-            middle_position_str, str(sequence_of_tile_variants), print_friendly_cgf_translator(center_cgf_translator), print_friendly_cgf_translator(cgf_translator))
+            middle_position_str, str(sequence_of_tile_variants), query_fns.print_friendly_cgf_translator(center_cgf_translator), query_fns.print_friendly_cgf_translator(cgf_translator))
         center_cgf_string = sequence_of_tile_variants[middle_index].split('+')[0]
         assert center_cgf_string in center_cgf_translator[1], \
             "CGF string %s at middle index %i (for middle position %s) is not in center_cgf_translator" % (center_cgf_string, middle_index, middle_position_str)
