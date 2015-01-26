@@ -428,12 +428,14 @@ class PopulationVariantQueryAroundLocus(APIView):
         if len(curr_sequence) > 1 and step_int > 0:
             curr_ending_tag = curr_sequence[-TAG_LENGTH:]
             new_starting_tag = translator[non_spanning_cgf_string][:TAG_LENGTH]
-            if len(curr_ending_tag) >= len(new_starting_tag) or len(curr_sequence) < TAG_LENGTH:
+            if len(curr_sequence) < TAG_LENGTH:
+                assert new_starting_tag.endswith(curr_ending_tag), \
+                    "Tags do not match. Ending Tag: %s, Starting Tag: %s. curr_seq is smaller than TAG_LENGTH" % (curr_ending_tag, new_starting_tag)
+            elif len(curr_ending_tag) >= len(new_starting_tag):
                 assert curr_ending_tag.endswith(new_starting_tag), \
-                    "Tags do not match. Ending Tag: %s, Starting Tag: %s." % (curr_ending_tag, new_starting_tag)
+                    "Tags do not match. Ending Tag: %s, Starting Tag: %s. Ending tag is larger or equal to the starting tag" % (curr_ending_tag, new_starting_tag)
             else:
-                assert new_starting_tag.startswith(curr_ending_tag), \
-                    "Tags do not match. Ending Tag: %s, Starting Tag: %s." % (curr_ending_tag, new_starting_tag)
+                raise Exception("Unexpected TAG case. Ending tag: %s, Starting tag: %s, current sequence length: %i." % (curr_ending_tag, new_starting_tag, len(curr_sequence)))
             new_sequence = translator[non_spanning_cgf_string][TAG_LENGTH:]
         else:
             new_sequence = translator[non_spanning_cgf_string]
