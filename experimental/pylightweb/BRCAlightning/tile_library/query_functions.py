@@ -9,6 +9,12 @@ from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVarian
 import tile_library.basic_functions as basic_fns
 import tile_library.functions as fns
 
+def print_friendly_cgf_translator(cgf_translator):
+    new_string = ""
+    for i in cgf_translator:
+        new_string += str(sorted(i.keys()))+','
+    return new_string.strip(',')
+
 class EmptyPathException(Exception):
     def __init__(self, value):
         self.value = value
@@ -200,15 +206,18 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
             upper_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
             end_locus_int = int(upper_locus.end_int)
         cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, start_locus_int, target_base, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[0], "Repeat cgf_string in position %s (center cgf translator)" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+        assert cgf_str not in center_cgf_translator[0], "Repeat cgf_string (%s) in position %s (center cgf translator: %s)" % (cgf_str,
+            basic_fns.get_position_string_from_position_int(tile_position_int), print_friendly_cgf_translator(center_cgf_translator))
         center_cgf_translator[0][cgf_str] = bases
         ##########################
         cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, target_base, target_base+1, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[1], "Repeat cgf_string in position %s (center cgf translator)" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+        assert cgf_str not in center_cgf_translator[1], "Repeat cgf_string (%s) in position %s (center cgf translator: %s)" % (cgf_str,
+            basic_fns.get_position_string_from_position_int(tile_position_int), print_friendly_cgf_translator(center_cgf_translator))
         center_cgf_translator[1][cgf_str] = bases
         ##########################
         cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, target_base+1, end_locus_int, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[2], "Repeat cgf_string in position %s (center cgf translator)" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+        assert cgf_str not in center_cgf_translator[2], "Repeat cgf_string (%s) in position %s (center cgf translator: %s)" % (cgf_str,
+            basic_fns.get_position_string_from_position_int(tile_position_int), print_friendly_cgf_translator(center_cgf_translator))
         center_cgf_translator[2][cgf_str] = bases
         return center_cgf_translator
 
@@ -232,7 +241,7 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
                 center_cgf_translator = manage_center_cgfs(center_cgf_translator, var, start_locus_int, end_locus_int)
             else:
                 cgf_str, bases = get_tile_variant_cgf_str_and_all_bases(var)
-                assert cgf_str not in cgf_translator[i], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+                assert cgf_str not in cgf_translator[i], "Repeat cgf_string (%s) in position %s" % (cgf_str, basic_fns.get_position_string_from_position_int(tile_position_int))
                 cgf_translator[i][cgf_str] = bases
     return center_cgf_translator, cgf_translator
 
