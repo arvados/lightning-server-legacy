@@ -566,6 +566,8 @@ class PopulationVariantQueryAroundLocus(APIView):
                 next_cgf_string = backward_tile_variant_seq[i+1]
                 prev_cgf_translator_index = curr_cgf_translator_index
                 curr_cgf_translator_index -= basic_fns.get_number_of_tiles_spanned(next_cgf_string)
+                if curr_cgf_translator_index < 0:
+                    break
                 string_to_print += "(Success). Prev_cgf_translator_index: %i, new one: %i. " % (prev_cgf_translator_index, curr_cgf_translator_index)
             except IndexError:
                 break
