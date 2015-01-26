@@ -205,20 +205,13 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
             upper_tile_position_int = lower_tile_position_int + var.num_positions_spanned - 1
             upper_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
             end_locus_int = int(upper_locus.end_int)
-        cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, start_locus_int, target_base, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[0], "Repeat cgf_string (%s) in position %s (center cgf translator: %s)" % (cgf_str,
-            basic_fns.get_position_string_from_position_int(tile_position_int), print_friendly_cgf_translator(center_cgf_translator))
-        center_cgf_translator[0][cgf_str] = bases
-        ##########################
-        cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, target_base, target_base+1, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[1], "Repeat cgf_string (%s) in position %s (center cgf translator: %s)" % (cgf_str,
-            basic_fns.get_position_string_from_position_int(tile_position_int), print_friendly_cgf_translator(center_cgf_translator))
-        center_cgf_translator[1][cgf_str] = bases
-        ##########################
-        cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, target_base+1, end_locus_int, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[2], "Repeat cgf_string (%s) in position %s (center cgf translator: %s)" % (cgf_str,
-            basic_fns.get_position_string_from_position_int(tile_position_int), print_friendly_cgf_translator(center_cgf_translator))
-        center_cgf_translator[2][cgf_str] = bases
+        keys = [(start_locus_int, target_base), (target_base, target_base+1), (target_base+1, end_locus_int)]
+        for i, translator in enumerate(center_cgf_translator):
+            cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, keys[i][0], keys[i][1], start_locus_int, end_locus_int)
+            if cgf_str in translator:
+                assert bases == translator[cgf_str], "Conflicting cgf_string-base pairing, cgf_str: %s, translator: %s" % (cgf_str,
+                    print_friendly_cgf_translator(center_cgf_translator))
+            center_cgf_translator[i][cgf_str] = bases
         return center_cgf_translator
 
     num_locuses = locuses.count()
