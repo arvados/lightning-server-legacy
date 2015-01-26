@@ -595,7 +595,7 @@ class PopulationVariantQueryAroundLocus(APIView):
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = ['', '']
             if humans[human][0] == [] or humans[human][1] == []:
-                raise Exception("Human sequence is empty for person %s. First int: %i, Last int: %i" % (short_name, first_tile_position_int, last_tile_position_int))
+                raise Exception("Human sequence is empty for person %s. First int: %i, Last int: %i, number_spanning: %i" % (short_name, first_tile_position_int, last_tile_position_int, max_num_spanning_variants))
             human_sequence_dict[human][0] = self.get_bases_for_human(human, humans[human][0],
                                                                      cgf_translator, center_cgf_translator, num_bases_around,
                                                                      center_position_int, middle_index, 0)
