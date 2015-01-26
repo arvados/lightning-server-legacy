@@ -527,14 +527,20 @@ class PopulationVariantQueryAroundLocus(APIView):
         forward_sequence = sequence
         reverse_sequence = sequence
         #Go forward
-        curr_cgf_translator_index = cgf_translator_middle_index
+#        curr_cgf_translator_index = cgf_translator_middle_index
         for i, cgf_string in enumerate(sequence_of_tile_variants[middle_index:]):
             if i == 0:
                 string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, forward strand, position %s " % (len(cgf_translator), cgf_string)
                 new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around, string_to_print, center_cgf_translator)
+                curr_position = basic_fns.get_position_from_cgf_string(cgf_string)
+                if curr_position != middle_position:
+                    curr_cgf_translator_index = cgf_translator_middle_index + middle_position-curr_position
+                else:
+                    curr_cgf_translator_index = cgf_translator_middle_index
             else:
                 string_to_print += "Query: position %s " % (cgf_string)
-                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[curr_cgf_translator_index], num_bases_around, string_to_print, cgf_translator[curr_cgf_translator_index-1:curr_cgf_translator_index+1])
+                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[curr_cgf_translator_index],
+                    num_bases_around, string_to_print, cgf_translator[curr_cgf_translator_index-1:curr_cgf_translator_index+1])
             forward_sequence += new_sequence
             prev_cgf_translator_index = curr_cgf_translator_index
             curr_cgf_translator_index += basic_fns.get_number_of_tiles_spanned(cgf_string)
