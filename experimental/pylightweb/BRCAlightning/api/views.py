@@ -423,7 +423,7 @@ class PopulationVariantQueryAroundLocus(APIView):
             assert center_index != None, "No center index"
         center_cgf_translator, cgf_translator_by_position = query_fns.get_cgf_translator_and_center_cgf_translator(locuses, target_base_int, center_index, max_num_spanning_tiles, assembly)
 
-        return first_tile_position_int, last_tile_position_int, center_tile_position_int, cgf_translator_by_position, center_cgf_translator
+        return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, center_tile_position_int, cgf_translator_by_position, center_cgf_translator
 
     def helper_get_bases_forward(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print):
         non_spanning_cgf_string = cgf_string.split('+')[0]
@@ -581,7 +581,7 @@ class PopulationVariantQueryAroundLocus(APIView):
             reverse_sequence = new_sequence + reverse_sequence
         return reverse_sequence + forward_sequence[1:]
 
-    def get_population_sequences(self, first_tile_position_int, last_tile_position_int, center_position_int, cgf_translator, center_cgf_translator, num_bases_around):
+    def get_population_sequences(self, first_tile_position_int, last_tile_position_int, max_num_spanning_variants, center_position_int, cgf_translator, center_cgf_translator, num_bases_around):
         #Find middle
         middle_index = None
         for i, translator_dict in enumerate(cgf_translator):
@@ -589,11 +589,13 @@ class PopulationVariantQueryAroundLocus(APIView):
                 assert middle_index == None, "Expect only one empty dictionary in cgf_translator"
                 middle_index = i
         assert middle_index != None, "cgf_translator did not have an empty dictionary"
-        humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int, last_tile_position_int)
+        humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
         human_sequence_dict = {}
         for human in humans:
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = ['', '']
+            if humans[human][0] == [] or humans[human][1] == []:
+                raise Exception("Human sequence is empty for person %s. First int: %i, Last int: %i" % (short_name, first_tile_position_int, last_tile_position_int))
             human_sequence_dict[human][0] = self.get_bases_for_human(human, humans[human][0],
                                                                      cgf_translator, center_cgf_translator, num_bases_around,
                                                                      center_position_int, middle_index, 0)
@@ -617,12 +619,12 @@ class PopulationVariantQueryAroundLocus(APIView):
                 target_base = int(query_serializer.data['target_base'])
                 if query_serializer.data['indexing'] == 1:
                     target_base -= 1
-                first_tile_position_int, last_tile_position_int, center_position_int, cgf_translator, center_cgf_translator = self.get_variants_and_bases(
+                first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, center_position_int, cgf_translator, center_cgf_translator = self.get_variants_and_bases(
                     int(query_serializer.data['assembly']),
                     int(query_serializer.data['chromosome']),
                     target_base,
                     int(query_serializer.data['number_around']))
-                humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, center_position_int,
+                humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, center_position_int,
                     cgf_translator, center_cgf_translator, int(query_serializer.data['number_around']))
             except query_fns.EmptyPathException:
                 return Response("Query includes loci that are not included in tile library", status=status.HTTP_404_NOT_FOUND)
