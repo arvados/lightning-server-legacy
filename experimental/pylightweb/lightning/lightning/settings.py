@@ -17,8 +17,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-
-SECRET_KEY = 'zf)ux5k0!&x!et-%qn09$td5h0phd@m@%ib8@=xc!m_g+0y)d)'
+SECRET_KEY = 'ak+ez7(%_da-ia9l8zccr5ki08(lc9v0c4zzh-394e$bf8^&0_'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -30,9 +29,8 @@ TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'templates')]
 ALLOWED_HOSTS = []
 
 STATICFILES_DIRS = (
-    BASE_DIR + '/static/',
+    BASE_DIR + "/static/",
     )
-
 
 # Application definition
 INSTALLED_APPS = (
@@ -43,27 +41,24 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'bootstrapform',
+    'rest_framework',
+    'api',
+    'api_gui'
     'tile_library',
-    'genes',
-    'home',
-    #'loadgenomes',
-    'slippy',
-    #'loadgenes',
-    'humans',
-    'django_extensions',
 )
 
-GRAPH_MODELS = {
-    'all_applications':True,
-    'group_models':True,
+REST_FRAMEWORK = {
+    'PAGINATE_BY': 10
 }
-    
+
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -75,14 +70,13 @@ WSGI_APPLICATION = 'lightning.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
-
 DBPW = "mypassword"
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'lightningdatabase',
-        'USER': 'sguthrie',
+        'NAME': 'lightning',
+        'USER': 'lightning',
         'PASSWORD': DBPW,
         'HOST': '127.0.0.1',
         'PORT': '5432',
@@ -107,9 +101,3 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 
 STATIC_URL = '/static/'
-
-STATIC_ROOT = "/var/www/pylightweb/static"
-
-MEDIA_URL = '/media/'
-
-MEDIA_ROOT = "/home/sguthrie/pylightweb/data"

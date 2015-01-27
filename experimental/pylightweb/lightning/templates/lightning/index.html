@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+
+{% block title %}Lightning: Fast Interaction the Genomic Data{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="text-center">Welcome to Lightning!</h1>
+  </div>
+  <p class="lead text-center">This site is a work in progress and is open-source.
+    Please contact us <a href="https://arvados.org/projects/arvados/wiki/IRC_and_Mailing_lists">here</a> with questions,
+    unexpected behavior reports, and feature requests.
+  </p>
+  <hr>
+  <p>Our goals include enabling fast analysis of population genetic data.</p>
+  <hr>
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Retrieve Population Sequences</h3>
+    </div>
+    <div class="panel-body">
+      <p></p>
+      <div class="panel panel-primary">
+        <div class="panel-heading">Find k-bases around a specifed locus</div>
+        <div class="panel-body">
+          <form role="form" method="get">
+            {{ query_around_form|bootstrap }}
+            <input type="submit" value="Submit" />
+          </form>
+        </div>
+      </div>
+      <div class="panel panel-primary">
+        <div class="panel-heading">Find bases between a lower locus and upper locus</div>
+        <div class="panel-body">
+          <form role="form" method="get">
+            {{ query_between_form|bootstrap }}
+            <input type="submit" value="Submit" />
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

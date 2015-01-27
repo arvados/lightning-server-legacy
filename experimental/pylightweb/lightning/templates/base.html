@@ -5,11 +5,11 @@
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-    	<title>{% block title %}Lightning: Fast Interaction with Personal Genome Project Data{% endblock %}</title>
+    	<title>{% block title %}Lightning: Fast Interaction with Genomic Data{% endblock %}</title>
 		<!-- Bootstrap CSS -->
-		<link href="{% static 'js/bootstrap-3.2.0-dist/css/bootstrap.min.css' %}" rel="stylesheet" type="text/css">
+		<link href="{% static 'bootstrap-3.2.0-dist/css/bootstrap.min.css' %}" rel="stylesheet" type="text/css">
 		<!-- CSS theme -->
-		<link href="{% static 'js/bootstrap-3.2.0-dist/css/bootstrap-theme.min.css' %}" rel="stylesheet" type="text/css">
+		<link href="{% static 'bootstrap-3.2.0-dist/css/bootstrap-theme.min.css' %}" rel="stylesheet" type="text/css">
 		<style>
 			label {
 				display: block;
@@ -42,14 +42,66 @@
 				height: 30px;
 				background-color: #f5f5f5;
 				text-align: center;
-			}	
+			}
+			/* Set default for affix: sits on top of page taking up as much room as it wants */
+			.affix-top,.affix{
+				position: static;
+			}
+			/* If the screen is wide enough, puts it on the side and allows it to move up and down with the browser screen */
+			@media (min-width: 979px) {
+				#sidebar.affix-top {
+					position: static;
+					top:0px;
+					width:190px;
+				}
+				#sidebar.affix {
+					position: fixed;
+					top:100px;
+					width:190px;
+				}
+			}
+			/* When we are looking at the section in the sidebar, make a subtle highlighting */
+			#sidebar li.active {
+				border:0 #eee solid;
+				border-right-width:5px;
+			}
 			{% block style_extender %}{% endblock %}
 		</style>
 	</head>
-	<body>
-		<script src="{% static 'js/jquery-1.10.1.min.js' %}"></script>
+	<body data-spy="scroll">
+		<script src="{% static 'jquery-1.10.1.min.js' %}"></script>
 		<!-- Bootstrap JavaScript -->
-		<script src="{% static 'js/bootstrap-3.2.0-dist/js/bootstrap.min.js' %}"></script>
+		<script src="{% static 'bootstrap-3.2.0-dist/js/bootstrap.min.js' %}"></script>
+		<script type="text/javascript">
+			jQuery(document).ready(function () {
+				/* activate scrollspy menu */
+				var $body   = $(document.body);
+				var navHeight = $('.navbar').outerHeight(true);
+				$body.scrollspy({
+					target: '#leftCol',
+					offset: navHeight + 150
+				});
+				/* activate sidebar */
+				$('#sidebar').affix({
+					offset: {
+						top: 0
+					}
+				});
+				/* smooth scrolling sections */
+				$('a[href*=#]:not([href=#])').click(function() {
+					if (location.pathname.replace(/^\//,'') == this.pathname.replace(/^\//,'') && location.hostname == this.hostname) {
+						var target = $(this.hash);
+						target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
+						if (target.length) {
+							$('html,body').animate({
+								scrollTop: target.offset().top - 50
+							}, 1000);
+							return false;
+						}
+					}
+				});
+			});
+		</script>
 		{% block additional_scripts %}{% endblock %}
 		<div class="navbar navbar-default navbar-fixed-top" role="navigation">
 			<div class="container-fluid">
@@ -60,33 +112,23 @@
             			<span class="icon-bar"></span>
             			<span class="icon-bar"></span>
           			</button>
-					<a class="navbar-brand" href="{% url 'home:index' %}">{% block shorttitle %}Lightning{% endblock %}</a>
+					<a class="navbar-brand" href="{% url 'home' %}">{% block shorttitle %}Lightning{% endblock %}</a>
 				</div>
 				<div class="collapse navbar-collapse">
 					<ul class="nav navbar-nav">
-						<li><a href="{% url 'home:index' %}">Home</a></li>
-						<li class="dropdown">
-							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Population <span class="caret"></span></a>
-							<ul class="dropdown-menu" role="menu">
-								<li><a href="{% url 'slippy:slippymap' %}">Genome Map</a></li>
-								<li><a href="{% url 'tile_library:statistics' %}">Tile Library Statistics</a></li>
-							</ul>
-						</li>
-						<li><a href="{% url 'humans:individuals' %}">Individuals</a></li>
-						<li><a href="{% url 'genes:names' %}">Known Genes</a></li>
-						<li><a href="http://lightning-dev4.curoverse.com/beacon">Beacon</a></li>
-						<li><a href="{% url 'home:help' %}">Help</a></li>
-
+						<li><a href="{% url 'home' %}">Home</a></li>
+						<li><a href="{% url 'api:documentation' %}">API documentation</a></li>
+						<li><a href="{% url 'help' %}">Help</a></li>
 					</ul>
 					{% block navbar %}{% endblock %}
-				</div><!--/.nav-collapse -->
+				</div>
 			</div>
 		</div>
 		{% block additional_divs %}{% endblock %}
 		<div class="container-fluid">
 			<ol class="breadcrumb">
+				<li><a href="{% url 'home' %}">Home</a></li>
 				{% block breadcrumbs %}
-				<li><a href="#">Home</a></li>
 				{% endblock %}
 			</ol>
 		</div>
@@ -95,7 +137,10 @@
 		<div class="footer">
 			{% block footer %}
 			<div class="container">
-				<p class="text-muted">If you would like to be involved with the development of Lightning, visit <a href="http://www.arvados.org">arvados.org</a> and <a href="https://arvados.org/projects/arvados/wiki/IRC_and_Mailing_lists">join</a> the open-source project.</p>
+				<p class="text-muted">If you would like to be involved with the development of Lightning, visit
+					<a href="http://www.arvados.org">arvados.org</a> and
+					<a href="https://arvados.org/projects/arvados/wiki/IRC_and_Mailing_lists">join</a> the open-source project.
+				</p>
 			</div>
 			{% endblock %}
 		</div>

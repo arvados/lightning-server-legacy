@@ -1,15 +1,9 @@
 from django.conf.urls import patterns, include, url
-
 from django.contrib import admin
 
-admin.autodiscover()
-
 urlpatterns = patterns('',
-                       url(r'^', include('home.urls', namespace="home")),
-                       url(r'^genes/', include('genes.urls', namespace="genes")),
-                       url(r'^map/', include('slippy.urls', namespace="slippy")),
-                       #url(r'^loadgenes/', include('loadgenes.urls', namespace="loadgenes")),
-                       url(r'^library/', include('tile_library.urls', namespace="tile_library")),
-                       url(r'^humans/', include('humans.urls', namespace="humans")),
-                       url(r'^admin/', include(admin.site.urls)),
+                       url(r'^$', 'lightning.views.home', name='home'),
+                       url(r'^help/$', 'lightning.views.help', name='help'),
+                       url(r'^query/', include('api_gui.urls', namespace='population_sequence_query')),
+                       url(r'^api/', include('api.urls', namespace='api')),
 )
