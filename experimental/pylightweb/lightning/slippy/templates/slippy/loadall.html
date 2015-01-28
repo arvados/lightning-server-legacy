@@ -1,5 +1,0 @@
-{% load gene_to_tile_filters %}
-
-{% for gene_xref in distinct %}
-	{{gene_xref.gene_aliases}},{{matching|get_tile_start_tx:gene_xref.gene_aliases}},{{matching|get_tile_end_tx:gene_xref.gene_aliases}},{{gene_xref.gene_review_URLs}}|
-{% endfor %}

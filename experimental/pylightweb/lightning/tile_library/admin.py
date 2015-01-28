@@ -1,16 +1,14 @@
 from django.contrib import admin
 
 # We only want the annotations to be modifiable by the admin, not the tiles
-from tile_library.models import Tile, TileVariant, VarAnnotation, TileLocusAnnotation   
+from tile_library.models import Tile, TileVariant, TileLocusAnnotation, GenomeVariant
 
-class AnnotationAdmin(admin.ModelAdmin):
-    list_display = ('__unicode__', 'annotation_type', 'created', 'last_modified')
-    list_filter = ['last_modified', 'annotation_type']
-    search_fields = ['annotation_text', 'phenotype']
+class GenomeVariantAdmin(admin.ModelAdmin):
+    list_display = ('__unicode__', 'start_tile_position', 'created', 'last_modified')
+    list_filter = ['last_modified']
+    search_fields = ['names', 'info']
     extra = 0
-    fieldsets = [
-        (None, {'fields':['annotation_type', 'source', 'annotation_text', 'phenotype']}),
-    ]
+
     
 class TileLocusAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'assembly', 'chromosome')
@@ -36,4 +34,4 @@ class TileAdmin(admin.ModelAdmin):
 admin.site.register(Tile, TileAdmin)
 admin.site.register(TileVariant, TileVarAdmin)
 admin.site.register(TileLocusAnnotation, TileLocusAdmin)
-admin.site.register(VarAnnotation, AnnotationAdmin)
+admin.site.register(GenomeVariant, GenomeVariantAdmin)

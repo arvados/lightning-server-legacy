@@ -6,16 +6,13 @@ We provide a few fixtures for testing and installation of genes of interest. Add
 Folders
 =======================
 
-## getImportantGenes/ 
-	scrapy for genetests site (not currently needed as GeneReviews and Ensembl provide their own annotations)
-
 ## lightning/
 	contains the prototype website and models used to run lightning
 
 How to Set-up a local lightning cluster:
 =======================
-## Notes: 
-* We are aware this is a cumbersome installation. We are working to smooth the procedure out. 
+## Notes:
+* We are aware this is a cumbersome installation. We are working to smooth the procedure out.
 * This will not populate the database with a tile library. For information on populating the database, see the README.md file in pylightweb/lightning/tile_library
 
 ## Procedure:
@@ -41,7 +38,7 @@ How to Set-up a local lightning cluster:
 		$ sudo pip install selenium
 		```
 
-3.	Ensure checkout of the development branch (code that runs on a localhost): 
+3.	Ensure checkout of the development branch (code that runs on a localhost):
 
 		$ git checkout --track -b development origin/development
 4.	Install postgresql (version 9.1 to 9.3 will work) and the dependencies necessary to interact with django:
@@ -61,4 +58,3 @@ How to Set-up a local lightning cluster:
 7.	Create the needed tables:
 
 		lighting/experimental/pylightweb/lightning$ python manage.py migrate
-

@@ -1,36 +1,85 @@
+README
+
+apt-get update
+apt-get install build-essential
+apt-get install git
+apt-get install wget (for golang and lantern)
+apt-get install mercurial (for cgzip)
+apt-get install pkg-config (for cgzip)
+create file: /usr/lib/pkgconfig/zlib.pc
+    prefix=/usr
+    exec_prefix=${prefix}
+    libdir=${exec_prefix}/lib
+    sharedlibdir=${libdir}
+    includedir=${prefix}/include
+
+    Name: zlib
+    Description: zlib compression library
+    Version: 1.2.5
+
+    Requires:
+    Libs: -L${libdir} -L${sharedlibdir} -lz
+    Cflags: -I${includedir}
+
+apt-get install alien
+wget ftp://rpmfind.net/linux/sourceforge/r/ra/ramonelinux/Rel_0.99/releases/x86_64/packages/zlib-1.2.8-2.ram0.99.x86_64.rpm
+alien -i zlib-1.2.8-2.ram0.99.x86_64.rpm
+apt-get install python-pip
+
+adduser lightning
+password: mypassword
+name: Lightning Server Application
+
+/home/lightning/# mkdir golang
+/home/lightning/golang# wget https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz
+/home/lightning/golang# tar -xzf go1.3.1.linux-amd64.tar.gz
+(Add lines to /home/lighting/.bashrc:
+  export GOROOT=/home/lightning/golang/go
+  export GOPATH=/home/lightning/golang/
+  export PATH=$PATH:$GOROOT/bin
+  )
+/home/lightning# source .bashrc
+/home/lightning/# git clone https://github.com/curoverse/lightning.git
+/home/lightning/lightning/experimental/lantern# go get github.com/codegangsta/cli
+/home/lightning/lightning/experimental/lantern# go get code.google.com/p/vitess/go/cgzip
+/home/lightning/lightning/experimental/lantern# go get github.com/lib/pq
+/home/lightning/lightning/experimental/lantern# go get github.com/mattn/go-sqlite3
+/home/lightning/lightning/experimental/lantern# go build
+
+/home/lightning/lightning/experimental/pylightweb# pip install django
+/home/lightning/lightning/experimental/pylightweb# pip install django-bootstrap-form
+/home/lightning/lightning/experimental/pylightweb# pip install djangorestframework
+/home/lightning/lightning/experimental/pylightweb#
+
+
+
+
 Folders
 =======================
 
-## genes/
-	 Interface for UCSC genes
+## api/
+   Supported API - includes a view for documentation
 
-## home/
-	Interface for a Home page and Help page
-
-## humans/
-	Interface for interacting with the population
+## api_gui/
+   Forms and custom visualization for API
 
 ## lightning/
-	Provides django settings for website and server configuration
-
-## loadgenes/
-	Contains scripts to parse UCSC and GeneReview downloads from ftp sites and an [outdated, django 1.6] interface for Ensembl genes
-
-## loadgenomes/
-	Contains scripts to convert FJ files to a postgres-friendly format and an [outdated, django 1.6] interface for a tile library that moniters population statistics
-
-## slippy/
-	Implements an interactive website showing a slippy map of the human genome
+  Provides django settings for website, server configuration, and home/help pages
 
 ## static/
-	Contains js and css files used by the entire site
+  Contains js and css files used by the entire site
 
 ## templates/
-	Contains the base html document to add bootstrap to all application webpages
+  Contains the base html document to add bootstrap to all application webpages
+  Contains all templates shown in website
 
-## tile_library/ 
-	Interface for Tile Library
+## tile_library/
+  Lightning models/database. Contains querying functions for postgres and lantern and
+  functions designed for use with CGF.
 
 =======================
 ## manage.py
-	Runs django commands
+  Runs django commands
+
+## errors.py
+  Implements lightning-wide errors
