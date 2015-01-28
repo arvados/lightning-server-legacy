@@ -11,19 +11,17 @@ import _ "errors"
 import "bufio"
 import "sort"
 
-//import "encoding/json"
-import "../sloppyjson"
+import "github.com/abeconnelly/sloppyjson"
 
 import _ "../tile"
-import "../bioenv"
+import "github.com/abeconnelly/autoio"
 import "../cgf"
 
 import "github.com/codegangsta/cli"
 
 import "runtime/pprof"
 
-
-var VERSION_STR string = "0.3, AGPLv3.0"
+var VERSION_STR string = "0.4, AGPLv3.0"
 var g_verboseFlag bool
 var gCGF *cgf.CGF
 
@@ -315,12 +313,12 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   //
   fjHeaderList := []*sloppyjson.SloppyJSON{}
 
-  fastj_h,err := bioenv.OpenScanner( fastjFn )
+  fastj_h,err := autoio.OpenReadScanner( fastjFn )
   if err != nil { return err }
 
   cur_tile_id := ""
-  for fastj_h.Scanner.Scan() {
-    fastj_line := fastj_h.Scanner.Text()
+  for fastj_h.ReadScan() {
+    fastj_line := fastj_h.ReadText()
     if (len(fastj_line) == 0) { continue }
     if (fastj_line[0] != '>') {
 
@@ -368,13 +366,12 @@ func UpdateABVPloidy1( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   // headers.
   //
   phaseVariant := [][]int{ []int{} }
-  //phaseVariantSeedTileLength := [][]int{ []int{} }
   phaseVariantPrevBaseId := []uint64{ 0 }
 
 
   // We assume the tile library is in tileID sorted order
   //
-  lib_h,err := bioenv.OpenScanner(tileLibFn)
+  lib_h,err := autoio.OpenScanner(tileLibFn)
   if err != nil { return err }
   defer lib_h.Close()
 
@@ -520,10 +517,11 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
   //
   fjHeaderList := []*sloppyjson.SloppyJSON{}
 
-  fastj_h,err := bioenv.OpenScanner( fastjFn )
+  fastj_h,err := autoio.OpenReadScanner( fastjFn )
   if err != nil { return err }
-  for fastj_h.Scanner.Scan() {
-    fastj_line := fastj_h.Scanner.Text()
+  for fastj_h.ReadScan() {
+    fastj_line := fastj_h.ReadText()
+
     if (len(fastj_line) == 0) || (fastj_line[0] != '>') { continue }
 
     fastjHeader,e := sloppyjson.Loads( fastj_line[1:] )
@@ -532,9 +530,11 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
     fjHeaderList = append( fjHeaderList, fastjHeader )
 
   }
+
   fastj_h.Close()
 
   sort.Sort(ByTileId(fjHeaderList))
+
   //
   //
   //---------------
@@ -563,7 +563,7 @@ func UpdateABVPloidy2( cg *cgf.CGF, tileLibFn string, fastjFn string ) error {
 
   // We assume the tile library is in tileID sorted order
   //
-  lib_h,err := bioenv.OpenScanner(tileLibFn)
+  lib_h,err := autoio.OpenScanner(tileLibFn)
   if err != nil { return err }
   defer lib_h.Close()
 
