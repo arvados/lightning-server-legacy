@@ -1,39 +1,38 @@
 README
 
 apt-get update
-apt-get install build-essentials
+apt-get install build-essential
 apt-get install git
-(for go)
-apt-get install wget
-(for cgzip)
-apt-get install mercurial
-apt-get install pkg-config
-create file: /usr/lib/pkgconfig/zlib.pc
-  prefix=/usr
-  exec_prefix=${prefix}
-  libdir=${exec_prefix}/lib
-  sharedlibdir=${libdir}
-  includedir=${prefix}/include
+apt-get install python-pip
 
-  Name: zlib
-  Description: zlib compression library
-  Version: 1.2.5
+For golang and lantern:
+  apt-get install wget
 
-  Requires:
-  Libs: -L${libdir} -L${sharedlibdir} -lz
-  Cflags: -I${includedir}
+For cgzip:
+  apt-get install mercurial
+  apt-get install pkg-config
+  create file: /usr/lib/pkgconfig/zlib.pc
+    prefix=/usr
+    exec_prefix=${prefix}
+    libdir=${exec_prefix}/lib
+    sharedlibdir=${libdir}
+    includedir=${prefix}/include
 
-(possibly necessary - installs zlib?)
-apt-get install alien
-wget ftp://rpmfind.net/linux/sourceforge/r/ra/ramonelinux/Rel_0.99/releases/x86_64/packages/zlib-1.2.8-2.ram0.99.x86_64.rpm
-alien -i zlib-1.2.8-2.ram0.99.x86_64.rpm
+    Name: zlib
+    Description: zlib compression library
+    Version: 1.2.5
 
+    Requires:
+    Libs: -L${libdir} -L${sharedlibdir} -lz
+    Cflags: -I${includedir}
 
+  apt-get install alien
+  wget ftp://rpmfind.net/linux/sourceforge/r/ra/ramonelinux/Rel_0.99/releases/x86_64/packages/zlib-1.2.8-2.ram0.99.x86_64.rpm
+  alien -i zlib-1.2.8-2.ram0.99.x86_64.rpm
 
 adduser lightning
 password: mypassword
 name: Lightning Server Application
-
 
 /home/lightning/# mkdir golang
 /home/lightning/golang# wget https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz
@@ -54,8 +53,7 @@ name: Lightning Server Application
 (I believe the addition of sources broke the build-essential package)
 cat > /etc/apt/sources.list  
 deb http://archive.ubuntu.com/ubuntu precise main universe multiverse
-apt-get update
-apt-get install git
+
 apt-get install python
 apt-get install python-pip
 pip install django
