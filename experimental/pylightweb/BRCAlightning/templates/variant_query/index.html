@@ -26,13 +26,13 @@
 		<p>{{ response.text|linebreaks }} This query took {{response.time|floatformat:3}} seconds.</p>
 		{% if response.humans %}
 			<div class="table-responsive">
-				<table class="table table-striped">
+				<table class="table table-striped" style="font-family:monospace;">
 					<thead>
 						<tr>
 							<th>Sample Name</th>
 							<th>Phase A call</th>
 							<th>Phase B call</th>
-							<th>Phases groups known?</th>
+							<th>Phase groups known?</th>
 						</tr>
 					</thead>
 					<tbody>

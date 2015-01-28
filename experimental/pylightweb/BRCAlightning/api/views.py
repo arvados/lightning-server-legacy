@@ -86,7 +86,8 @@ def documentation(request):
                         'description':'True if the sequence is well phased. False otherwise.'
                     }
                 ],
-                'try_it_url':reverse('population_sequence_query:around_locus_form')
+                'try_it_url':reverse('population_sequence_query:around_locus_form'),
+                'try_it_examples':[]
             },
             {
                 'id': 'between-loci',
@@ -145,12 +146,13 @@ def documentation(request):
                         'description':'True if the sequence is well phased. False otherwise.'
                     }
                 ],
-                'try_it_url':reverse('population_sequence_query:between_loci_form')
+                'try_it_url':reverse('population_sequence_query:between_loci_form'),
+                'try_it_examples':[]
             }
-
         ]
     }
     return render(request, 'api/api_docs.html', response)
+
 
 class LocusOutOfRangeException(Exception):
     def __init__(self, value):
@@ -276,7 +278,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
         spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(first_tile_position_int)
         for var in spanning_tile_variants:
             cgf_str, bases = query_fns.get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(var, low_int, high_int, assembly)
-            assert cgf_str not in cgf_translator_by_position[0], "Repeat spanning cgf_string in position %s" % (string.join(cgf_str.split('.')[:-1]), '.')
+            assert cgf_str not in cgf_translator_by_position[0], "Repeat spanning cgf_string: %s" % (cgf_str)
             cgf_translator_by_position[0][cgf_str] = bases
         return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator_by_position
 
@@ -297,18 +299,18 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 if tile_position_int - first_tile_position_int < 0:
                     tile_position_int = first_tile_position_int
                 assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], \
-                    "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, str(cgf_translator))
+                    "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, query_fns.print_friendly_cgf_translator(cgf_translator))
                 if len(sequence) > 0:
                     curr_ending_tag = sequence[-TAG_LENGTH:]
                     new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
                     if len(curr_ending_tag) >= len(new_starting_tag):
                         assert curr_ending_tag.endswith(new_starting_tag), \
-                            "Tags do not match for human %s at position %s. Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
-                                tile_position_str, curr_ending_tag, new_starting_tag, str(positions_queried))
+                            "Tags do not match for human %s at position %s. Sequence length: %i, Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
+                                tile_position_str, len(sequence), curr_ending_tag, new_starting_tag, str(positions_queried))
                     else:
                         assert new_starting_tag.startswith(curr_ending_tag), \
-                            "Tags do not match for human %s at position %s. Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
-                                tile_position_str, curr_ending_tag, new_starting_tag, str(positions_queried))
+                            "Tags do not match for human %s at position %s. Sequence length: %i, Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
+                                tile_position_str, len(sequence), curr_ending_tag, new_starting_tag, str(positions_queried))
                     sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
                 else:
                     sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
@@ -350,9 +352,9 @@ class PopulationVariantQueryBetweenLoci(APIView):
             except LocusOutOfRangeException as e:
                 return Response(str(e), status=status.HTTP_404_NOT_FOUND)
             except AssertionError as e:
-                return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             except Exception as e:
-                return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
@@ -416,21 +418,26 @@ class PopulationVariantQueryAroundLocus(APIView):
             assert center_index != None, "No center index"
         center_cgf_translator, cgf_translator_by_position = query_fns.get_cgf_translator_and_center_cgf_translator(locuses, target_base_int, center_index, max_num_spanning_tiles, assembly)
 
-        return first_tile_position_int, last_tile_position_int, center_tile_position_int, cgf_translator_by_position, center_cgf_translator
+        return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, center_tile_position_int, cgf_translator_by_position, center_cgf_translator
 
-    def helper_get_bases_forward(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print):
+    def helper_get_bases_forward(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print, cgf_translator_around, positions_queried):
         non_spanning_cgf_string = cgf_string.split('+')[0]
         step_int = int(non_spanning_cgf_string.split('.')[2], 16)
-        assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(sorted(translator.keys())))
+        assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string,
+            query_fns.print_friendly_cgf_translator(cgf_translator_around))
         if len(curr_sequence) > 1 and step_int > 0:
             curr_ending_tag = curr_sequence[-TAG_LENGTH:]
             new_starting_tag = translator[non_spanning_cgf_string][:TAG_LENGTH]
-            if len(curr_ending_tag) >= len(new_starting_tag):
+            if len(curr_sequence) < TAG_LENGTH:
+                assert new_starting_tag.endswith(curr_ending_tag), \
+                    "Tags do not match at %s. Ending Tag: %s, Starting Tag: %s. curr_seq is smaller than TAG_LENGTH. Positions_queried: %s" % (cgf_string,
+                        curr_ending_tag, new_starting_tag, str(positions_queried))
+            elif len(curr_ending_tag) >= len(new_starting_tag):
                 assert curr_ending_tag.endswith(new_starting_tag), \
-                    "Tags do not match. Ending Tag: %s, Starting Tag: %s." % (curr_ending_tag, new_starting_tag)
+                    "Tags do not match at %s. Ending Tag: %s, Starting Tag: %s. Ending tag is larger or equal to the starting tag. Positions queried: %s" % (cgf_string,
+                        curr_ending_tag, new_starting_tag, str(positions_queried))
             else:
-                assert new_starting_tag.startswith(curr_ending_tag), \
-                    "Tags do not match. Ending Tag: %s, Starting Tag: %s." % (curr_ending_tag, new_starting_tag)
+                raise Exception("Unexpected TAG case. Ending tag: %s, Starting tag: %s, current sequence length: %i." % (curr_ending_tag, new_starting_tag, len(curr_sequence)))
             new_sequence = translator[non_spanning_cgf_string][TAG_LENGTH:]
         else:
             new_sequence = translator[non_spanning_cgf_string]
@@ -440,20 +447,23 @@ class PopulationVariantQueryAroundLocus(APIView):
         else:
             return new_sequence, False
 
-    def helper_get_bases_reverse(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print):
+    def helper_get_bases_reverse(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print, cgf_translator_around, positions_queried):
         non_spanning_cgf_string = cgf_string.split('+')[0]
         path, path_version, step, ignore = non_spanning_cgf_string.split('.')
         edge_path_int, edge_path_version, edge_path_step = basic_fns.get_position_ints_from_position_int(query_fns.get_highest_position_int_in_path(int(path,16)))
-        assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, str(sorted(translator.keys())))
+        assert non_spanning_cgf_string in translator, string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string,
+            query_fns.print_friendly_cgf_translator(cgf_translator_around))
         if len(curr_sequence) > 1 and int(step,16) < edge_path_step: # Tags will only overlap if we are on the same path
             curr_starting_tag = curr_sequence[:TAG_LENGTH]
             new_ending_tag = translator[non_spanning_cgf_string][-TAG_LENGTH:]
             if len(curr_starting_tag) >= len(new_ending_tag):
                 assert curr_starting_tag.startswith(new_ending_tag), \
-                    "Tags do not match. Prev Starting Tag: %s, New Ending Tag: %s." % (curr_starting_tag, new_ending_tag)
+                    "Tags do not match at %s. Prev Starting Tag: %s, New Ending Tag: %s. Positions queried: %s" % (cgf_string,
+                        curr_starting_tag, new_ending_tag, str(positions_queried))
             else:
                 assert new_ending_tag.endswith(curr_starting_tag), \
-                    "Tags do not match. Prev Starting Tag: %s, New Ending Tag: %s." % (curr_starting_tag, new_ending_tag)
+                    "Tags do not match at %s. Prev Starting Tag: %s, New Ending Tag: %s. Positions queried: %s" % (cgf_string,
+                        curr_starting_tag, new_ending_tag, str(positions_queried))
             new_sequence = translator[non_spanning_cgf_string][:-TAG_LENGTH]
         else:
             new_sequence = translator[non_spanning_cgf_string]
@@ -514,8 +524,8 @@ class PopulationVariantQueryAroundLocus(APIView):
             curr_position = basic_fns.get_position_from_cgf_string(cgf_string)
             if curr_position <= middle_position:
                 middle_index = i
-        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. Positions: %s, center_cgf_translator: (%s)" % (human,
-            middle_position_str, str(positions), str(center_cgf_translator))
+        assert middle_index != None, "Human %s did not have a position less than the middle_position %s. Positions: %s, center_cgf_translator keys: (%s), not center_cgf_translator keys: (%s)" % (human,
+            middle_position_str, str(sequence_of_tile_variants), query_fns.print_friendly_cgf_translator(center_cgf_translator), query_fns.print_friendly_cgf_translator(cgf_translator))
         center_cgf_string = sequence_of_tile_variants[middle_index].split('+')[0]
         assert center_cgf_string in center_cgf_translator[1], \
             "CGF string %s at middle index %i (for middle position %s) is not in center_cgf_translator" % (center_cgf_string, middle_index, middle_position_str)
@@ -523,14 +533,21 @@ class PopulationVariantQueryAroundLocus(APIView):
         forward_sequence = sequence
         reverse_sequence = sequence
         #Go forward
-        curr_cgf_translator_index = cgf_translator_middle_index
+#        curr_cgf_translator_index = cgf_translator_middle_index
         for i, cgf_string in enumerate(sequence_of_tile_variants[middle_index:]):
             if i == 0:
                 string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, forward strand, position %s " % (len(cgf_translator), cgf_string)
-                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around, string_to_print)
+                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, center_cgf_translator[2], num_bases_around, string_to_print,
+                    center_cgf_translator, sequence_of_tile_variants)
+                curr_position = basic_fns.get_position_from_cgf_string(cgf_string)
+                if curr_position != middle_position:
+                    curr_cgf_translator_index = cgf_translator_middle_index + curr_position-middle_position
+                else:
+                    curr_cgf_translator_index = cgf_translator_middle_index
             else:
                 string_to_print += "Query: position %s " % (cgf_string)
-                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[curr_cgf_translator_index], num_bases_around, string_to_print)
+                new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, cgf_translator[curr_cgf_translator_index],
+                    num_bases_around, string_to_print, cgf_translator[curr_cgf_translator_index-1:curr_cgf_translator_index+2], sequence_of_tile_variants)
             forward_sequence += new_sequence
             prev_cgf_translator_index = curr_cgf_translator_index
             curr_cgf_translator_index += basic_fns.get_number_of_tiles_spanned(cgf_string)
@@ -542,20 +559,28 @@ class PopulationVariantQueryAroundLocus(APIView):
         while not finished:
             cgf_string, bases = self.get_one_more_tile_forwards(human, phase, cgf_string)
             string_to_print += "(Success). Query: go forward one, position %s" % (cgf_string)
-            new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, {cgf_string.split('+')[0]:bases}, num_bases_around, string_to_print)
+            new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, {cgf_string.split('+')[0]:bases}, num_bases_around, string_to_print,
+                [], sequence_of_tile_variants + [cgf_string])
             forward_sequence += new_sequence
         ##################################################
         #go backward
         backward_tile_variant_seq = sequence_of_tile_variants[:middle_index+1]
         backward_tile_variant_seq.reverse()
-        curr_cgf_translator_index = cgf_translator_middle_index
+#        curr_cgf_translator_index = cgf_translator_middle_index
         for i, cgf_string in enumerate(backward_tile_variant_seq):
             if i == 0:
                 string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, reverse strand, position %s " % (len(cgf_translator), cgf_string)
-                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around, string_to_print)
+                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, center_cgf_translator[0], num_bases_around, string_to_print,
+                    center_cgf_translator, sequence_of_tile_variants)
+                curr_position = basic_fns.get_position_from_cgf_string(cgf_string)
+                if curr_position != middle_position:
+                    curr_cgf_translator_index = cgf_translator_middle_index + curr_position-middle_position
+                else:
+                    curr_cgf_translator_index = cgf_translator_middle_index
             else:
                 string_to_print += "Query: position %s " % (cgf_string)
-                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, cgf_translator[curr_cgf_translator_index], num_bases_around, string_to_print)
+                new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, cgf_translator[curr_cgf_translator_index],
+                    num_bases_around, string_to_print, cgf_translator[curr_cgf_translator_index-1:curr_cgf_translator_index+2], sequence_of_tile_variants)
             reverse_sequence = new_sequence + reverse_sequence
             if finished:
                 break
@@ -564,17 +589,20 @@ class PopulationVariantQueryAroundLocus(APIView):
                 next_cgf_string = backward_tile_variant_seq[i+1]
                 prev_cgf_translator_index = curr_cgf_translator_index
                 curr_cgf_translator_index -= basic_fns.get_number_of_tiles_spanned(next_cgf_string)
+                if curr_cgf_translator_index < 0:
+                    break
                 string_to_print += "(Success). Prev_cgf_translator_index: %i, new one: %i. " % (prev_cgf_translator_index, curr_cgf_translator_index)
             except IndexError:
                 break
         while not finished:
             cgf_string, bases = self.get_one_more_tile_backwards(human, phase, cgf_string)
             string_to_print += "(Success). Query: go backward one, position %s" % (cgf_string)
-            new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, {cgf_string.split('+')[0]:bases}, num_bases_around, string_to_print)
+            new_sequence, finished = self.helper_get_bases_reverse(reverse_sequence, cgf_string, {cgf_string.split('+')[0]:bases}, num_bases_around, string_to_print,
+                [], [cgf_string]+sequence_of_tile_variants)
             reverse_sequence = new_sequence + reverse_sequence
         return reverse_sequence + forward_sequence[1:]
 
-    def get_population_sequences(self, first_tile_position_int, last_tile_position_int, center_position_int, cgf_translator, center_cgf_translator, num_bases_around):
+    def get_population_sequences(self, first_tile_position_int, last_tile_position_int, max_num_spanning_variants, center_position_int, cgf_translator, center_cgf_translator, num_bases_around):
         #Find middle
         middle_index = None
         for i, translator_dict in enumerate(cgf_translator):
@@ -582,11 +610,13 @@ class PopulationVariantQueryAroundLocus(APIView):
                 assert middle_index == None, "Expect only one empty dictionary in cgf_translator"
                 middle_index = i
         assert middle_index != None, "cgf_translator did not have an empty dictionary"
-        humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int, last_tile_position_int)
+        humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
         human_sequence_dict = {}
         for human in humans:
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = ['', '']
+            if humans[human][0] == [] or humans[human][1] == []:
+                raise Exception("Human sequence is empty for person %s. First int: %i, Last int: %i, number_spanning: %i" % (short_name, first_tile_position_int, last_tile_position_int, max_num_spanning_variants))
             human_sequence_dict[human][0] = self.get_bases_for_human(human, humans[human][0],
                                                                      cgf_translator, center_cgf_translator, num_bases_around,
                                                                      center_position_int, middle_index, 0)
@@ -610,21 +640,21 @@ class PopulationVariantQueryAroundLocus(APIView):
                 target_base = int(query_serializer.data['target_base'])
                 if query_serializer.data['indexing'] == 1:
                     target_base -= 1
-                first_tile_position_int, last_tile_position_int, center_position_int, cgf_translator, center_cgf_translator = self.get_variants_and_bases(
+                first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, center_position_int, cgf_translator, center_cgf_translator = self.get_variants_and_bases(
                     int(query_serializer.data['assembly']),
                     int(query_serializer.data['chromosome']),
                     target_base,
                     int(query_serializer.data['number_around']))
-                humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, center_position_int,
+                humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, center_position_int,
                     cgf_translator, center_cgf_translator, int(query_serializer.data['number_around']))
             except query_fns.EmptyPathException:
                 return Response("Query includes loci that are not included in tile library", status=status.HTTP_404_NOT_FOUND)
             except LocusOutOfRangeException as e:
                 return Response(str(e), status=status.HTTP_404_NOT_FOUND)
             except AssertionError as e:
-                return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR )
+                return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR )
             except Exception as e:
-                return Response(traceback.format_exc(), status=status.HTTP_500_INTERNAL_SERVER_ERROR )
+                return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR )
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)

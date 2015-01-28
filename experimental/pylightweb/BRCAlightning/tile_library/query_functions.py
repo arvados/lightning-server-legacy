@@ -9,6 +9,12 @@ from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVarian
 import tile_library.basic_functions as basic_fns
 import tile_library.functions as fns
 
+def print_friendly_cgf_translator(cgf_translator):
+    new_string = ""
+    for i in cgf_translator:
+        new_string += str(sorted(i.keys()))+','
+    return new_string.strip(',')
+
 class EmptyPathException(Exception):
     def __init__(self, value):
         self.value = value
@@ -24,6 +30,7 @@ def get_highest_position_int_in_path(path_int):
     return int(tile.tilename)
 
 def get_max_num_tiles_spanned_at_position(tile_position_int):
+    #Number to look back!
     path_int, version_int, step_int = basic_fns.get_position_ints_from_position_int(tile_position_int)
     #raises AssertionError if tile_position_int is not an integer, negative, or an invalid tile position
     try:
@@ -46,9 +53,9 @@ def get_tile_variants_spanning_into_position(tile_position_int):
     num_tiles_spanned = get_max_num_tiles_spanned_at_position(tile_position_int)
     #raises AssertionError if tile_position_int is not an integer, negative, or an invalid tile position
     #raises Exception if the GenomeStatistic does not exist
-    if num_tiles_spanned > 1:
-        for i in range(2, num_tiles_spanned+1):
-            if i == 2:
+    if num_tiles_spanned > 0:
+        for i in range(1, num_tiles_spanned+1):
+            if i == 1:
                 curr_Q = (Q(tile_id=tile_position_int-i) & Q(num_positions_spanned__gt=i))
             else:
                 curr_Q = curr_Q | (Q(tile_id=tile_position_int-i) & Q(num_positions_spanned__gt=i))
@@ -198,17 +205,13 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
             upper_tile_position_int = lower_tile_position_int + var.num_positions_spanned - 1
             upper_locus = TileLocusAnnotation.objects.filter(assembly=assembly).get(tile_id=upper_tile_position_int)
             end_locus_int = int(upper_locus.end_int)
-        cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, start_locus_int, target_base, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[0], "Repeat cgf_string in position %s (center cgf translator)" % (basic_fns.get_position_string_from_position_int(tile_position_int))
-        center_cgf_translator[0][cgf_str] = bases
-        ##########################
-        cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, target_base, target_base+1, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[1], "Repeat cgf_string in position %s (center cgf translator)" % (basic_fns.get_position_string_from_position_int(tile_position_int))
-        center_cgf_translator[1][cgf_str] = bases
-        ##########################
-        cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, target_base+1, end_locus_int, start_locus_int, end_locus_int)
-        assert cgf_str not in center_cgf_translator[2], "Repeat cgf_string in position %s (center cgf translator)" % (basic_fns.get_position_string_from_position_int(tile_position_int))
-        center_cgf_translator[2][cgf_str] = bases
+        keys = [(start_locus_int, target_base), (target_base, target_base+1), (target_base+1, end_locus_int)]
+        for i, translator in enumerate(center_cgf_translator):
+            cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, keys[i][0], keys[i][1], start_locus_int, end_locus_int)
+            if cgf_str in translator:
+                assert bases == translator[cgf_str], "Conflicting cgf_string-base pairing, cgf_str: %s, translator: %s" % (cgf_str,
+                    print_friendly_cgf_translator(center_cgf_translator))
+            center_cgf_translator[i][cgf_str] = bases
         return center_cgf_translator
 
     num_locuses = locuses.count()
@@ -231,7 +234,7 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
                 center_cgf_translator = manage_center_cgfs(center_cgf_translator, var, start_locus_int, end_locus_int)
             else:
                 cgf_str, bases = get_tile_variant_cgf_str_and_all_bases(var)
-                assert cgf_str not in cgf_translator[i], "Repeat cgf_string in position %s" % (basic_fns.get_position_string_from_position_int(tile_position_int))
+                assert cgf_str not in cgf_translator[i], "Repeat cgf_string (%s) in position %s" % (cgf_str, basic_fns.get_position_string_from_position_int(tile_position_int))
                 cgf_translator[i][cgf_str] = bases
     return center_cgf_translator, cgf_translator
 
@@ -306,33 +309,6 @@ def make_sample_position_variant_query(position_query_string, human_subsection=[
         return json.loads(post_response.text)
     except requests.ConnectionError:
         raise requests.ConnectionError, "Lantern not responding on port 8080"
-
-def get_population_sequences_at_position(position_hex_string, error_check=True, human_names=None):
-    """
-    Submits 'sample-position-variant' lantern query.
-    If error_check, it runs get_population_names_and_check_lantern_version() and uses that result as human_names.
-        This hits the lantern database
-    Otherwise, it assumes the user ran get_population_names_and_check_lantern_version() and is passing human_names
-        returned by that function
-    Checks to make sure no humans were added or subtracted in the result
-    Returns the phase A and phase B variant ids of the entire population at the position pointed to by position_hex_string
-        (dictionary. keys are human names, values are [phase_A_cgf_string, phase_B_cgf_string])
-    """
-    if error_check:
-        human_names = get_population_names_and_check_lantern_version()
-        human_names = sorted(human_names)
-    else:
-        assert human_names != None, "Must supply list of human names if not error checking"
-        human_names = sorted(human_names)
-    response = make_sample_position_variant_query(position_hex_string)
-    assert "success" == response['Type'], "Lantern-communication failure: " + response['Message']
-    humans = response['Result']
-    human_names_returned = sorted(humans.keys())
-    assert human_names_returned == human_names, "Returned list of human samples does not match the samples provided (or returned by error checking)"
-    ret_dict = {}
-    for hu in humans:
-        ret_dict[hu] = [humans[hu][0][0], humans[hu][1][0]]
-    return ret_dict
 
 def get_population_sequences_over_position_range(first_position_int, last_position_int):
     """

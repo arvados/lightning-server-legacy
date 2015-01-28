@@ -91,9 +91,11 @@
         <h3 id="{{api_call.id}}-response">Response</h3>
         <p>If successful, this method returns a response body with the following structure:</p>
         <pre>
+          [
           { {% for property in api_call.RESPONSE_properties %}
             {% if forloop.last %}{{property.name}}:{{property.value}}{% else %}{{property.name}}:{{property.value}},{% endif %}{% endfor %}
-          }</pre>
+          }, ...
+          ]</pre>
         <div class="table-responsive">
           <table class="table table-striped" id="{{api_call.id}}-response-properties">
             <thead>
