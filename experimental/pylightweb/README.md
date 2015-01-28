@@ -1,8 +1,3 @@
-Warning:
-=======================
-We provide a few fixtures for testing and installation of genes of interest. Adding multiple fixtures at once will create edge cases and unexpected behavior of the application. To interact with a complete installation of data, visit http://lightning-dev3.curoverse.com
-
-
 Folders
 =======================
 
@@ -12,49 +7,43 @@ Folders
 How to Set-up a local lightning cluster:
 =======================
 ## Notes:
-* We are aware this is a cumbersome installation. We are working to smooth the procedure out.
-* This will not populate the database with a tile library. For information on populating the database, see the README.md file in pylightweb/lightning/tile_library
+* This will _not_ populate the database with a tile library or population. These capabilities are under development.
+* An official Curoverse/Arvados docker image is in development.
 
 ## Procedure:
-1.	Install python 2.7
+1.	Install docker (https://docs.docker.com/installation/)
 
-2.	Install/update django
-  * To check django installation:
-
-		```
-		$ python -c "import django; print(django.get_version())"
-		1.7
-		```
-  * If this is wrong, run:
-
-		```
-		$ sudo pip install django
-		```
-  * For further instructions on proper installation of django, see <https://docs.djangoproject.com/en/1.7/topics/install/>
-
-3. Install selenium (for testing)
-
-		```
-		$ sudo pip install selenium
+2.	Pull sguthrie/lightning
+ 		```
+		$ sudo docker pull sguthrie/lightning
 		```
 
-3.	Ensure checkout of the development branch (code that runs on a localhost):
+3.  Run sguthrie/lightning interactively using /bin/bash
 
-		$ git checkout --track -b development origin/development
-4.	Install postgresql (version 9.1 to 9.3 will work) and the dependencies necessary to interact with django:
+		```
+		$ sudo docker run -t -i sguthrie/lightning /bin/bash
+		```
 
-		$ sudo apt-get install postgresql-9.3
-		$ sudo apt-get install postgresql-server-dev-all
-		$ sudo pip install psycopg2
-5.	Create users and database:
+3.	Ensure the current working directory is correct:
 
-		$ sudo -u postgres createuser -P $USER
-		mypassword
-		$ sudo -u postgres createdb lightningdatabase
-6.	Edit lighting/experimental/pylightweb/lightning/lightning/settings.py
-  * set: DBPW = "mypassword" (the password entered for createuser above)
-  * set: 'USER': '$USER'
+		```
+		# cd home/lightning/lightning/experimental/pylightweb/
+		```
 
-7.	Create the needed tables:
+4.	Pull the most recent version of lightning from github
 
-		lighting/experimental/pylightweb/lightning$ python manage.py migrate
+		```
+		/home/lightning/lightning/experimental/pylightweb# git pull
+		```
+
+5.	That's it! All the capabilities of lightning are available. You can run a server using:
+
+		```
+		/home/lightning/lightning/experimental/pylightweb# python manage.py runserver
+		```
+
+		You can test the installation:
+
+		```
+		/home/lightning/lightning/experimental/pylightweb# python manage.py test
+		```
