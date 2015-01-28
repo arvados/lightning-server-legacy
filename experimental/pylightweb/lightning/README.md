@@ -1,4 +1,9 @@
 README
+Sequence to run in docker:
+
+vi /usr/sbin/policy-rc.d
+  #!/bin/sh
+  exit 0
 
 apt-get update
 apt-get install build-essential
@@ -6,29 +11,22 @@ apt-get install git
 apt-get install wget (for golang and lantern)
 apt-get install mercurial (for cgzip)
 apt-get install pkg-config (for cgzip)
-create file: /usr/lib/pkgconfig/zlib.pc
-    prefix=/usr
-    exec_prefix=${prefix}
-    libdir=${exec_prefix}/lib
-    sharedlibdir=${libdir}
-    includedir=${prefix}/include
-
-    Name: zlib
-    Description: zlib compression library
-    Version: 1.2.5
-
-    Requires:
-    Libs: -L${libdir} -L${sharedlibdir} -lz
-    Cflags: -I${includedir}
-
-apt-get install alien
-wget ftp://rpmfind.net/linux/sourceforge/r/ra/ramonelinux/Rel_0.99/releases/x86_64/packages/zlib-1.2.8-2.ram0.99.x86_64.rpm
-alien -i zlib-1.2.8-2.ram0.99.x86_64.rpm
-apt-get install python-pip
+apt-get install zlib1g-dev (for cgzip)
+apt-get install python-pip (for django)
+apt-get install postgresql-9.3 (for postgres)
+apt-get install python-psycopg2 (for postgres+django)
+pip install django
+pip install django-bootstrap-form
+pip install djangorestframework
 
 adduser lightning
 password: mypassword
 name: Lightning Server Application
+
+su postgres
+  createuser -P -d lightning
+    password: mypassword
+  createdb lightning
 
 /home/lightning/# mkdir golang
 /home/lightning/golang# wget https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz
@@ -46,11 +44,8 @@ name: Lightning Server Application
 /home/lightning/lightning/experimental/lantern# go get github.com/mattn/go-sqlite3
 /home/lightning/lightning/experimental/lantern# go build
 
-/home/lightning/lightning/experimental/pylightweb# pip install django
-/home/lightning/lightning/experimental/pylightweb# pip install django-bootstrap-form
-/home/lightning/lightning/experimental/pylightweb# pip install djangorestframework
-/home/lightning/lightning/experimental/pylightweb#
-
+/home/lightning/lightning/experimental/pylightweb/lightning# python manage.py migrate
+(/home/lightning/lightning/experimental/pylightweb/lightning# python manage.py test tile_library)
 
 
 
