@@ -3,15 +3,10 @@ README
 apt-get update
 apt-get install build-essential
 apt-get install git
-apt-get install python-pip
-
-For golang and lantern:
-  apt-get install wget
-
-For cgzip:
-  apt-get install mercurial
-  apt-get install pkg-config
-  create file: /usr/lib/pkgconfig/zlib.pc
+apt-get install wget (for golang and lantern)
+apt-get install mercurial (for cgzip)
+apt-get install pkg-config (for cgzip)
+create file: /usr/lib/pkgconfig/zlib.pc
     prefix=/usr
     exec_prefix=${prefix}
     libdir=${exec_prefix}/lib
@@ -26,9 +21,10 @@ For cgzip:
     Libs: -L${libdir} -L${sharedlibdir} -lz
     Cflags: -I${includedir}
 
-  apt-get install alien
-  wget ftp://rpmfind.net/linux/sourceforge/r/ra/ramonelinux/Rel_0.99/releases/x86_64/packages/zlib-1.2.8-2.ram0.99.x86_64.rpm
-  alien -i zlib-1.2.8-2.ram0.99.x86_64.rpm
+apt-get install alien
+wget ftp://rpmfind.net/linux/sourceforge/r/ra/ramonelinux/Rel_0.99/releases/x86_64/packages/zlib-1.2.8-2.ram0.99.x86_64.rpm
+alien -i zlib-1.2.8-2.ram0.99.x86_64.rpm
+apt-get install python-pip
 
 adduser lightning
 password: mypassword
@@ -50,13 +46,11 @@ name: Lightning Server Application
 /home/lightning/lightning/experimental/lantern# go get github.com/mattn/go-sqlite3
 /home/lightning/lightning/experimental/lantern# go build
 
-(I believe the addition of sources broke the build-essential package)
-cat > /etc/apt/sources.list  
-deb http://archive.ubuntu.com/ubuntu precise main universe multiverse
+/home/lightning/lightning/experimental/pylightweb# pip install django
+/home/lightning/lightning/experimental/pylightweb# pip install django-bootstrap-form
+/home/lightning/lightning/experimental/pylightweb# pip install djangorestframework
+/home/lightning/lightning/experimental/pylightweb#
 
-apt-get install python
-apt-get install python-pip
-pip install django
 
 
 
