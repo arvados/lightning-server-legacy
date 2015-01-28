@@ -44,7 +44,7 @@ INSTALLED_APPS = (
     'bootstrapform',
     'rest_framework',
     'api',
-    'api_gui'
+    'api_gui',
     'tile_library',
 )
 
