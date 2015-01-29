@@ -38,5 +38,3 @@ RUN go get github.com/mattn/go-sqlite3
 RUN go build
 
 WORKDIR /home/lightning/lightning/experimental/pylightweb/lightning
-
-CMD ["python", "manage.py", "migrate"]
