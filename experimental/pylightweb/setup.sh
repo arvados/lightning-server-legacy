@@ -6,5 +6,7 @@ gosu postgres postgres --single <<- EOSQL
   GRANT ALL PRIVILEGES ON DATABASE lightning TO lightning;
 EOSQL
 
-python /lightning/experimental/pylightweb/lightning/manage.py migrate
-python /lightning/experimental/pylightweb/lightning/manage.py test tile_library
+cd /home/lightning/lightning/experimental/pylightweb/lightning
+git pull
+python manage.py migrate
+python manage.py test tile_library
