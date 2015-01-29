@@ -218,7 +218,8 @@ def make_statistically_interesting_tiles(assembly_default=19):
         #Each chromosome starts at locus 0
         locus = 0
         for path_hex in chroms_with_paths_with_tile_vars[chrom_int]:
-            for i, position in enumerate(chroms_with_paths_with_tile_vars[chrom_int][path_hex]):
+            tile_vars = chroms_with_paths_with_tile_vars[chrom_int][path_hex]
+            for i, position in enumerate(tile_vars):
                 tile_int = int(path_hex.zfill(3)+'00'+hex(i).lstrip('0x').zfill(4), 16)
                 if i == 0:
                     t, foo, new_start_tag, annotation = mk_tile(
