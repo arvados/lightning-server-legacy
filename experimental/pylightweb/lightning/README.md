@@ -78,3 +78,6 @@ Folders
 
 ## errors.py
   Implements lightning-wide errors
+
+Known errors:
+  generate_stats does not look at tags!
