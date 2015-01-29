@@ -89,7 +89,7 @@ def get_position_from_cgf_string(cgf_str):
 def get_number_of_tiles_spanned(cgf_str):
     if type(cgf_str) != str and type(cgf_str) != unicode:
         raise TypeError("Unable to cast %s as type string or unicode" % (cgf_str))
-    matching = re.match('^([0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4})\.[0-9a-f]{4}(?:\+[0-9a-f]+$|$)', cgf_str)
+    matching = re.match('^[0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4}\.[0-9a-f]{4}(?:\+([0-9a-f]+)$|$)', cgf_str)
     if matching == None:
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
     if matching.group(1) == '':
