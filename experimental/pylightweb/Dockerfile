@@ -13,9 +13,10 @@ RUN apt-get update && apt-get install -y \
   software-properties-common \
   zlib1g-dev
 
-RUN pip install django
-RUN pip install django-bootstrap-form
-RUN pip install djangorestframework
+RUN pip install django \
+  django-bootstrap-form \
+  djangorestframework \
+  requests
 
 # Install go
 RUN curl https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz | tar -C /usr/local -zx
