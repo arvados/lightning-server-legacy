@@ -78,8 +78,8 @@ DATABASES = {
         'NAME': 'lightning',
         'USER': 'lightning',
         'PASSWORD': DBPW,
-        'HOST': os.environ['POSTGRES_PORT_5432_TCP_ADDR']#'127.0.0.1',
-        'PORT': os.environ['POSTGRES_PORT_5432_TCP_PORT']#'5432',
+        'HOST': os.environ['POSTGRES_PORT_5432_TCP_ADDR'], #'127.0.0.1',
+        'PORT': os.environ['POSTGRES_PORT_5432_TCP_PORT'], #'5432',
     }
 }
 
