@@ -8,5 +8,3 @@ EOSQL
 
 cd /home/lightning/lightning/experimental/pylightweb/lightning
 git pull
-python manage.py migrate
-python manage.py test tile_library
