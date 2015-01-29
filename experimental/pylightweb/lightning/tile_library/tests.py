@@ -62,7 +62,7 @@ def mk_tilevars(num_vars, lengths, start_tag, end_tag, tile, tile_int):
                           md5sum=digestor.hexdigest(), sequence=seq, num_positions_spanned=1)
         new.save()
 
-def make_tiles(assembly_default=19, skip_zero=False):
+def make_tiles(assembly_default=19):
     """
     creates the following structure:
             i,  min,     avg,  max
@@ -638,7 +638,8 @@ class TestTileVariantMethods(TestCase):
 ################################## TEST generate_statistics ###################################
 #####################           TODO: multiple chromosomes!          ###############
 class TestGenerateStatistics(TestCase):
-
+    def setUp(self):
+        make_tiles()
     def test_generate_stats_initialize(self):
         """
         The following structure:
