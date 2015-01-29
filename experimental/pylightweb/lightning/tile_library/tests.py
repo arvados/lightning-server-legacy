@@ -240,7 +240,7 @@ def make_statistically_interesting_tiles(assembly_default=19):
                         tile_vars[i]['lengths'],
                         spanning_nums=tile_vars[i]['spanning_num'],
                         start_tag=new_start_tag,
-                        assembly=assembly_default
+                        assembly=assembly_default,
                         chrom=chrom_int
                     )
                 locus += tile_vars[i]['lengths'][0] - 24
