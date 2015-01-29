@@ -36,3 +36,5 @@ RUN go get github.com/mattn/go-sqlite3
 RUN go build
 
 RUN cp /home/lightning/lightning/experimental/pylightweb/setup.sh /docker-entrypoint-initdb.d/setup.sh
+
+WORKDIR /home/lightning/lightning/experimental/pylightweb/lightning
