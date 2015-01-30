@@ -622,9 +622,9 @@ class TestTileMethods(TestCase):
             self.assertEqual(type(s), str)
 
     def test_non_int_primary_key(self):
-        self.assertRaises(ValueError, Tile(tilename='invalid'))
+        self.assertRaises(ValueError, str, Tile(tilename='invalid'))
     def test_negative_primary_key(self):
-        self.assertRaises(ValidationError, Tile(tilename=-1))
+        self.assertRaises(ValidationError, str, Tile(tilename=-1))
 
 ################################## TEST models continued ###################################
 class TestTileVariantMethods(TestCase):
