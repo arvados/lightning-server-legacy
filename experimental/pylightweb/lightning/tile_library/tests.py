@@ -2,6 +2,7 @@ import random
 import hashlib
 import string
 import subprocess
+from unittest import skip
 
 from django.test import TestCase, LiveServerTestCase
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
@@ -621,10 +622,17 @@ class TestTileMethods(TestCase):
         for s in cytomap:
             self.assertEqual(type(s), str)
 
-    def test_non_int_primary_key(self):
-        self.assertRaises(ValueError, str, Tile(tilename='invalid'))
-    def test_negative_primary_key(self):
-        self.assertRaises(ValidationError, str, Tile(tilename=-1))
+    def test_non_int_tile_int(self):
+        with self.assertRaises(ValidationError):
+            Tile(tilename='invalid').save()
+    def test_negative_tile_int(self):
+        with self.assertRaises(ValidationError):
+            Tile(tilename=-1).save()
+    def test_too_big_tile_int(self):
+        with self.assertRaises(ValidationError):
+            Tile(tilename=int('1000000000', 16)).save()
+    def test_non_existant_tags(self):
+        with self.assertRaises()
 
 ################################## TEST models continued ###################################
 class TestTileVariantMethods(TestCase):
@@ -722,6 +730,7 @@ class TestTileVariantMethods(TestCase):
 class TestGenerateStatistics(TestCase):
     def setUp(self):
         make_tiles(BASE_LIBRARY_STRUCTURE)
+    @skip("Generating statistics takes a long time")
     def test_generate_stats_initialize(self):
         """
         The following structure:
@@ -775,9 +784,11 @@ class TestGenerateStatistics(TestCase):
                 self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
                 self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
                 self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
+    @skip("Generating statistics takes a long time")
     def test_initialize_failure_after_initializing_once(self):
         gen_stats.initialize(silent=True)
         self.assertRaises(AssertionError, gen_stats.initialize)
+    @skip("Generating statistics takes a long time")
     def test_update_on_same_library(self):
         gen_stats.initialize(silent=True)
         gen_stats.update(silent=True)
@@ -816,6 +827,7 @@ class TestGenerateStatistics(TestCase):
                 self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
                 self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
                 self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
+    @skip("Generating statistics takes a long time")
     def test_update_on_updated_library(self):
         """
         Updated structure is (additions shown with asterisk):

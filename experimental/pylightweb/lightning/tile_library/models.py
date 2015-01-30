@@ -87,7 +87,7 @@ class Tile(models.Model):
             validation_fns.validate_tile(self.tilename)
             super(Tile, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
-            ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
+            raise ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
     def getTileString(self):
         """Displays hex indexing for tile """
         return basic_fns.get_position_string_from_position_int(int(self.tilename))
@@ -152,7 +152,7 @@ class TileVariant(models.Model):
             )
             super(TileVariant, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
-            ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
+            raise ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
 
     def getString(self):
         """Displays hex indexing for tile variant"""
