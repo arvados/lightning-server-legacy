@@ -821,7 +821,7 @@ class TestGenerateStatistics(TestCase):
                 4, 1, {'vars':1, 'lengths':[425], 'spanning_num':[1]}
             Path 1:
                 0, 1, {'vars':5, 'lengths':[549,500,600,550,549], 'spanning_num':[1,1,1,1,1]}
-               *1, 4, {'vars':2, 'lengths':[220, 1130], 'spanning_num':[1, 1]}
+               *1, 4, {'vars':2, 'lengths':[220, 1130], 'spanning_num':[1, 4]}
                *2, 1, {'vars':1, 'lengths':[335], 'spanning_num':[1]}
                *3, 1, {'vars':1, 'lengths':[346], 'spanning_num':[1]}
                *4, 1, {'vars':1, 'lengths':[201], 'spanning_num':[1]}
@@ -840,7 +840,7 @@ class TestGenerateStatistics(TestCase):
         locus = TileLocusAnnotation.objects.filter(assembly=19).filter(chromosome=1).order_by('begin_int').last().end_int
         locus -= TAG_LENGTH
         chr1_path1_new_tiles = [
-            {'vars':2, 'lengths':[220, 1130], 'spanning_num':[1,1]},
+            {'vars':2, 'lengths':[220, 1130], 'spanning_num':[1,4]},
             {'vars':1, 'lengths':[335], 'spanning_num':[1]},
             {'vars':1, 'lengths':[346], 'spanning_num':[1]},
             {'vars':1, 'lengths':[201], 'spanning_num':[1]}
