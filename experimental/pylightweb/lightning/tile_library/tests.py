@@ -7,13 +7,14 @@ from django.test import TestCase, LiveServerTestCase
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.urlresolvers import reverse
 from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
 
 from errors import MissingStatisticsError
 from tile_library.models import TAG_LENGTH, Tile, TileLocusAnnotation, TileVariant, GenomeVariant, GenomeVariantTranslation, GenomeStatistic
 import tile_library.basic_functions as basic_fns
 import tile_library.functions as fns
 import tile_library.generate_stats as gen_stats
-#import tile_library.query_functions as query_fns
+import tile_library.query_functions as query_fns
 
 #Currently testing functions defined by basic_functions, functions, and models
 #Check that generate_stats behaves as expected (adds the correct statistics)
@@ -619,6 +620,13 @@ class TestTileMethods(TestCase):
         self.assertEqual(len(cytomap), chr_list[-1])
         for s in cytomap:
             self.assertEqual(type(s), str)
+
+    def test_non_int_primary_key(self):
+        t = Tile(tilename='invalid')
+        self.assertRaises(ValueError, t.save)
+    def test_negative_primary_key(self):
+        t = Tile(tilename=-1)
+        self.assertRaises(ValidationError, t.save)
 
 ################################## TEST models continued ###################################
 class TestTileVariantMethods(TestCase):

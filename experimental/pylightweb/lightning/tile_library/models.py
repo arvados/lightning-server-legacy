@@ -1,23 +1,49 @@
+"""
+Tile Library Models
+
+Does not include information about the population - Use Lantern for that
+Population data includes:
+    number of people with particular variant
+    color mapping for slippy map
+"""
+
+import string
+import json
+import warnings
+
 from django.db import models
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
-import string
-import json
 
 import tile_library.basic_functions as fns
+import tile_library_generation.validators as validation_fns
+from errors import TileLibraryValidationError
 
 TAG_LENGTH=24
-#No population data for these models: all of that should be dealt with using the human models or npy file manipulation
-#   Population data includes:
-#       png representation of the tile
-#       Color each variant is associated with
-#       Size of the population
 
 def validate_json(text):
     try:
         json.loads(text)
     except ValueError:
         raise ValidationError("Expects json-formatted text")
+
+def validate_tile_position_int(tile_position_int):
+    if tile_position_int < 0:
+        raise ValidationError("tile position int must be positive")
+    max_tile_position = int('fffffffff', 16)
+    if tile_position_int > max_tile_position:
+        raise ValidationError("tile position int must be smaller than or equal to 'fff.ff.ffff'")
+
+def validate_tile_variant_int(tile_variant_int):
+    if tile_variant_int < 0:
+        raise ValidationError("tile variant int must be positive")
+    max_tile_variant = int('ffffffffffff', 16)
+    if tile_variant_int > max_tile_variant:
+        raise ValidationError("tile variant int must be smaller than or equal to 'fff.ff.ffff.fff'")
+
+def validate_tag(tag):
+    if len(tag) != TAG_LENGTH:
+        raise ValidationError("Tag length must be equal to the set TAG_LENGTH")
 
 class TileManage(models.Manager):
     """
@@ -52,11 +78,16 @@ class Tile(models.Model):
     CHR_PATH_LENGTHS = [0,63,125,187,234,279,327,371,411,454,496,532,573,609,641,673,698,722,742,761,781,795,811,851,862,863,863]
     CYTOMAP = ['p36.33', 'p36.32', 'p36.31', 'p36.23', 'p36.22', 'p36.21', 'p36.13', 'p36.12', 'p36.11', 'p35.3', 'p35.2', 'p35.1', 'p34.3', 'p34.2', 'p34.1', 'p33', 'p32.3', 'p32.2', 'p32.1', 'p31.3', 'p31.2', 'p31.1', 'p22.3', 'p22.2', 'p22.1', 'p21.3', 'p21.2', 'p21.1', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11.2', 'p11.1', 'q11', 'q12', 'q21.1', 'q21.2', 'q21.3', 'q22', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q25.1', 'q25.2', 'q25.3', 'q31.1', 'q31.2', 'q31.3', 'q32.1', 'q32.2', 'q32.3', 'q41', 'q42.11', 'q42.12', 'q42.13', 'q42.2', 'q42.3', 'q43', 'q44', 'p25.3', 'p25.2', 'p25.1', 'p24.3', 'p24.2', 'p24.1', 'p23.3', 'p23.2', 'p23.1', 'p22.3', 'p22.2', 'p22.1', 'p21', 'p16.3', 'p16.2', 'p16.1', 'p15', 'p14', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q12.3', 'q13', 'q14.1', 'q14.2', 'q14.3', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q31.1', 'q31.2', 'q31.3', 'q32.1', 'q32.2', 'q32.3', 'q33.1', 'q33.2', 'q33.3', 'q34', 'q35', 'q36.1', 'q36.2', 'q36.3', 'q37.1', 'q37.2', 'q37.3', 'p26.3', 'p26.2', 'p26.1', 'p25.3', 'p25.2', 'p25.1', 'p24.3', 'p24.2', 'p24.1', 'p23', 'p22.3', 'p22.2', 'p22.1', 'p21.33', 'p21.32', 'p21.31', 'p21.2', 'p21.1', 'p14.3', 'p14.2', 'p14.1', 'p13', 'p12.3', 'p12.2', 'p12.1', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q12.3', 'q13.11', 'q13.12', 'q13.13', 'q13.2', 'q13.31', 'q13.32', 'q13.33', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23', 'q24', 'q25.1', 'q25.2', 'q25.31', 'q25.32', 'q25.33', 'q26.1', 'q26.2', 'q26.31', 'q26.32', 'q26.33', 'q27.1', 'q27.2', 'q27.3', 'q28', 'q29', 'p16.3', 'p16.2', 'p16.1', 'p15.33', 'p15.32', 'p15.31', 'p15.2', 'p15.1', 'p14', 'p13', 'p12', 'p11', 'q11', 'q12', 'q13.1', 'q13.2', 'q13.3', 'q21.1', 'q21.21', 'q21.22', 'q21.23', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23', 'q24', 'q25', 'q26', 'q27', 'q28.1', 'q28.2', 'q28.3', 'q31.1', 'q31.21', 'q31.22', 'q31.23', 'q31.3', 'q32.1', 'q32.2', 'q32.3', 'q33', 'q34.1', 'q34.2', 'q34.3', 'q35.1', 'q35.2', 'p15.33', 'p15.32', 'p15.31', 'p15.2', 'p15.1', 'p14.3', 'p14.2', 'p14.1', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.3', 'q14.1', 'q14.2', 'q14.3', 'q15', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q31.1', 'q31.2', 'q31.3', 'q32', 'q33.1', 'q33.2', 'q33.3', 'q34', 'q35.1', 'q35.2', 'q35.3', 'p25.3', 'p25.2', 'p25.1', 'p24.3', 'p24.2', 'p24.1', 'p23', 'p22.3', 'p22.2', 'p22.1', 'p21.33', 'p21.32', 'p21.31', 'p21.2', 'p21.1', 'p12.3', 'p12.2', 'p12.1', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q13', 'q14.1', 'q14.2', 'q14.3', 'q15', 'q16.1', 'q16.2', 'q16.3', 'q21', 'q22.1', 'q22.2', 'q22.31', 'q22.32', 'q22.33', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q25.1', 'q25.2', 'q25.3', 'q26', 'q27', 'p22.3', 'p22.2', 'p22.1', 'p21.3', 'p21.2', 'p21.1', 'p15.3', 'p15.2', 'p15.1', 'p14.3', 'p14.2', 'p14.1', 'p13', 'p12.3', 'p12.2', 'p12.1', 'p11.2', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q21.11', 'q21.12', 'q21.13', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q31.1', 'q31.2', 'q31.31', 'q31.32', 'q31.33', 'q32.1', 'q32.2', 'q32.3', 'q33', 'q34', 'q35', 'q36.1', 'q36.2', 'q36.3', 'p23.3', 'p23.2', 'p23.1', 'p22', 'p21.3', 'p21.2', 'p21.1', 'p12', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q12.1', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.3', 'q21.11', 'q21.12', 'q21.13', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.11', 'q24.12', 'q24.13', 'q24.21', 'q24.22', 'q24.23', 'q24.3', 'p24.3', 'p24.2', 'p24.1', 'p23', 'p22.3', 'p22.2', 'p22.1', 'p21.3', 'p21.2', 'p21.1', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11.2', 'p11.1', 'q11', 'q12', 'q13', 'q21.11', 'q21.12', 'q21.13', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22.1', 'q22.2', 'q22.31', 'q22.32', 'q22.33', 'q31.1', 'q31.2', 'q31.3', 'q32', 'q33.1', 'q33.2', 'q33.3', 'q34.11', 'q34.12', 'q34.13', 'q34.2', 'q34.3', 'p15.3', 'p15.2', 'p15.1', 'p14', 'p13', 'p12.33', 'p12.32', 'p12.31', 'p12.2', 'p12.1', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.31', 'q23.32', 'q23.33', 'q24.1', 'q24.2', 'q24.31', 'q24.32', 'q24.33', 'q25.1', 'q25.2', 'q25.3', 'q26.11', 'q26.12', 'q26.13', 'q26.2', 'q26.3', 'p15.5', 'p15.4', 'p15.3', 'p15.2', 'p15.1', 'p14.3', 'p14.2', 'p14.1', 'p13', 'p12', 'p11.2', 'p11.12', 'p11.11', 'q11', 'q12.1', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.3', 'q13.4', 'q13.5', 'q14.1', 'q14.2', 'q14.3', 'q21', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q25', 'p13.33', 'p13.32', 'p13.31', 'p13.2', 'p13.1', 'p12.3', 'p12.2', 'p12.1', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11', 'q12', 'q13.11', 'q13.12', 'q13.13', 'q13.2', 'q13.3', 'q14.1', 'q14.2', 'q14.3', 'q15', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22', 'q23.1', 'q23.2', 'q23.3', 'q24.11', 'q24.12', 'q24.13', 'q24.21', 'q24.22', 'q24.23', 'q24.31', 'q24.32', 'q24.33', 'p13', 'p12', 'p11.2', 'p11.1', 'q11', 'q12.11', 'q12.12', 'q12.13', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.3', 'q14.11', 'q14.12', 'q14.13', 'q14.2', 'q14.3', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22.1', 'q22.2', 'q22.3', 'q31.1', 'q31.2', 'q31.3', 'q32.1', 'q32.2', 'q32.3', 'q33.1', 'q33.2', 'q33.3', 'q34', 'p13', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q13.1', 'q13.2', 'q13.3', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q31.1', 'q31.2', 'q31.3', 'q32.11', 'q32.12', 'q32.13', 'q32.2', 'q32.31', 'q32.32', 'q32.33', 'p13', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q13.1', 'q13.2', 'q13.3', 'q14', 'q15.1', 'q15.2', 'q15.3', 'q21.1', 'q21.2', 'q21.3', 'q22.1', 'q22.2', 'q22.31', 'q22.32', 'q22.33', 'q23', 'q24.1', 'q24.2', 'q24.3', 'q25.1', 'q25.2', 'q25.3', 'q26.1', 'q26.2', 'q26.3', 'p13.3', 'p13.2', 'p13.13', 'p13.12', 'p13.11', 'p12.3', 'p12.2', 'p12.1', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q13', 'q21', 'q22.1', 'q22.2', 'q22.3', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'p13.3', 'p13.2', 'p13.1', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22', 'q23.1', 'q23.2', 'q23.3', 'q24.1', 'q24.2', 'q24.3', 'q25.1', 'q25.2', 'q25.3', 'p11.32', 'p11.31', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.2', 'q12.1', 'q12.2', 'q12.3', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22.1', 'q22.2', 'q22.3', 'q23', 'p13.3', 'p13.2', 'p13.13', 'p13.12', 'p13.11', 'p12', 'p11', 'q11', 'q12', 'q13.11', 'q13.12', 'q13.13', 'q13.2', 'q13.31', 'q13.32', 'q13.33', 'q13.41', 'q13.42', 'q13.43', 'p13', 'p12.3', 'p12.2', 'p12.1', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q12', 'q13.11', 'q13.12', 'q13.13', 'q13.2', 'q13.31', 'q13.32', 'q13.33', 'p13', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.2', 'q21.1', 'q21.2', 'q21.3', 'q22.11', 'q22.12', 'q22.13', 'q22.2', 'q22.3', 'p13', 'p12', 'p11.2', 'p11.1', 'q11.1', 'q11.21', 'q11.22', 'q11.23', 'q12.1', 'q12.2', 'q12.3', 'q13.1', 'q13.2', 'q13.31', 'q13.32', 'q13.33', 'p22.33', 'p22.32', 'p22.31', 'p22.2', 'p22.13', 'p22.12', 'p22.11', 'p21.3', 'p21.2', 'p21.1', 'p11.4', 'p11.3', 'p11.23', 'p11.22', 'p11.21', 'p11.1', 'q11.1', 'q11.2', 'q12', 'q13.1', 'q13.2', 'q13.3', 'q21.1', 'q21.2', 'q21.31', 'q21.32', 'q21.33', 'q22.1', 'q22.2', 'q22.3', 'q23', 'q24', 'q25', 'q26.1', 'q26.2', 'q26.3', 'q27.1', 'q27.2', 'q27.3', 'q28', 'p11.32', 'p11.31', 'p11.2', 'p11.1', 'q11.1', 'q11.21', 'q11.221', 'q11.222', 'q11.223', 'q11.23', 'q12', '']
 
-    tilename = models.BigIntegerField(primary_key=True, editable=False, db_index=True)
-    start_tag = models.CharField(max_length=TAG_LENGTH)
-    end_tag = models.CharField(max_length=TAG_LENGTH)
+    tilename = models.BigIntegerField(primary_key=True, editable=False, db_index=True, validators=[validate_tile_position_int])
+    start_tag = models.CharField(max_length=TAG_LENGTH, validators=[validate_tag])
+    end_tag = models.CharField(max_length=TAG_LENGTH, validators=[validate_tag])
     created = models.DateTimeField(auto_now_add=True)
-
+    def save(self, *args, **kwargs):
+        try:
+            validation_fns.validate_tile(self.tilename)
+            super(TileVariant, self).save(*args, **kwargs)
+        except TileLibraryValidationError as e:
+            ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
     def getTileString(self):
         """Displays hex indexing for tile """
         return fns.get_position_string_from_position_int(int(self.tilename))
@@ -95,7 +126,7 @@ class TileVariant(models.Model):
         isReference(): returns boolean: True if the variant is the reference variant.
             Depends on tile_variant_name (check if variant is equal to 000) (or variant_value)
     """
-    tile_variant_name = models.BigIntegerField(primary_key=True, editable=False, db_index=True)
+    tile_variant_name = models.BigIntegerField(primary_key=True, editable=False, db_index=True, validators=[validate_tile_variant_int])
     tile = models.ForeignKey(Tile, related_name='tile_variants', db_index=True)
     num_positions_spanned = models.PositiveSmallIntegerField()
     conversion_to_cgf = models.TextField(default='')
@@ -107,6 +138,21 @@ class TileVariant(models.Model):
     sequence = models.TextField()
     start_tag = models.TextField(blank=True)
     end_tag = models.TextField(blank=True)
+
+    def save(self, *args, **kwargs):
+        try:
+            start_tag = self.start_tag
+            if start_tag == '':
+                start_tag = tile.start_tag
+            end_tag = self.end_tag
+            if end_tag == '':
+                end_tag = tile.end_tag
+            validation_fns.validate_tile_variant(
+                TAG_LENGTH, self.tile_id, self.tile_variant_name, self.variant_value, self.sequence, self.length, self.md5sum, start_tag, end_tag
+            )
+            super(TileVariant, self).save(*args, **kwargs)
+        except TileLibraryValidationError as e:
+            ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
 
     def getString(self):
         """Displays hex indexing for tile variant"""
@@ -429,7 +475,7 @@ class GenomeStatistic(models.Model):
 
     position_num = models.BigIntegerField()
     tile_num = models.BigIntegerField()
-    
+
     max_num_positions_spanned = models.PositiveIntegerField(null=True)
 
     def __unicode__(self):
