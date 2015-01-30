@@ -852,8 +852,8 @@ class TestGenerateStatistics(TestCase):
                 locus,
                 locus+position['lengths'][0],
                 position['vars'],
-                positions['lengths'],
-                spanning_nums=positions['spanning_num'],
+                position['lengths'],
+                spanning_nums=position['spanning_num'],
                 start_tag=new_start_tag,
                 assembly=19
             )
