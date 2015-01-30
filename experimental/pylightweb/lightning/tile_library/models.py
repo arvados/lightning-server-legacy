@@ -143,10 +143,10 @@ class TileVariant(models.Model):
         try:
             start_tag = self.start_tag
             if start_tag == '':
-                start_tag = tile.start_tag
+                start_tag = self.tile.start_tag
             end_tag = self.end_tag
             if end_tag == '':
-                end_tag = tile.end_tag
+                end_tag = self.tile.end_tag
             validation_fns.validate_tile_variant(
                 TAG_LENGTH, self.tile_id, self.tile_variant_name, self.variant_value, self.sequence, self.length, self.md5sum, start_tag, end_tag
             )

@@ -25,7 +25,7 @@ b. Or building it yourself (which takes more time)
 
 4.  Link the base-postgres with lightning:
 
-		$ docker run --name lightning -it --link base-postgres:postgres sguthrie/lightning /bin/bash
+		$ docker run --name lightning -it --rm --link base-postgres:postgres sguthrie/lightning /bin/bash
 
 5.	Pull the most recent version of lightning from github
 
