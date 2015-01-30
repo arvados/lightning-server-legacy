@@ -15,7 +15,7 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
 
-import tile_library.basic_functions as fns
+import tile_library.basic_functions as basic_fns
 import tile_library_generation.validators as validation_fns
 from errors import TileLibraryValidationError
 
@@ -90,7 +90,7 @@ class Tile(models.Model):
             ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
     def getTileString(self):
         """Displays hex indexing for tile """
-        return fns.get_position_string_from_position_int(int(self.tilename))
+        return basic_fns.get_position_string_from_position_int(int(self.tilename))
     getTileString.short_description='Tile Name'
     def __unicode__(self):
         return self.getTileString()
@@ -156,7 +156,7 @@ class TileVariant(models.Model):
 
     def getString(self):
         """Displays hex indexing for tile variant"""
-        return fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_name))
+        return basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_name))
     getString.short_description='Variant Name'
     def isReference(self):
         return int(self.variant_value) == 0
@@ -273,7 +273,7 @@ class GenomeVariant(models.Model):
             humanReadable = 'Deletion'
         else:
             humanReadable = 'SNP'
-        return fns.get_position_string_from_position_int(int(self.start_tile_position.tilename)) + ": " + humanReadable
+        return basic_fns.get_position_string_from_position_int(int(self.start_tile_position.tilename)) + ": " + humanReadable
     class Meta:
         #Ensures ordering by tilename
         ordering = ['start_tile_position', 'start_increment']

@@ -1,5 +1,6 @@
 import hashlib
 
+import tile_library.basic_functions as basic_fns
 from errors import TileLibraryValidationError
 
 def validate_tile(tile_position_int):
@@ -24,8 +25,8 @@ def validate_tile_variant(TAG_LENGTH, tile_position_int, tile_variant_int, varia
         VALIDATION_ERRORS['variant_position_too_big'] = "tile variant int must be smaller than or equal to 'fff.ff.ffff.fff'"
     try:
         #If these throw a type error, I want it to propogate. Only catch ValueError
-        tile_path, tile_path_version, tile_step = fns.get_position_ints_from_position_int(tile_position_int)
-        variant_path, variant_path_version, variant_step, variant_val = fns.get_tile_variant_ints_from_tile_variant_int(tile_variant_int)
+        tile_path, tile_path_version, tile_step = basic_fns.get_position_ints_from_position_int(tile_position_int)
+        variant_path, variant_path_version, variant_step, variant_val = basic_fns.get_tile_variant_ints_from_tile_variant_int(tile_variant_int)
     except ValueError:
         raise TileLibraryValidationError(VALIDATION_ERRORS)
     if tile_path != variant_path:
