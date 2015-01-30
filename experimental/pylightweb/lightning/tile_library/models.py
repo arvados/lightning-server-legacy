@@ -85,7 +85,7 @@ class Tile(models.Model):
     def save(self, *args, **kwargs):
         try:
             validation_fns.validate_tile(self.tilename)
-            super(TileVariant, self).save(*args, **kwargs)
+            super(Tile, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
             ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
     def getTileString(self):
