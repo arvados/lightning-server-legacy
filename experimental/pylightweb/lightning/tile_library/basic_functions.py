@@ -92,7 +92,7 @@ def get_number_of_tiles_spanned(cgf_str):
     matching = re.match('^[0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4}\.[0-9a-f]{4}(?:\+([0-9a-f]+)$|$)', cgf_str)
     if matching == None:
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
-    if matching.group(1) == '':
+    if matching.group(1) == None:
         return 1
     else:
         return int(matching.group(1), 16)

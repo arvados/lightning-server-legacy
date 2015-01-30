@@ -22,6 +22,27 @@ import tile_library.generate_stats as gen_stats
 
 #Needed to check when paths are crossed
 
+BASE_LIBRARY_STRUCTURE = {
+    1: {
+        '0': [
+            {'vars':3, 'lengths':[448,749,450], 'spanning_num':[1,2,1]},
+            {'vars':2, 'lengths':[301,301], 'spanning_num':[1,1]},
+            {'vars':3, 'lengths':[273,300,840], 'spanning_num':[1,2,3]},
+            {'vars':1, 'lengths':[149], 'spanning_num':[1]},
+            {'vars':1, 'lengths':[425], 'spanning_num':[1]},
+        ],
+        '1': [
+            {'vars':5, 'lengths':[549,500,600,550,549], 'spanning_num':[1,1,1,1,1]},
+        ]
+    },
+    2: {
+        '3f': [
+            {'vars':3, 'lengths':[248,498,248], 'spanning_num':[1,2,1]},
+            {'vars':3, 'lengths':[250,264,265], 'spanning_num':[1,1,1]},
+        ]
+    }
+}
+
 def mk_genome_seq(length, uppercase=True):
     if uppercase:
         choices = ['A','G','C','T']
@@ -32,7 +53,7 @@ def mk_genome_seq(length, uppercase=True):
         s += random.choice(choices)
     return s
 
-def mk_tile(tile_int, start_pos, end_pos, num_vars, lengths, start_tag=None, end_tag=None, assembly=19, chrom=1):
+def mk_tile(tile_int, start_pos, end_pos, num_vars, lengths, spanning_nums=[], start_tag=None, end_tag=None, assembly=19, chrom=1):
     assert len(lengths) == num_vars
     assert lengths[0] == end_pos-start_pos
     if start_tag == None:
@@ -43,35 +64,48 @@ def mk_tile(tile_int, start_pos, end_pos, num_vars, lengths, start_tag=None, end
     new.save()
     locus = TileLocusAnnotation(assembly=assembly, chromosome=chrom, begin_int=start_pos, end_int=end_pos, tile=new)
     locus.save()
-    mk_tilevars(num_vars, lengths, start_tag, end_tag, new, tile_int)
+    mk_tilevars(num_vars, lengths, start_tag, end_tag, new, tile_int, spanning_nums=spanning_nums)
     return new, start_tag, end_tag, locus
 
-def mk_tilevars(num_vars, lengths, start_tag, end_tag, tile, tile_int):
+def mk_tilevars(num_vars, lengths, start_tag, end_tag, tile, tile_int, spanning_nums=[]):
     assert len(lengths) == num_vars
+    if spanning_nums==[]:
+        spanning_nums = [1 for i in range(num_vars)]
+    assert (len(spanning_nums)==num_vars)
     for i in range(num_vars):
         tile_hex = string.join(basic_fns.convert_position_int_to_position_hex_str(tile_int), "")
         tile_hex += hex(i).lstrip('0x').zfill(3)
         tile_var_int = int(tile_hex, 16)
         length = lengths[i]
+        num_pos_spanned = spanning_nums[i]
         randseq_len = length - TAG_LENGTH*2
         seq = start_tag
         seq += mk_genome_seq(randseq_len, uppercase=False)
         seq += end_tag
         digestor = hashlib.new('md5', seq)
-        new = TileVariant(tile_variant_name=tile_var_int, tile=tile, variant_value=i, length=length,
-                          md5sum=digestor.hexdigest(), sequence=seq, num_positions_spanned=1)
+        new = TileVariant(
+            tile_variant_name=tile_var_int,
+            tile=tile,
+            variant_value=i,
+            length=length,
+            md5sum=digestor.hexdigest(),
+            sequence=seq,
+            num_positions_spanned=num_pos_spanned
+        )
         new.save()
 
-def make_tiles(assembly_default=19, skip_zero=False):
+def ignore_make_tiles(assembly_default=19):
     """
     creates the following structure:
             i,  min,     avg,  max
+        Path
             0,  448,  448.67,  450 {'vars':3, 'lengths':[448,448,450]}, #1
             1,  301,  301.00,  301 {'vars':2, 'lengths':[301,301]}, #2
             2,  200,  257.67,  300 {'vars':3, 'lengths':[273,200,300]}, #3
             3,  149,  149.00,  149 {'vars':1, 'lengths':[149]}, #4
             4,  425,  425.00,  425 {'vars':1, 'lengths':[425]}, #5
             5,  500,  549.75,  600 {'vars':4, 'lengths':[549,500,600,550]}, #6
+        Path 1:
             6,  198,  199.00,  200 {'vars':4, 'lengths':[199,198,200,199]}, #7
             7,  249,  249.00,  249 {'vars':2, 'lengths':[249,249]}, #8
             8,  199,  199.00,  199 {'vars':1, 'lengths':[199]}, #9
@@ -95,7 +129,6 @@ def make_tiles(assembly_default=19, skip_zero=False):
             (2200-24,2425),#7 -> 249
             (2425-24,2600),#8 -> 199
             ]
-
     """
     tile_vars = [
             {'vars':3, 'lengths':[448,448,450]}, #1
@@ -164,6 +197,48 @@ def make_tiles(assembly_default=19, skip_zero=False):
             chrom=2
         )
         locus += tile_vars[i]['lengths'][0] - 24
+
+def make_tiles(chroms_with_paths_with_tile_vars, assembly_default=19):
+    """
+    assumes chroms_with_paths_with_tile_vars is a dictionary, keyed with integers (chromosomes)
+    The value associated with each chromosome is a dictionary, keyed with integers (paths)
+    The value associated with each path is a list of dictionaries, one for each position.
+    Each position dictionary has key:value pairs:
+        'vars':int (number of tile variants)
+        'lengths':[a, b, ...] (lengths. First is length of tile variant 0 - the default. Is has length == vars)
+        'spanning_num':[i, i, ...] (number of positions tile variant spans)
+    """
+    for chrom_int in chroms_with_paths_with_tile_vars:
+        #Each chromosome starts at locus 0
+        locus = 0
+        for path_hex in chroms_with_paths_with_tile_vars[chrom_int]:
+            tile_vars = chroms_with_paths_with_tile_vars[chrom_int][path_hex]
+            for i, position in enumerate(tile_vars):
+                tile_int = int(path_hex.zfill(3)+'00'+hex(i).lstrip('0x').zfill(4), 16)
+                if i == 0:
+                    t, foo, new_start_tag, annotation = mk_tile(
+                        tile_int,
+                        locus,
+                        tile_vars[i]['lengths'][0]+locus,
+                        tile_vars[i]['vars'],
+                        tile_vars[i]['lengths'],
+                        spanning_nums=tile_vars[i]['spanning_num'],
+                        assembly=assembly_default,
+                        chrom=chrom_int
+                    )
+                else:
+                    t, foo, new_start_tag, annotation = mk_tile(
+                        tile_int,
+                        locus,
+                        tile_vars[i]['lengths'][0]+locus,
+                        tile_vars[i]['vars'],
+                        tile_vars[i]['lengths'],
+                        spanning_nums=tile_vars[i]['spanning_num'],
+                        start_tag=new_start_tag,
+                        assembly=assembly_default,
+                        chrom=chrom_int
+                    )
+                locus += tile_vars[i]['lengths'][0] - TAG_LENGTH
 
 ######################### TEST basic_functions ###################################
 class TestBasicFunctions(TestCase):
@@ -639,281 +714,167 @@ class TestTileVariantMethods(TestCase):
 ################################## TEST generate_statistics ###################################
 #####################           TODO: multiple chromosomes!          ###############
 class TestGenerateStatistics(TestCase):
-    def
+    def setUp(self):
+        make_tiles(BASE_LIBRARY_STRUCTURE)
     def test_generate_stats_initialize(self):
         """
         The following structure:
-            i,  min,     avg,  max
-        Path 0:
-            0,  448,  448.67,  450 {'vars':3, 'lengths':[448,448,450]}, #1
-            1,  301,  301.00,  301 {'vars':2, 'lengths':[301,301]}, #2
-            2,  200,  257.67,  300 {'vars':3, 'lengths':[273,200,300]}, #3
-            3,  149,  149.00,  149 {'vars':1, 'lengths':[149]}, #4
-            4,  425,  425.00,  425 {'vars':1, 'lengths':[425]}, #5
-        Path 1:
-            0,  500,  549.75,  600 {'vars':4, 'lengths':[549,500,600,550]}, #6
-            1,  198,  199.00,  200 {'vars':4, 'lengths':[199,198,200,199]}, #7
-            2,  249,  249.00,  249 {'vars':2, 'lengths':[249,249]}, #8
-            3,  199,  199.00,  199 {'vars':1, 'lengths':[199]}, #9
-            4, 1200, 1200.00, 1200 {'vars':1, 'lengths':[1200]}, #10
-            5,  264,  264.50,  265 {'vars':2, 'lengths':[264,265]}, #11
-            6,  249,  250.50,  252 {'vars':6, 'lengths':[251,250,250,251,252,249]}, #12
-            7,  275,  275.50,  276 {'vars':2, 'lengths':[275,276]}, #13
-        Path 2:
-            0,  277,  277.00,  277 {'vars':2, 'lengths':[277,277]}, #14
-            1,  267,  267.00,  267 {'vars':1, 'lengths':[267]}, #15
-            2,  258,  258.00,  258 {'vars':1, 'lengths':[258]}, #16
-            3,  248,  248.00,  248 {'vars':3, 'lengths':[248,248,248]}, #17
-            4,  250,  250.00,  250 {'vars':1, 'lengths':[250]}, #18
-        test_generate_stats has the following structure:
-        Chr 1:
-        Path 0: Position 0: Variant 0 (length 250)
-                            Variant 1 (length 252)
-                            Variant 2 (length 250)
-                Position 1: Variant 0 (length 248)
-                            Variant 1 (length 248)
-                Position 2: Variant 0 (length 200)
-                            Variant 1 (length 250)
-                            Variant 2 (length 300)
-                Position 3: Variant 0 (length 250)
-                Position 4: Variant 0 (length 199)
-        Path 1: Position 0: Variant 0 (length 248)
-                            Variant 1 (length 248)
-                            Variant 2 (length 248)
-                            Variant 3 (length 248)
-                            Variant 4 (length 248)
-
-        Chr 2:
-        Path 63: Position 0: Variant 0 (length 1000)
-                             Variant 1 (length 1100)
-                             Variant 2 (length 1050)
-                             Variant 3 (length 1040)
-                 Position 1: Variant 0 (length 200)
-                             Variant 1 (length 250)
+            Chr1:
+                Path 0:
+                    0, 2, {'vars':3, 'lengths':[448,749,450], 'spanning_num':[1,2,1]}
+                    1, 1, {'vars':2, 'lengths':[301,301], 'spanning_num':[1,1]}
+                    2, 3, {'vars':3, 'lengths':[273,300,840], 'spanning_num':[1,2,3]}
+                    3, 1, {'vars':1, 'lengths':[149], 'spanning_num':[1]}
+                    4, 1, {'vars':1, 'lengths':[425], 'spanning_num':[1]}
+                Path 1:
+                    0, 1, {'vars':5, 'lengths':[549,500,600,550,549], 'spanning_num':[1,1,1,1,1]}
+            Chr2:
+                Path 63:
+                    0, 2, {'vars':3, 'lengths':[248,498,248], 'spanning_num':[1,2,1]}
+                    1, 1, {'vars':3, 'lengths':[250,264,265], 'spanning_num':[1,1,1]}
         """
         gen_stats.initialize(silent=True)
         self.assertEqual(GenomeStatistic.objects.count(), 27+Tile.CHR_PATH_LENGTHS[-1])
-        check_vals = [{'num_pos':8, 'num_tiles':21, 'avg_var':2.625, 'max_var':5, 'min_len':199,
-                       'avg_len_low':396.523, 'avg_len_hi':396.524, 'max_len':1100},
-                      {'num_pos':6, 'num_tiles':15, 'avg_var':2.5, 'max_var':5, 'min_len':199,
-                       'avg_len_low':245.800, 'avg_len_hi':245.800, 'max_len':300},
-                      {'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':4, 'min_len':200,
-                       'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100}]
-
+        check_vals = [{'num_pos':8, 'num_tiles':21, 'max_num_spanned':3}, #Genome
+                      {'num_pos':6, 'num_tiles':15, 'max_num_spanned':3}, #Chromosome 1
+                      {'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}] #Chromosome 2
         for i in range(27):
-            genome_piece = GenomeStatistic.objects.filter(statistics_type=i).all()
-            self.assertEqual(len(genome_piece), 1)
-            genome_piece = genome_piece.first()
+            whole_genome_or_chrom_stats = GenomeStatistic.objects.filter(statistics_type=i).all()
+            self.assertEqual(len(whole_genome_or_chrom_stats), 1)
+            whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
             if i < 3:
-                self.assertEqual(genome_piece.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(genome_piece.tile_num, check_vals[i]['num_tiles'])
-                self.assertEqual(float(genome_piece.avg_variant_val), check_vals[i]['avg_var'])
-                self.assertEqual(genome_piece.max_variant_val, check_vals[i]['max_var'])
-                self.assertEqual(genome_piece.min_length, check_vals[i]['min_len'])
-                self.assertGreaterEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_low'])
-                self.assertLessEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_hi'])
-                self.assertEqual(genome_piece.max_length, check_vals[i]['max_len'])
+                self.assertEqual(whole_genome_or_chrom_stats.position_num, check_vals[i]['num_pos'])
+                self.assertEqual(whole_genome_or_chrom_stats.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(genome_piece.position_num, 0)
-                self.assertEqual(genome_piece.tile_num, 0)
-                self.assertIsNone(genome_piece.avg_variant_val)
-                self.assertIsNone(genome_piece.max_variant_val)
-                self.assertIsNone(genome_piece.min_length)
-                self.assertIsNone(genome_piece.avg_length)
-                self.assertIsNone(genome_piece.max_length)
-            self.assertIsNone(genome_piece.avg_annotations_per_position)
-            self.assertIsNone(genome_piece.max_annotations_per_position)
-            self.assertIsNone(genome_piece.avg_annotations_per_tile)
-            self.assertIsNone(genome_piece.max_annotations_per_tile)
+                self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
+                self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
+            self.assertIsNone(whole_genome_or_chrom_stats.path_name)
+
         tile_int, foo = fns.get_min_position_and_tile_variant_from_chromosome_int(2)
         path, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
-        check_vals = {0:{'num_pos':5, 'num_tiles':10, 'avg_var':2, 'max_var':3, 'min_len':199,
-                         'avg_len_low':244.700, 'avg_len_hi':244.700, 'max_len':300},
-                      1:{'num_pos':1, 'num_tiles':5, 'avg_var':5, 'max_var':5, 'min_len':248,
-                         'avg_len_low':248.000, 'avg_len_hi':248.000, 'max_len':248},
-                      path:{'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':4, 'min_len':200,
-                            'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100}}
+        check_vals = {0:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':3}, #Path 0
+                      1:{'num_pos':1, 'num_tiles':5, 'max_num_spanned':1}, #Path 1
+                      path:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}} #Path 63
         for i in range(Tile.CHR_PATH_LENGTHS[-1]):
-            genome_piece = GenomeStatistic.objects.filter(statistics_type=27).filter(path_name=i).all()
-            self.assertEqual(len(genome_piece), 1)
-            genome_piece = genome_piece.first()
+            whole_genome_or_chrom_stats = GenomeStatistic.objects.filter(statistics_type=27).filter(path_name=i).all()
+            self.assertEqual(len(whole_genome_or_chrom_stats), 1)
+            whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
             if i in check_vals:
-                self.assertEqual(genome_piece.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(genome_piece.tile_num, check_vals[i]['num_tiles'])
-                self.assertEqual(float(genome_piece.avg_variant_val), check_vals[i]['avg_var'])
-                self.assertEqual(genome_piece.max_variant_val, check_vals[i]['max_var'])
-                self.assertEqual(genome_piece.min_length, check_vals[i]['min_len'])
-                self.assertGreaterEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_low'])
-                self.assertLessEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_hi'])
-                self.assertEqual(genome_piece.max_length, check_vals[i]['max_len'])
+                self.assertEqual(whole_genome_or_chrom_stats.position_num, check_vals[i]['num_pos'])
+                self.assertEqual(whole_genome_or_chrom_stats.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(genome_piece.position_num, 0)
-                self.assertEqual(genome_piece.tile_num, 0)
-                self.assertIsNone(genome_piece.avg_variant_val)
-                self.assertIsNone(genome_piece.max_variant_val)
-                self.assertIsNone(genome_piece.min_length)
-                self.assertIsNone(genome_piece.avg_length)
-                self.assertIsNone(genome_piece.max_length)
-            self.assertIsNone(genome_piece.avg_annotations_per_position)
-            self.assertIsNone(genome_piece.max_annotations_per_position)
-            self.assertIsNone(genome_piece.avg_annotations_per_tile)
-            self.assertIsNone(genome_piece.max_annotations_per_tile)
-    def test_initialize_failure(self):
+                self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
+                self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
+    def test_initialize_failure_after_initializing_once(self):
         gen_stats.initialize(silent=True)
         self.assertRaises(AssertionError, gen_stats.initialize)
     def test_update_on_same_library(self):
         gen_stats.initialize(silent=True)
         gen_stats.update(silent=True)
-        check_vals = [{'num_pos':8, 'num_tiles':21, 'avg_var':2.625, 'max_var':5, 'min_len':199,
-                       'avg_len_low':396.523, 'avg_len_hi':396.524, 'max_len':1100},
-                      {'num_pos':6, 'num_tiles':15, 'avg_var':2.5, 'max_var':5, 'min_len':199,
-                       'avg_len_low':245.800, 'avg_len_hi':245.800, 'max_len':300},
-                      {'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':4, 'min_len':200,
-                       'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100}]
-
+        self.assertEqual(GenomeStatistic.objects.count(), 27+Tile.CHR_PATH_LENGTHS[-1])
+        check_vals = [{'num_pos':8, 'num_tiles':21, 'max_num_spanned':3}, #Genome
+                      {'num_pos':6, 'num_tiles':15, 'max_num_spanned':3}, #Chromosome 1
+                      {'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}] #Chromosome 2
         for i in range(27):
-            genome_piece = GenomeStatistic.objects.filter(statistics_type=i).all()
-            self.assertEqual(len(genome_piece), 1)
-            genome_piece = genome_piece.first()
+            whole_genome_or_chrom_stats = GenomeStatistic.objects.filter(statistics_type=i).all()
+            self.assertEqual(len(whole_genome_or_chrom_stats), 1)
+            whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
             if i < 3:
-                self.assertEqual(genome_piece.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(genome_piece.tile_num, check_vals[i]['num_tiles'])
-                self.assertEqual(float(genome_piece.avg_variant_val), check_vals[i]['avg_var'])
-                self.assertEqual(genome_piece.max_variant_val, check_vals[i]['max_var'])
-                self.assertEqual(genome_piece.min_length, check_vals[i]['min_len'])
-                self.assertGreaterEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_low'])
-                self.assertLessEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_hi'])
-                self.assertEqual(genome_piece.max_length, check_vals[i]['max_len'])
+                self.assertEqual(whole_genome_or_chrom_stats.position_num, check_vals[i]['num_pos'])
+                self.assertEqual(whole_genome_or_chrom_stats.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(genome_piece.position_num, 0)
-                self.assertEqual(genome_piece.tile_num, 0)
-                self.assertIsNone(genome_piece.avg_variant_val)
-                self.assertIsNone(genome_piece.max_variant_val)
-                self.assertIsNone(genome_piece.min_length)
-                self.assertIsNone(genome_piece.avg_length)
-                self.assertIsNone(genome_piece.max_length)
-            self.assertIsNone(genome_piece.avg_annotations_per_position)
-            self.assertIsNone(genome_piece.max_annotations_per_position)
-            self.assertIsNone(genome_piece.avg_annotations_per_tile)
-            self.assertIsNone(genome_piece.max_annotations_per_tile)
+                self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
+                self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
+            self.assertIsNone(whole_genome_or_chrom_stats.path_name)
+
         tile_int, foo = fns.get_min_position_and_tile_variant_from_chromosome_int(2)
         path, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
-        check_vals = {0:{'num_pos':5, 'num_tiles':10, 'avg_var':2, 'max_var':3, 'min_len':199,
-                         'avg_len_low':244.700, 'avg_len_hi':244.700, 'max_len':300},
-                      1:{'num_pos':1, 'num_tiles':5, 'avg_var':5, 'max_var':5, 'min_len':248,
-                         'avg_len_low':248.000, 'avg_len_hi':248.000, 'max_len':248},
-                      path:{'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':4, 'min_len':200,
-                            'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100}}
+        check_vals = {0:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':3}, #Path 0
+                      1:{'num_pos':1, 'num_tiles':5, 'max_num_spanned':1}, #Path 1
+                      path:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}} #Path 63
         for i in range(Tile.CHR_PATH_LENGTHS[-1]):
-            genome_piece = GenomeStatistic.objects.filter(statistics_type=27).filter(path_name=i).all()
-            self.assertEqual(len(genome_piece), 1)
-            genome_piece = genome_piece.first()
+            whole_genome_or_chrom_stats = GenomeStatistic.objects.filter(statistics_type=27).filter(path_name=i).all()
+            self.assertEqual(len(whole_genome_or_chrom_stats), 1)
+            whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
             if i in check_vals:
-                self.assertEqual(genome_piece.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(genome_piece.tile_num, check_vals[i]['num_tiles'])
-                self.assertEqual(float(genome_piece.avg_variant_val), check_vals[i]['avg_var'])
-                self.assertEqual(genome_piece.max_variant_val, check_vals[i]['max_var'])
-                self.assertEqual(genome_piece.min_length, check_vals[i]['min_len'])
-                self.assertGreaterEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_low'])
-                self.assertLessEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_hi'])
-                self.assertEqual(genome_piece.max_length, check_vals[i]['max_len'])
+                self.assertEqual(whole_genome_or_chrom_stats.position_num, check_vals[i]['num_pos'])
+                self.assertEqual(whole_genome_or_chrom_stats.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(genome_piece.position_num, 0)
-                self.assertEqual(genome_piece.tile_num, 0)
-                self.assertIsNone(genome_piece.avg_variant_val)
-                self.assertIsNone(genome_piece.max_variant_val)
-                self.assertIsNone(genome_piece.min_length)
-                self.assertIsNone(genome_piece.avg_length)
-                self.assertIsNone(genome_piece.max_length)
-            self.assertIsNone(genome_piece.avg_annotations_per_position)
-            self.assertIsNone(genome_piece.max_annotations_per_position)
-            self.assertIsNone(genome_piece.avg_annotations_per_tile)
-            self.assertIsNone(genome_piece.max_annotations_per_tile)
+                self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
+                self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
     def test_update_on_updated_library(self):
         """
         Updated structure is (additions shown with asterisk):
-
-        Chr 1:
-        Path 0: Position 0: Variant 0 (length 250)
-                            Variant 1 (length 252)
-                            Variant 2 (length 250)
-                Position 1: Variant 0 (length 248)
-                            Variant 1 (length 248)
-                Position 2: Variant 0 (length 200)
-                            Variant 1 (length 250)
-                            Variant 2 (length 300)
-                Position 3: Variant 0 (length 250)
-                Position 4: Variant 0 (length 199)
-                            Variant 1 (length 500)*
-        Path 1: Position 0: Variant 0 (length 248)
-                            Variant 1 (length 248)
-                            Variant 2 (length 248)
-                            Variant 3 (length 248)
-                            Variant 4 (length 248)
-                Position 1: Variant 0 (length 1200)*
-
-        Chr 2:
-        Path 63: Position 0: Variant 0 (length 1000)
-                             Variant 1 (length 1100)
-                             Variant 2 (length 1050)
-                             Variant 3 (length 1040)
-                 Position 1: Variant 0 (length 200)
-                             Variant 1 (length 250)
-
+        Chr1:
+            Path 0:
+                0, 2, {'vars':3, 'lengths':[448,749,450], 'spanning_num':[1,2,1]}
+                1, 1, {'vars':2, 'lengths':[301,301], 'spanning_num':[1,1]}
+                2, 3, {'vars':3, 'lengths':[273,300,840], 'spanning_num':[1,2,3]}
+                3, 1, {'vars':1, 'lengths':[149], 'spanning_num':[1]}
+                4, 1, {'vars':1, 'lengths':[425], 'spanning_num':[1]}
+            Path 1:
+                0, 1, {'vars':5, 'lengths':[549,500,600,550,549], 'spanning_num':[1,1,1,1,1]}
+               *1, 4, {'vars':2, 'lengths':[220, 1130], 'spanning_num':[1, 4]}
+               *2, 1, {'vars':1, 'lengths':[335], 'spanning_num':[1]}
+               *3, 1, {'vars':1, 'lengths':[346], 'spanning_num':[1]}
+               *4, 1, {'vars':1, 'lengths':[201], 'spanning_num':[1]}
+        Chr2:
+            Path 3f:
+                0, 2, {'vars':3, 'lengths':[248,498,248], 'spanning_num':[1,2,1]}
+                1, 1, {'vars':3, 'lengths':[250,264,265], 'spanning_num':[1,1,1]}
         Chr 3:
-        1st Path: Position 0: Variant 0 (length 250)*
-                              Variant 1 (length 300)*
-                              Variant 2 (length 300)*
-                              Variant 3 (length 310)*
-                              Variant 4 (length 260)*
-                              Variant 5 (length 275)*
-                  Position 1: Variant 0 (length 150)*
+            Path 7d:
+               *0, 1, {'vars':6, 'lengths':[250,300,300,310,260,275]}
+               *1, 1, {'vars':1, 'lengths':[150]}
         """
         gen_stats.initialize(silent=True)
         #initialization#
-        pos, tile_variant = fns.get_min_position_and_tile_variant_from_chromosome_int(3)
-        tile0 = Tile(tilename=pos, start_tag="ACGT", end_tag="CCCG")
-        lengths = [250,300,300,310,260,275]
-        for i in range(6):
-            t = TileVariant(tile_variant_name=tile_variant+i,tile=tile0, variant_value=i,
-                            length=lengths[i], md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
-            t.save()
-        tile0.save()
-
-        tile1 = Tile(tilename=pos+1, start_tag="AAAAAA", end_tag="AGGGGGG")
-        tile_variant_int = basic_fns.convert_position_int_to_tile_variant_int(pos+1)
-        t = TileVariant(tile_variant_name=tile_variant_int,tile=tile1, variant_value=0,
-                        length=150, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
-        t.save()
-        tile1.save()
-
-        pos, tile_variant = fns.get_min_position_and_tile_variant_from_path_int(1)
-        tile_variant_int = basic_fns.convert_position_int_to_tile_variant_int(pos+1)
-        tile2 = Tile(tilename=pos+1, start_tag="AAAAAA", end_tag="AGGGGGG")
-        t = TileVariant(tile_variant_name=tile_variant_int,tile=tile2, variant_value=0,
-                        length=1200, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
-        t.save()
-        tile2.save()
-
-        tile3 = Tile.objects.get(pk=3)
-        tile_hex = string.join(basic_fns.convert_position_int_to_position_hex_str(3), "")
-        tile_hex += hex(1).lstrip('0x').zfill(3)
-        tile_var_int = int(tile_hex, 16)
-        t = TileVariant(tile_variant_name=tile_var_int,tile=tile3, variant_value=1,
-                        length=500, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
-        t.save()
-        tile3.save()
+        new_start_tag = Tile.objects.get(tilename=int('001000000', 16)).end_tag
+        locus = TileLocusAnnotation.objects.filter(assembly=19).filter(chromosome=1).order_by('begin_int').last().end_int
+        locus -= TAG_LENGTH
+        chr1_path1_new_tiles = [
+            {'vars':2, 'lengths':[220, 1130], 'spanning_num':[1,4]},
+            {'vars':1, 'lengths':[335], 'spanning_num':[1]},
+            {'vars':1, 'lengths':[346], 'spanning_num':[1]},
+            {'vars':1, 'lengths':[201], 'spanning_num':[1]}
+        ]
+        for i, position in enumerate(chr1_path1_new_tiles):
+            pos_int = int('00100'+hex(i+1).lstrip('0x').zfill(4), 16)
+            t, ignore, new_start_tag, ignore = mk_tile(
+                pos_int,
+                locus,
+                locus+position['lengths'][0],
+                position['vars'],
+                position['lengths'],
+                spanning_nums=position['spanning_num'],
+                start_tag=new_start_tag,
+                assembly=19
+            )
+            locus += chr1_path1_new_tiles[i]['lengths'][0] - TAG_LENGTH
+        chr3_paths = {
+            3: {
+                '7d': [
+                    {'vars':6, 'lengths':[250,300,300,310,260,275], 'spanning_num':[1,1,1,1,1,1]},
+                    {'vars':1, 'lengths':[301], 'spanning_num':[1]},
+                ]
+            }
+        }
+        make_tiles(chr3_paths)
 
         #end of initialization#
         gen_stats.update(silent=True)
-        check_vals = [{'num_pos':11, 'num_tiles':30, 'avg_var':2.727, 'max_var':6, 'min_len':150,
-                       'avg_len_low':395.733, 'avg_len_hi':395.734, 'max_len':1200},
-                      {'num_pos':7, 'num_tiles':17, 'avg_var':2.429, 'max_var':5, 'min_len':199,
-                       'avg_len_low':316.882, 'avg_len_hi':316.883, 'max_len':1200},
-                      {'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':4, 'min_len':200,
-                       'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100},
-                      {'num_pos':2, 'num_tiles':7, 'avg_var':3.5, 'max_var':6, 'min_len':150,
-                       'avg_len_low':263.571, 'avg_len_hi':263.572, 'max_len':310}]
+        check_vals = [{'num_pos':14, 'num_tiles':33, 'max_num_spanned':4}, #Genome
+                      {'num_pos':10, 'num_tiles':20, 'max_num_spanned':4}, #Chr1
+                      {'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}, #Chr2
+                      {'num_pos':2, 'num_tiles':7, 'max_num_spanned':1}] #Chr3
 
         for i in range(27):
             genome_piece = GenomeStatistic.objects.filter(statistics_type=i).all()
@@ -922,36 +883,21 @@ class TestGenerateStatistics(TestCase):
             if i < 4:
                 self.assertEqual(genome_piece.position_num, check_vals[i]['num_pos'])
                 self.assertEqual(genome_piece.tile_num, check_vals[i]['num_tiles'])
-                self.assertEqual(float(genome_piece.avg_variant_val), check_vals[i]['avg_var'])
-                self.assertEqual(genome_piece.max_variant_val, check_vals[i]['max_var'])
-                self.assertEqual(genome_piece.min_length, check_vals[i]['min_len'])
-                self.assertGreaterEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_low'])
-                self.assertLessEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_hi'])
-                self.assertEqual(genome_piece.max_length, check_vals[i]['max_len'])
+                self.assertEqual(genome_piece.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
                 self.assertEqual(genome_piece.position_num, 0)
                 self.assertEqual(genome_piece.tile_num, 0)
-                self.assertIsNone(genome_piece.avg_variant_val)
-                self.assertIsNone(genome_piece.max_variant_val)
-                self.assertIsNone(genome_piece.min_length)
-                self.assertIsNone(genome_piece.avg_length)
-                self.assertIsNone(genome_piece.max_length)
-            self.assertIsNone(genome_piece.avg_annotations_per_position)
-            self.assertIsNone(genome_piece.max_annotations_per_position)
-            self.assertIsNone(genome_piece.avg_annotations_per_tile)
-            self.assertIsNone(genome_piece.max_annotations_per_tile)
+                self.assertIsNone(genome_piece.max_num_positions_spanned)
+            self.assertIsNone(genome_piece.path_name)
+
         tile_int, foo = fns.get_min_position_and_tile_variant_from_chromosome_int(2)
         path_on_2, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
         tile_int, foo = fns.get_min_position_and_tile_variant_from_chromosome_int(3)
         path_on_3, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
-        check_vals = {0:{'num_pos':5, 'num_tiles':11, 'avg_var':2.2, 'max_var':3, 'min_len':199,
-                         'avg_len_low':267.909, 'avg_len_hi':267.910, 'max_len':500},
-                      1:{'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':5, 'min_len':248,
-                         'avg_len_low':406.666, 'avg_len_hi':406.667, 'max_len':1200},
-                      path_on_2:{'num_pos':2, 'num_tiles':6, 'avg_var':3, 'max_var':4, 'min_len':200,
-                                 'avg_len_low':773.333, 'avg_len_hi':773.334, 'max_len':1100},
-                      path_on_3:{'num_pos':2, 'num_tiles':7, 'avg_var':3.5, 'max_var':6, 'min_len':150,
-                                 'avg_len_low':263.571, 'avg_len_hi':263.572, 'max_len':310},
+        check_vals = {0:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':3},
+                      1:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':4},
+                      path_on_2:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2},
+                      path_on_3:{'num_pos':2, 'num_tiles':7, 'max_num_spanned':1},
                      }
         for i in range(Tile.CHR_PATH_LENGTHS[-1]):
             genome_piece = GenomeStatistic.objects.filter(statistics_type=27).filter(path_name=i).all()
@@ -960,26 +906,13 @@ class TestGenerateStatistics(TestCase):
             if i in check_vals:
                 self.assertEqual(genome_piece.position_num, check_vals[i]['num_pos'])
                 self.assertEqual(genome_piece.tile_num, check_vals[i]['num_tiles'])
-                self.assertEqual(float(genome_piece.avg_variant_val), check_vals[i]['avg_var'])
-                self.assertEqual(genome_piece.max_variant_val, check_vals[i]['max_var'])
-                self.assertEqual(genome_piece.min_length, check_vals[i]['min_len'])
-                self.assertGreaterEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_low'])
-                self.assertLessEqual(float(genome_piece.avg_length), check_vals[i]['avg_len_hi'])
-                self.assertEqual(genome_piece.max_length, check_vals[i]['max_len'])
+                self.assertEqual(genome_piece.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
                 self.assertEqual(genome_piece.position_num, 0)
                 self.assertEqual(genome_piece.tile_num, 0)
-                self.assertIsNone(genome_piece.avg_variant_val)
-                self.assertIsNone(genome_piece.max_variant_val)
-                self.assertIsNone(genome_piece.min_length)
-                self.assertIsNone(genome_piece.avg_length)
-                self.assertIsNone(genome_piece.max_length)
-            self.assertIsNone(genome_piece.avg_annotations_per_position)
-            self.assertIsNone(genome_piece.max_annotations_per_position)
-            self.assertIsNone(genome_piece.avg_annotations_per_tile)
-            self.assertIsNone(genome_piece.max_annotations_per_tile)
+                self.assertIsNone(genome_piece.max_num_positions_spanned)
     def test_update_failure(self):
-        self.assertRaises(BaseException, gen_stats.update, silent=True)
+        self.assertRaises(MissingStatisticsError, gen_stats.update, silent=True)
 
 ################################## TEST overall_statistics_views ###################################
 ##class TestViewOverallStatistics(TestCase):

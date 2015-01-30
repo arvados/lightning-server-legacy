@@ -1,6 +1,4 @@
-#First time trying to setup a Dockerfile; taken from http://docs.docker.com/examples/postgresql_service/ since I don't understand the postgres docker image use
-
-FROM postgres:9.3.5
+FROM ubuntu:12.04
 MAINTAINER sguthrie@curoverse.com
 
 RUN apt-get update && apt-get install -y \
@@ -10,10 +8,15 @@ RUN apt-get update && apt-get install -y \
   mercurial \
   pkg-config \
   python-pip \
+  python-psycopg2 \
+  python-software-properties \
+  software-properties-common \
   zlib1g-dev
-RUN pip install django
-RUN pip install django-bootstrap-form
-RUN pip install djangorestframework
+
+RUN pip install django \
+  django-bootstrap-form \
+  djangorestframework \
+  requests
 
 # Install go
 RUN curl https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz | tar -C /usr/local -zx
@@ -35,4 +38,4 @@ RUN go get github.com/lib/pq
 RUN go get github.com/mattn/go-sqlite3
 RUN go build
 
-RUN cp /home/lightning/lightning/experimental/pylightweb/setup.sh /docker-entrypoint-initdb.d/setup.sh
+WORKDIR /home/lightning/lightning/experimental/pylightweb/lightning

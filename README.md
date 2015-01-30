@@ -10,26 +10,26 @@ How to Set-up a local lightning cluster:
 ## Procedure:
 1.	Install docker (https://docs.docker.com/installation/)
 
-2.	Pull sguthrie/lightning
+2.	Start a Container running postgres (named base-postgres):
+
+		$ sudo docker run --name base-postgres -e POSTGRES_USER=lightning -e POSTGRES_PASSWORD=mypassword -d postgres
+
+3.	Pull sguthrie/lightning (you can also build it user the Dockerfile in experimental/pylightweb)
 
 		$ sudo docker pull sguthrie/lightning
 
-3.  Run sguthrie/lightning interactively using /bin/bash
+4.  Link the base-postgres with lightning:
 
-		$ sudo docker run -t -i sguthrie/lightning /bin/bash
+		$ sudo docker run --name lightning -it --link base-postgres:postgres sguthrie/lightning /bin/bash
 
-3.	Ensure the current working directory is correct:
-
-		# cd home/lightning/lightning/experimental/pylightweb/lightning/
-
-4.	Pull the most recent version of lightning from github
+5.	Pull the most recent version of lightning from github
 
 		/home/lightning/lightning/experimental/pylightweb/lightning# git pull
 
-5.	That's it! All the capabilities of lightning are available. You can run a server using:
+6.	Migrate the lightning tables into postgres:
 
-		/home/lightning/lightning/experimental/pylightweb/lightning# python manage.py runserver
+		/home/lightning/lightning/experimental/pylightweb/lightning# python manage.py migrate
 
-And you can test the installation using:
+7.	That's it! You can test the installation using:
 
-		/home/lightning/lightning/experimental/pylightweb/lightning# python manage.py test
+		/home/lightning/lightning/experimental/pylightweb/lightning# python manage.py test tile_library
