@@ -547,6 +547,7 @@ class TestTileMethods(TestCase):
 
 ################################## TEST models continued ###################################
 class TestTileVariantMethods(TestCase):
+    #Maybe test to see if it's possible to catch incorrect tiles?
     def test_get_string(self):
         """
         TileVariant.getString() returns str
@@ -631,14 +632,14 @@ class TestTileVariantMethods(TestCase):
                                        length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
         self.assertTrue(new_tile_variant.isReference())
     def test_get_base_at_position(self):
-        pass
+        raise NotImplementedError("get_base_at_position test not implemented")
     def test_get_base_group_between_positions(self):
-        pass
+        raise NotImplementedError("get_base_group_between_positions test not implemented")
 
 ################################## TEST generate_statistics ###################################
 #####################           TODO: multiple chromosomes!          ###############
 class TestGenerateStatistics(TestCase):
-
+    def
     def test_generate_stats_initialize(self):
         """
         The following structure:
