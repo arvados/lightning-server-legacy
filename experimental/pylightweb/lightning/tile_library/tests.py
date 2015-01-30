@@ -837,7 +837,7 @@ class TestGenerateStatistics(TestCase):
         gen_stats.initialize(silent=True)
         #initialization#
         new_start_tag = Tile.objects.get(tilename=int('001000000', 16)).end_tag
-        locus = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=1).order_by('begin_int').last().end_int
+        locus = TileLocusAnnotation.objects.filter(assembly=19).filter(chromosome=1).order_by('begin_int').last().end_int
         locus -= TAG_LENGTH
         chr1_path1_new_tiles = [
             {'vars':2, 'lengths':[220, 1130], 'spanning_num':[1,1]},
