@@ -870,8 +870,8 @@ class TestGenerateStatistics(TestCase):
 
         #end of initialization#
         gen_stats.update(silent=True)
-        check_vals = [{'num_pos':14, 'num_tiles':34, 'max_num_spanned':4}, #Genome
-                      {'num_pos':10, 'num_tiles':21, 'max_num_spanned':4}, #Chr1
+        check_vals = [{'num_pos':14, 'num_tiles':33, 'max_num_spanned':4}, #Genome
+                      {'num_pos':10, 'num_tiles':20, 'max_num_spanned':4}, #Chr1
                       {'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}, #Chr2
                       {'num_pos':2, 'num_tiles':7, 'max_num_spanned':1}] #Chr3
 
