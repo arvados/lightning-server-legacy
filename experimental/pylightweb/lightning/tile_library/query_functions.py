@@ -8,7 +8,7 @@ from django.db.models import Q
 from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant, Tile
 import tile_library.basic_functions as basic_fns
 import tile_library.functions as fns
-from errors import EmptyPathError
+from errors import EmptyPathError, MissingStatisticsError
 
 def print_friendly_cgf_translator(cgf_translator):
     new_string = ""
@@ -29,11 +29,16 @@ def get_max_num_tiles_spanned_at_position(tile_position_int):
     path_int, version_int, step_int = basic_fns.get_position_ints_from_position_int(tile_position_int)
     #raises AssertionError if tile_position_int is not an integer, negative, or an invalid tile position
     try:
-        num_tiles_spanned = int(GenomeStatistic.objects.get(path_name=path_int).max_num_positions_spanned)
-        num_tiles_spanned = min(num_tiles_spanned-1, step_int) #Only need to look back as far as there are steps in this path
-        return num_tiles_spanned
+        num_tiles_spanned = GenomeStatistic.objects.get(path_name=path_int).max_num_positions_spanned
     except GenomeStatistic.DoesNotExist:
-        raise Exception('GenomeStatistic for that path does not exist')
+        foo, min_path_tile = fns.get_min_position_and_tile_variant_from_path_int(path_int)
+        foo, max_path_tile = fns.get_min_position_and_tile_variant_from_path_int(path_int + 1)
+        tilevars = TileVariant.objects.filter(tile_variant_name__range=(min_path_tile, max_path_tile-1))
+        num_tiles_spanned = tilevars.aggregate(max_pos_spanned=Max('num_positions_spanned'))['max_pos_spanned']
+    if num_tiles_spanned == None:
+        raise EmptyPathError('No tiles are loaded for path containing tile: %s' % (hex(tile_position_int).lstrip('0x').zfill(9)))
+    num_tiles_spanned = min(int(num_tiles_spanned)-1, step_int) #Only need to look back as far as there are steps in this path
+    return num_tiles_spanned
 
 def get_tile_variants_spanning_into_position(tile_position_int):
     """

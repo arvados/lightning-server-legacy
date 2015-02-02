@@ -10,7 +10,7 @@ from django.core.urlresolvers import reverse
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
 
-from errors import MissingStatisticsError
+from errors import MissingStatisticsError, InvalidGenomeError, ExistingStatisticsError
 from tile_library.models import TAG_LENGTH, Tile, TileLocusAnnotation, TileVariant, GenomeVariant, GenomeVariantTranslation, GenomeStatistic
 import tile_library.basic_functions as basic_fns
 import tile_library.functions as fns
@@ -43,6 +43,18 @@ BASE_LIBRARY_STRUCTURE = {
         '3f': [
             {'vars':3, 'lengths':[248,498,248], 'spanning_num':[1,2,1]},
             {'vars':3, 'lengths':[250,264,265], 'spanning_num':[1,1,1]},
+        ]
+    }
+}
+
+INVALID_HUMAN_LIBRARY = {
+    27: {
+        '360': [
+            {'vars':3, 'lengths':[448,749,450], 'spanning_num':[1,2,1]},
+            {'vars':2, 'lengths':[301,301], 'spanning_num':[1,1]},
+            {'vars':3, 'lengths':[273,300,840], 'spanning_num':[1,2,3]},
+            {'vars':1, 'lengths':[149], 'spanning_num':[1]},
+            {'vars':1, 'lengths':[425], 'spanning_num':[1]},
         ]
     }
 }
@@ -272,12 +284,10 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(path, '1c0')
         self.assertEqual(version, '03')
         self.assertEqual(step, '020f')
-
     def test_convert_position_int_to_position_hex_str_failure(self):
         self.assertRaises(TypeError, basic_fns.convert_position_int_to_position_hex_str, '10')
         self.assertRaises(ValueError, basic_fns.convert_position_int_to_position_hex_str, -1)
         self.assertRaises(ValueError, basic_fns.convert_position_int_to_position_hex_str, int('1000000000', 16))
-
     def test_convert_tile_variant_int_to_tile_hex_str(self):
         """ Expects integer, returns 4 strings """
         tile_int = int('0c010020f0a0', 16)
@@ -296,12 +306,10 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(version, '10')
         self.assertEqual(step, '020f')
         self.assertEqual(var, '0a0')
-
     def test_convert_tile_variant_int_to_tile_hex_str_failure(self):
         self.assertRaises(TypeError, basic_fns.convert_tile_variant_int_to_tile_hex_str, '10')
         self.assertRaises(ValueError, basic_fns.convert_tile_variant_int_to_tile_hex_str, -1)
         self.assertRaises(ValueError, basic_fns.convert_tile_variant_int_to_tile_hex_str, int('1000000000000', 16))
-
     def test_get_position_string_from_position_int(self):
         """ Expects integer, returns string """
         tile_int = int('1c403002f', 16)
@@ -319,12 +327,10 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '001.00.0000')
         tile_int = int('10000000', 16)
         self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '010.00.0000')
-
     def test_get_position_string_from_position_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_position_string_from_position_int, '10')
         self.assertRaises(ValueError, basic_fns.get_position_string_from_position_int, -1)
         self.assertRaises(ValueError, basic_fns.get_position_string_from_position_int, int('1000000000', 16))
-
     def test_get_position_ints_from_position_int(self):
         """ Expects integer, returns 3 integers """
         tile_int = int('0c003020f', 16)
@@ -335,12 +341,10 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(path, int('0c0',16))
         self.assertEqual(version, int('03',16))
         self.assertEqual(step, int('020f',16))
-
     def test_get_position_ints_from_position_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_position_ints_from_position_int, '10')
         self.assertRaises(ValueError, basic_fns.get_position_ints_from_position_int, -1)
         self.assertRaises(ValueError, basic_fns.get_position_ints_from_position_int, int('1000000000', 16))
-
     def test_get_tile_variant_string_from_tile_variant_int(self):
         """ Expects integer, returns string """
         tile_variant_int = int('1c403002f0f3', 16)
@@ -358,12 +362,10 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '001.00.0000.100')
         tile_variant_int = int('10000000020', 16)
         self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '010.00.0000.020')
-
     def test_get_tile_variant_string_from_tile_variant_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_tile_variant_string_from_tile_variant_int, '10')
         self.assertRaises(ValueError, basic_fns.get_tile_variant_string_from_tile_variant_int, -1)
         self.assertRaises(ValueError, basic_fns.get_tile_variant_string_from_tile_variant_int, int('1000000000000', 16))
-
     def test_get_tile_variant_ints_from_tile_variant_int(self):
         """ Expects integer, returns 4 integers """
         tile_int = int('0c003020f0a0', 16)
@@ -375,12 +377,10 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(version, int('03',16))
         self.assertEqual(step, int('020f',16))
         self.assertEqual(var, int('0a0',16))
-
     def test_get_tile_variant_string_from_tile_variant_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_tile_variant_ints_from_tile_variant_int, '10')
         self.assertRaises(ValueError, basic_fns.get_tile_variant_ints_from_tile_variant_int, -1)
         self.assertRaises(ValueError, basic_fns.get_tile_variant_ints_from_tile_variant_int, int('1000000000000', 16))
-
     def test_convert_position_int_to_tile_variant_int(self):
         """ Expects integer, returns integer """
         tile_int = int('1c403002f', 16)
@@ -405,12 +405,10 @@ class TestBasicFunctions(TestCase):
         tile_int = int('10000000', 16)
         check_int = int('10000000000', 16)
         self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-
     def test_convert_position_int_to_tile_variant_int_failure(self):
         self.assertRaises(TypeError, basic_fns.convert_position_int_to_tile_variant_int, '10')
         self.assertRaises(ValueError, basic_fns.convert_position_int_to_tile_variant_int, -1)
         self.assertRaises(ValueError, basic_fns.convert_position_int_to_tile_variant_int, int('1000000000', 16))
-
     def test_convert_tile_variant_int_to_position_int(self):
         """ Expects int, returns int """
         tile_int = int('1c403002f', 16)
@@ -442,12 +440,10 @@ class TestBasicFunctions(TestCase):
         tile_int = int('10000000', 16)
         tile_variant_int= int('10000000000', 16)
         self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-
     def test_convert_tile_variant_int_to_position_failure(self):
         self.assertRaises(TypeError, basic_fns.convert_tile_variant_int_to_position_int, '10')
         self.assertRaises(ValueError, basic_fns.convert_tile_variant_int_to_position_int, -1)
         self.assertRaises(ValueError, basic_fns.convert_tile_variant_int_to_position_int, int('1000000000000', 16))
-
     def test_get_position_from_cgf_string(self):
         pos_int = int('2c20000a0', 16)
         cgf_string = '2c2.00.00a0.0000'
@@ -457,14 +453,12 @@ class TestBasicFunctions(TestCase):
         cgf_string = u'2c2.00.00a0.0000'
         self.assertEqual(basic_fns.get_position_from_cgf_string(cgf_string), pos_int)
         self.assertEqual(basic_fns.get_position_from_cgf_string(cgf_string+"+2"), pos_int)
-
     def test_get_position_from_cgf_string_failure(self):
         self.assertRaises(TypeError, basic_fns.get_position_from_cgf_string, int('002000304000a', 16))
         self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000')
         self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000')
         self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000x')
         self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000a+')
-
     def test_get_number_of_tiles_spanned(self):
         cgf_string = '2c2.00.00a0.0000'
         self.assertEqual(type(basic_fns.get_number_of_tiles_spanned(cgf_string)), int)
@@ -476,7 +470,6 @@ class TestBasicFunctions(TestCase):
         self.assertEqual(basic_fns.get_number_of_tiles_spanned(cgf_string), 1)
         self.assertEqual(basic_fns.get_number_of_tiles_spanned(cgf_string+"+2"), 2)
         self.assertEqual(basic_fns.get_number_of_tiles_spanned(cgf_string+"+f"), 15)
-
     def test_get_number_of_tiles_spanned_failure(self):
         self.assertRaises(TypeError, basic_fns.get_position_from_cgf_string, int('002000304000a', 16))
         self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000')
@@ -565,7 +558,7 @@ class TestAdvancedFunctions(TestCase):
         self.assertRaises(ValueError, fns.get_chromosome_name_from_chromosome_int, -1)
         self.assertRaises(ValueError, fns.get_chromosome_name_from_chromosome_int, 27)
 
-################################## TEST models ###################################
+################################## TEST Tile model ###################################
 class TestTileMethods(TestCase):
     def test_get_tile_string(self):
         """
@@ -642,7 +635,7 @@ class TestTileMethods(TestCase):
         end_tag = mk_genome_seq(TAG_LENGTH)
         new = Tile(tilename=0, start_tag=start_tag, end_tag=end_tag)
         new.save()
-################################## TEST models continued ###################################
+################################## TEST TileVariant model ###################################
 class TestTileVariantMethods(TestCase):
     def test_non_int_tile_variant_int(self):
         tile=make_tile_position(0)
@@ -990,18 +983,64 @@ class TestTileVariantMethods(TestCase):
 
         new_tile_variant = TileVariant(tile_variant_name=int('a1001004000', 16), variant_value=0)
         self.assertTrue(new_tile_variant.isReference())
+    def test_get_base_at_position_non_int_castable(self):
+        tile = TileVariant(length=5, sequence='AGTCN')
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseAtPosition('a')
+    def test_get_base_at_position_too_big(self):
+        tile = TileVariant(length=5, sequence='AGTCN')
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseAtPosition(5)
+    def test_get_base_at_position_negative(self):
+        tile = TileVariant(length=5, sequence='AGTCN')
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseAtPosition(-1)
     def test_get_base_at_position(self):
-        raise NotImplementedError("get_base_at_position test not implemented")
-    def test_get_base_group_between_positions(self):
-        raise NotImplementedError("get_base_group_between_positions test not implemented")
+        tile = TileVariant(length=5, sequence='AGTCN')
+        self.assertEqual(tile.getBaseAtPosition(0), 'A')
+        self.assertEqual(tile.getBaseAtPosition(1), 'G')
+        self.assertEqual(tile.getBaseAtPosition(2), 'T')
+        self.assertEqual(tile.getBaseAtPosition(3), 'C')
+        self.assertEqual(tile.getBaseAtPosition(4), 'N')
+    def test_get_base_between_positions_non_int_castable(self):
+        tile = TileVariant(tile_variant_name=0, length=5, sequence='AGTCN')
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseGroupBetweenPositions('a', 1)
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseGroupBetweenPositions(1, 'a')
+    def test_get_base_between_positions_too_big(self):
+        tile = TileVariant(tile_variant_name=0, length=5, sequence='AGTCN')
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseGroupBetweenPositions(0,6)
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseGroupBetweenPositions(6,5)
+    def test_get_base_between_positions_negative(self):
+        tile = TileVariant(tile_variant_name=0, length=5, sequence='AGTCN')
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseGroupBetweenPositions(-1, 0)
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseGroupBetweenPositions(0,-1)
+    def test_get_base_between_positions_smaller_end_position(self):
+        tile = TileVariant(tile_variant_name=0, length=5, sequence='AGTCN')
+        with self.assertRaises(ValueError) as cm:
+            tile.getBaseGroupBetweenPositions(1, 0)
+    def test_get_base_between_positions(self):
+        tile = TileVariant(tile_variant_name=0, length=5, sequence='AGTCN')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(0,0), '')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(0,1), 'A')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(1,2), 'G')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(2,3), 'T')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(3,4), 'C')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(4,5), 'N')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(0,5), 'AGTCN')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(1,5), 'GTCN')
+        self.assertEqual(tile.getBaseGroupBetweenPositions(1,4), 'GTC')
 
 ################################## TEST generate_statistics ###################################
-#####################           TODO: multiple chromosomes!          ###############
 class TestGenerateStatistics(TestCase):
     def setUp(self):
         make_tiles(BASE_LIBRARY_STRUCTURE)
-    @skip("Generating statistics takes a long time")
-    def test_generate_stats_initialize(self):
+    def test_initialize(self):
         """
         The following structure:
             Chr1:
@@ -1028,12 +1067,12 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(len(whole_genome_or_chrom_stats), 1)
             whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
             if i < 3:
-                self.assertEqual(whole_genome_or_chrom_stats.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(whole_genome_or_chrom_stats.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, check_vals[i]['num_pos'])
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, check_vals[i]['num_tiles'])
                 self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
-                self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, 0)
                 self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
             self.assertIsNone(whole_genome_or_chrom_stats.path_name)
 
@@ -1047,18 +1086,16 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(len(whole_genome_or_chrom_stats), 1)
             whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
             if i in check_vals:
-                self.assertEqual(whole_genome_or_chrom_stats.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(whole_genome_or_chrom_stats.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, check_vals[i]['num_pos'])
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, check_vals[i]['num_tiles'])
                 self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
-                self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, 0)
                 self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
-    @skip("Generating statistics takes a long time")
     def test_initialize_failure_after_initializing_once(self):
         gen_stats.initialize(silent=True)
-        self.assertRaises(AssertionError, gen_stats.initialize)
-    @skip("Generating statistics takes a long time")
+        self.assertRaises(ExistingStatisticsError, gen_stats.initialize)
     def test_update_on_same_library(self):
         gen_stats.initialize(silent=True)
         gen_stats.update(silent=True)
@@ -1071,12 +1108,12 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(len(whole_genome_or_chrom_stats), 1)
             whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
             if i < 3:
-                self.assertEqual(whole_genome_or_chrom_stats.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(whole_genome_or_chrom_stats.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, check_vals[i]['num_pos'])
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, check_vals[i]['num_tiles'])
                 self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
-                self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, 0)
                 self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
             self.assertIsNone(whole_genome_or_chrom_stats.path_name)
 
@@ -1090,14 +1127,13 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(len(whole_genome_or_chrom_stats), 1)
             whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
             if i in check_vals:
-                self.assertEqual(whole_genome_or_chrom_stats.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(whole_genome_or_chrom_stats.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, check_vals[i]['num_pos'])
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, check_vals[i]['num_tiles'])
                 self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(whole_genome_or_chrom_stats.position_num, 0)
-                self.assertEqual(whole_genome_or_chrom_stats.tile_num, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, 0)
+                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, 0)
                 self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
-    @skip("Generating statistics takes a long time")
     def test_update_on_updated_library(self):
         """
         Updated structure is (additions shown with asterisk):
@@ -1169,12 +1205,12 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(len(genome_piece), 1)
             genome_piece = genome_piece.first()
             if i < 4:
-                self.assertEqual(genome_piece.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(genome_piece.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(genome_piece.num_of_positions, check_vals[i]['num_pos'])
+                self.assertEqual(genome_piece.num_of_tiles, check_vals[i]['num_tiles'])
                 self.assertEqual(genome_piece.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(genome_piece.position_num, 0)
-                self.assertEqual(genome_piece.tile_num, 0)
+                self.assertEqual(genome_piece.num_of_positions, 0)
+                self.assertEqual(genome_piece.num_of_tiles, 0)
                 self.assertIsNone(genome_piece.max_num_positions_spanned)
             self.assertIsNone(genome_piece.path_name)
 
@@ -1192,16 +1228,24 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(len(genome_piece), 1)
             genome_piece = genome_piece.first()
             if i in check_vals:
-                self.assertEqual(genome_piece.position_num, check_vals[i]['num_pos'])
-                self.assertEqual(genome_piece.tile_num, check_vals[i]['num_tiles'])
+                self.assertEqual(genome_piece.num_of_positions, check_vals[i]['num_pos'])
+                self.assertEqual(genome_piece.num_of_tiles, check_vals[i]['num_tiles'])
                 self.assertEqual(genome_piece.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(genome_piece.position_num, 0)
-                self.assertEqual(genome_piece.tile_num, 0)
+                self.assertEqual(genome_piece.num_of_positions, 0)
+                self.assertEqual(genome_piece.num_of_tiles, 0)
                 self.assertIsNone(genome_piece.max_num_positions_spanned)
-    def test_update_failure(self):
+    def test_update_failure_without_initialize(self):
         self.assertRaises(MissingStatisticsError, gen_stats.update, silent=True)
-
+    def test_initialize_failure_invalid_genome(self):
+        ## Genome Statistics assumes a human genome (number of chromosomes)
+        make_tiles(INVALID_HUMAN_LIBRARY)
+        self.assertRaises(InvalidGenomeError, gen_stats.initialize)
+    def test_update_failure_invalid_genome(self):
+        ## Genome Statistics assumes a human genome (number of chromosomes)
+        gen_stats.initialize(silent=True)
+        make_tiles(INVALID_HUMAN_LIBRARY)
+        self.assertRaises(InvalidGenomeError, gen_stats.update)
 ################################## TEST overall_statistics_views ###################################
 ##class TestViewOverallStatistics(TestCase):
 ##    def test_overall_statistics_empty_view(self):

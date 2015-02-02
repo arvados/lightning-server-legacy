@@ -163,7 +163,6 @@ class TileVariant(models.Model):
             super(TileVariant, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
             raise ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
-
     def getString(self):
         """Displays hex indexing for tile variant"""
         return basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_name))
@@ -171,33 +170,28 @@ class TileVariant(models.Model):
     def isReference(self):
         return int(self.variant_value) == 0
     def getBaseAtPosition(self, position_int):
-        try:
-            position_int = int(position_int)
-        except ValueError:
-            raise Exception('Position integer must be able to convert into an integer')
-        assert position_int < self.length, "Expects the position integer to be 0-indexed and less than the length of the sequence"
-        assert position_int > -1, "Expects the position integer to be positive"
-        try:
-            return self.sequence[position_int]
-        except IndexError:
-            raise Exception('Malformed tile: length is not the length of the sequence')
+        position_int = int(position_int) # can raise value error: will be caught downstream
+        if position_int >= self.length:
+            raise ValueError("Expects the position integer (%i) to be 0-indexed and less than the length of the sequence (%i)" % (position_int, self.length))
+        if position_int < 0:
+            raise ValueError("Expects the position integer (%i) to be positive" % (position_int))
+        return self.sequence[position_int]
     def getBaseGroupBetweenPositions(self, lower_position_int, upper_position_int):
-        try:
-            lower_position_int = int(lower_position_int)
-            upper_position_int = int(upper_position_int)
-        except ValueError:
-            raise Exception('Position integer must be able to convert into an integer')
+        lower_position_int = int(lower_position_int) #ValueError is expected to be caught downstream
+        upper_position_int = int(upper_position_int) #ValueError is expected to be caught downstream
         info_str = "Lower position int is: " + str(lower_position_int) + ", upper position int (exclusive and 0-indexed) is: " + \
             str(upper_position_int) + ", length of sequence is " + str(self.length) + ", name: " + self.getString()
-        assert lower_position_int <= self.length, "Expects the lower position integer to be 0-indexed and not greater than the length of the sequence. " + info_str
-        assert upper_position_int <= self.length, "Expects the upper position integer to be 0-indexed and not greater than the length of the sequence. " + info_str
-        assert lower_position_int > -1, "Expects the lower position integer to be positive. " + info_str
-        assert upper_position_int > -1, "Expects the upper position integer to be positive. " + info_str
-        assert lower_position_int <= upper_position_int, "Expects lower position_int to be less than or equal to upper position int. " + info_str
-        try:
-            return self.sequence[lower_position_int:upper_position_int]
-        except IndexError:
-            raise Exception('Malformed tile: length is not the length of the sequence')
+        if lower_position_int > self.length:
+            raise ValueError("Expects the lower position integer to be 0-indexed and not greater than the length of the sequence. " + info_str)
+        if upper_position_int > self.length:
+            raise ValueError("Expects the upper position integer to be 0-indexed and not greater than the length of the sequence. " + info_str)
+        if lower_position_int < 0:
+            raise ValueError("Expects the lower position integer to be positive. " + info_str)
+        if upper_position_int < 0:
+            raise ValueError("Expects the upper position integer to be positive. " + info_str)
+        if lower_position_int > upper_position_int:
+            raise ValueError("Expects lower position_int to be less than or equal to upper position int. " + info_str)
+        return self.sequence[lower_position_int:upper_position_int]
 
     def __unicode__(self):
         return self.getString()
@@ -480,14 +474,13 @@ class GenomeStatistic(models.Model):
     )
 
     statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=NAME_CHOICES)
-
     path_name = models.PositiveIntegerField(db_index=True, blank=True, null=True)
-
-    position_num = models.BigIntegerField()
-    tile_num = models.BigIntegerField()
-
-    max_num_positions_spanned = models.PositiveIntegerField(null=True)
-
+    num_of_positions = models.BigIntegerField()
+    num_of_tiles = models.BigIntegerField()
+    max_num_positions_spanned = models.PositiveIntegerField(blank=True, null=True)
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super(GenomeStatistic, self).save(*args, **kwargs)
     def __unicode__(self):
         if self.statistics_type < 27:
             name_index = [i for i,j in self.NAME_CHOICES]

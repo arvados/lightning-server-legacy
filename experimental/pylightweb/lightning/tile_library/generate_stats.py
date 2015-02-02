@@ -6,17 +6,16 @@ from django.db.models import Avg, Count, Max, Min
 
 from tile_library import functions
 from tile_library.models import Tile, TileVariant, GenomeStatistic
-from errors import MissingStatisticsError
-
+from errors import InvalidGenomeError, MissingStatisticsError, ExistingStatisticsError
 
 def get_info(tiles, tilevars, silent=False):
     n = time.time()
-    tile_info = tiles.aggregate(pos_num=Count('tilename'))
+    tile_info = tiles.aggregate(num_of_positions=Count('tilename'))
     x = time.time()
     if not silent:
         print "\tTile Queries:", x-n
     tile_var_info = tilevars.aggregate(
-        tile_num=Count('tile_variant_name'),
+        num_of_tiles=Count('tile_variant_name'),
         max_pos_spanned=Max('num_positions_spanned'),
     )
     y = time.time()
@@ -26,9 +25,10 @@ def get_info(tiles, tilevars, silent=False):
 
 def initialize(silent=False, quiet=True):
     impossible_name, impossible_varname = functions.get_min_position_and_tile_variant_from_chromosome_int(27)
-    assert Tile.objects.filter(tilename__gte=impossible_name).exists() == False, "Invalid human genome: no tile id should exist with this path according to Tile.CHR_PATH_LENGTHS"
-    assert TileVariant.objects.filter(tile_variant_name__gte=impossible_varname).exists() == False, "Invalid human genome: no tile_variant id should exist with this path according to Tile.CHR_PATH_LENGTHS"
-    assert GenomeStatistic.objects.count() == 0,  "Genome Statistics have already been generated. Run update()"
+    if Tile.objects.filter(tilename__gte=impossible_name).exists():
+        raise InvalidGenomeError("Invalid human genome: no tile id should exist with this path according to Tile.CHR_PATH_LENGTHS")
+    if GenomeStatistic.objects.count() > 0:
+        raise ExistingStatisticsError("Genome Statistics have already been generated. Run update()")
     for i in range(27):
         if i == 0:
             if not silent:
@@ -48,12 +48,11 @@ def initialize(silent=False, quiet=True):
             print tile_info, tile_var_info
         s = GenomeStatistic(
             statistics_type=i,
-            position_num=tile_info['pos_num'],
-            tile_num=tile_var_info['tile_num'],
+            num_of_positions=tile_info['num_of_positions'],
+            num_of_tiles=tile_var_info['num_of_tiles'],
             max_num_positions_spanned=tile_var_info['max_pos_spanned'],
         )
         s.save()
-
     for path in range(Tile.CHR_PATH_LENGTHS[-1]):
         if not silent and not quiet:
             print "Path", path
@@ -67,16 +66,16 @@ def initialize(silent=False, quiet=True):
         s = GenomeStatistic(
             statistics_type=27,
             path_name=path,
-            position_num=tile_info['pos_num'],
-            tile_num=tile_var_info['tile_num'],
+            num_of_positions=tile_info['num_of_positions'],
+            num_of_tiles=tile_var_info['num_of_tiles'],
             max_num_positions_spanned=tile_var_info['max_pos_spanned'],
         )
         s.save()
 
 def update(path_only=False, silent=False, quiet=True):
     impossible_name, impossible_varname = functions.get_min_position_and_tile_variant_from_chromosome_int(27)
-    assert Tile.objects.filter(tilename__gte=impossible_name).exists() == False, "Invalid human genome: no tile id should exist with this path according to Tile.CHR_PATH_LENGTHS"
-    assert TileVariant.objects.filter(tile_variant_name__gte=impossible_varname).exists() == False, "Invalid human genome: no tile_variant id should exist with this path according to Tile.CHR_PATH_LENGTHS"
+    if Tile.objects.filter(tilename__gte=impossible_name).exists():
+        raise InvalidGenomeError("Invalid human genome: no tile id should exist with this path according to Tile.CHR_PATH_LENGTHS")
     try:
         if not path_only:
             for i in range(27):
@@ -97,8 +96,8 @@ def update(path_only=False, silent=False, quiet=True):
                 if not silent:
                     print tile_info, tile_var_info
                 s = GenomeStatistic.objects.get(statistics_type=i)
-                s.position_num = tile_info['pos_num']
-                s.tile_num = tile_var_info['tile_num']
+                s.num_of_positions = tile_info['num_of_positions']
+                s.num_of_tiles = tile_var_info['num_of_tiles']
                 s.max_num_positions_spanned = tile_var_info['max_pos_spanned']
                 s.save()
         for path in range(Tile.CHR_PATH_LENGTHS[-1]):
@@ -114,8 +113,8 @@ def update(path_only=False, silent=False, quiet=True):
             if not silent and not quiet:
                 print tile_info, tile_var_info
             s = GenomeStatistic.objects.filter(statistics_type=27).get(path_name=path)
-            s.position_num = tile_info['pos_num']
-            s.tile_num = tile_var_info['tile_num']
+            s.num_of_positions = tile_info['num_of_positions']
+            s.num_of_tiles = tile_var_info['num_of_tiles']
             s.max_num_positions_spanned = tile_var_info['max_pos_spanned']
             s.save()
     except GenomeStatistic.DoesNotExist:
