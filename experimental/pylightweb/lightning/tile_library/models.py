@@ -45,6 +45,14 @@ def validate_tag(tag):
     if len(tag) != TAG_LENGTH:
         raise ValidationError("Tag length must be equal to the set TAG_LENGTH")
 
+def validate_variant_tag(tag):
+    if len(tag) != TAG_LENGTH and len(tag) != 0:
+        raise ValidationError("Tag length must be equal to the set TAG_LENGTH or must be empty")
+
+def validate_num_spanning_tiles(num_spanning):
+    if num_spanning < 1:
+        raise ValidationError("num positions spanned must be greater than or equal to 1")
+
 class TileManage(models.Manager):
     """
     TileManage ensures correct ordering by the admin site
@@ -84,6 +92,7 @@ class Tile(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     def save(self, *args, **kwargs):
         try:
+            self.full_clean()
             validation_fns.validate_tile(self.tilename)
             super(Tile, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
@@ -128,19 +137,20 @@ class TileVariant(models.Model):
     """
     tile_variant_name = models.BigIntegerField(primary_key=True, editable=False, db_index=True, validators=[validate_tile_variant_int])
     tile = models.ForeignKey(Tile, related_name='tile_variants', db_index=True)
-    num_positions_spanned = models.PositiveSmallIntegerField()
-    conversion_to_cgf = models.TextField(default='')
+    num_positions_spanned = models.PositiveSmallIntegerField(validators=[validate_num_spanning_tiles])
+    conversion_to_cgf = models.TextField(default='', blank=True)
     variant_value = models.PositiveIntegerField(db_index=True)
     length = models.PositiveIntegerField(db_index=True)
     md5sum = models.CharField(max_length=40)
     created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     sequence = models.TextField()
-    start_tag = models.TextField(blank=True)
-    end_tag = models.TextField(blank=True)
+    start_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_variant_tag])
+    end_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_variant_tag])
 
     def save(self, *args, **kwargs):
         try:
+            self.full_clean()
             start_tag = self.start_tag
             if start_tag == '':
                 start_tag = self.tile.start_tag

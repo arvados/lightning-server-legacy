@@ -24,6 +24,8 @@ import tile_library.query_functions as query_fns
 
 #Needed to check when paths are crossed
 
+#SHOW_ERROR_MESSAGES = True
+
 BASE_LIBRARY_STRUCTURE = {
     1: {
         '0': [
@@ -241,6 +243,17 @@ def make_tiles(chroms_with_paths_with_tile_vars, assembly_default=19):
                         chrom=chrom_int
                     )
                 locus += tile_vars[i]['lengths'][0] - TAG_LENGTH
+
+def make_tile_position(tile_position):
+    if type(tile_position) == int:
+        tile_position_int = tile_position
+    else:
+        tile_position_int = int(tile_position, 16)
+    start_tag = mk_genome_seq(TAG_LENGTH)
+    end_tag = mk_genome_seq(TAG_LENGTH)
+    new = Tile(tilename=tile_position_int, start_tag=start_tag, end_tag=end_tag)
+    new.save()
+    return new
 
 ######################### TEST basic_functions ###################################
 class TestBasicFunctions(TestCase):
@@ -498,13 +511,11 @@ class TestAdvancedFunctions(TestCase):
         name, varname = fns.get_min_position_and_tile_variant_from_path_int(16)
         self.assertEqual(name, tile_int)
         self.assertEqual(varname, tile_variant_int)
-
     def test_get_min_position_and_tile_variant_from_path_int_failure(self):
         self.assertRaises(TypeError, fns.get_min_position_and_tile_variant_from_path_int, '1')
         self.assertRaises(ValueError, fns.get_min_position_and_tile_variant_from_path_int, -1)
         bad_path = Tile.CHR_PATH_LENGTHS[-1] + 1
         self.assertRaises(ValueError, fns.get_min_position_and_tile_variant_from_path_int, bad_path)
-
     #Is it acceptable to use an already tested function to check against another function?
     def test_get_min_position_and_tile_variant_from_chromosome_int(self):
         for i, path_int in enumerate(Tile.CHR_PATH_LENGTHS):
@@ -512,28 +523,22 @@ class TestAdvancedFunctions(TestCase):
             exp_name, exp_varname = fns.get_min_position_and_tile_variant_from_path_int(int(path_int))
             self.assertEqual(name, exp_name)
             self.assertEqual(varname, exp_varname)
-
     def test_get_min_position_and_tile_variant_from_chromosome_int_failure(self):
         self.assertRaises(TypeError, fns.get_min_position_and_tile_variant_from_chromosome_int, '1')
         self.assertRaises(ValueError, fns.get_min_position_and_tile_variant_from_chromosome_int, 0)
         self.assertRaises(ValueError, fns.get_min_position_and_tile_variant_from_chromosome_int, 28)
-
     def test_get_chromosome_int_from_position_int(self):
         # Not implemented yet
         self.assertRaises(NotImplementedError, fns.get_chromosome_int_from_position_int, 0)
-
     def test_get_chromosome_int_from_position_int_failure(self):
         # Not implemented yet
         self.assertRaises(NotImplementedError, fns.get_chromosome_int_from_position_int, 0)
-
     def test_get_chromosome_int_from_tile_variant_int(self):
         #Not implemented yet
         self.assertRaises(NotImplementedError, fns.get_chromosome_int_from_tile_variant_int, 0)
-
     def test_get_chromosome_int_from_tile_variant_int_failure(self):
         #Not implemented yet
         self.assertRaises(NotImplementedError, fns.get_chromosome_int_from_tile_variant_int, 0)
-
     #Feels a bit weird because the last populated path is 25, but technical last path is 26...
     def test_get_chromosome_int_from_path_int(self):
         path_in_one = Tile.CHR_PATH_LENGTHS[1]/2
@@ -544,20 +549,17 @@ class TestAdvancedFunctions(TestCase):
         self.assertEqual(fns.get_chromosome_int_from_path_int(path_in_two), 2)
         path_in_last = Tile.CHR_PATH_LENGTHS[-1]-1
         self.assertEqual(fns.get_chromosome_int_from_path_int(path_in_last), 25)
-
     def test_get_chromosome_int_from_path_int_failure(self):
         self.assertRaises(TypeError, fns.get_chromosome_int_from_path_int, '2a')
         self.assertRaises(ValueError, fns.get_chromosome_int_from_path_int, -1)
         bad_path = Tile.CHR_PATH_LENGTHS[-1]
         self.assertRaises(ValueError, fns.get_chromosome_int_from_path_int, bad_path)
-
     #Feels a bit weird because the names might change...
     def test_get_chromosome_name_from_chromosome_int(self):
         self.assertEqual(fns.get_chromosome_name_from_chromosome_int(1), 'chr1')
         self.assertEqual(fns.get_chromosome_name_from_chromosome_int(23), 'chrX')
         self.assertEqual(fns.get_chromosome_name_from_chromosome_int(24), 'chrY')
         self.assertEqual(fns.get_chromosome_name_from_chromosome_int(25), 'chrM')
-
     def test_get_chromosome_name_from_chromosome_int_failure(self):
         self.assertRaises(TypeError, fns.get_chromosome_name_from_chromosome_int, '1')
         self.assertRaises(ValueError, fns.get_chromosome_name_from_chromosome_int, -1)
@@ -598,7 +600,6 @@ class TestTileMethods(TestCase):
         tile_int = int('10000000', 16)
         new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
         self.assertEqual(new_tile.getTileString(), '010.00.0000')
-
     def test_tile_constants(self):
         """
         Tile defines CHR_PATH_LENGTHS and CYTOMAP, check that these definitions
@@ -621,7 +622,6 @@ class TestTileMethods(TestCase):
         self.assertEqual(len(cytomap), chr_list[-1])
         for s in cytomap:
             self.assertEqual(type(s), str)
-
     def test_non_int_tile_int(self):
         with self.assertRaises(ValidationError):
             Tile(tilename='invalid').save()
@@ -632,11 +632,316 @@ class TestTileMethods(TestCase):
         with self.assertRaises(ValidationError):
             Tile(tilename=int('1000000000', 16)).save()
     def test_non_existant_tags(self):
-        with self.assertRaises()
-
+        with self.assertRaises(ValidationError):
+            Tile(tilename=0).save()
+    def test_too_short_tags(self):
+        with self.assertRaises(ValidationError):
+            Tile(tilename=0, start_tag='AA', end_tag='AG').save()
+    def test_successful_save(self):
+        start_tag = mk_genome_seq(TAG_LENGTH)
+        end_tag = mk_genome_seq(TAG_LENGTH)
+        new = Tile(tilename=0, start_tag=start_tag, end_tag=end_tag)
+        new.save()
 ################################## TEST models continued ###################################
 class TestTileVariantMethods(TestCase):
-    #Maybe test to see if it's possible to catch incorrect tiles?
+    def test_non_int_tile_variant_int(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name='fail',
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_negative_tile_variant_int(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=-1,
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_too_big_tile_variant_int(self):
+        tile=make_tile_position('fffffffff')
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('1000000000000',16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+        #print str(cm.exception)
+    def test_nonexistant_tile_position(self):
+        seq = mk_genome_seq(250, uppercase=False)
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('000000000000',16),
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_invalid_positions_spanned(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=0,
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=0
+            ).save()
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=0,
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=-1
+            ).save()
+    def test_invalid_variant_value(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=0,
+                tile=tile,
+                variant_value=-1,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_invalid_start_tag(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag[:20]
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=0,
+                tile=tile,
+                variant_value=0,
+                length=246,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1,
+                start_tag=tile.start_tag[:20]
+            ).save()
+    def test_invalid_end_tag(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag[:20]
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=0,
+                tile=tile,
+                variant_value=0,
+                length=246,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1,
+                end_tag=tile.end_tag[:20]
+            ).save()
+    def test_mismatching_paths(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('001000000000',16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_mismatching_path_versions(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('000010000000',16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_mismatching_steps(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('000000001000',16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_mismatching_variant_values(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('000000000001',16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_mismatching_length_and_sequence_length(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=0,
+                tile=tile,
+                variant_value=0,
+                length=249,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_mismatching_md5sum(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('000000000000',16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum='aaadde',
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_mismatching_start_tag(self):
+        tile=make_tile_position(0)
+        seq =  mk_genome_seq(TAG_LENGTH)
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('000000000000',16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_mismatching_end_tag(self):
+        tile=make_tile_position(0)
+        seq =  tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += mk_genome_seq(TAG_LENGTH)
+        digestor = hashlib.new('md5', seq)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=int('000000000000',16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+    def test_successful_save(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        TileVariant(
+            tile_variant_name=0,
+            tile=tile,
+            variant_value=0,
+            length=250,
+            md5sum=digestor.hexdigest(),
+            sequence=seq,
+            num_positions_spanned=1
+        ).save()
+    def test_successful_save_with_alternate_tags(self):
+        tile=make_tile_position(0)
+        start_tag = mk_genome_seq(TAG_LENGTH)
+        end_tag = mk_genome_seq(TAG_LENGTH)
+        seq = start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += end_tag
+        digestor = hashlib.new('md5', seq)
+        TileVariant(
+            tile_variant_name=0,
+            tile=tile,
+            variant_value=0,
+            length=250,
+            md5sum=digestor.hexdigest(),
+            sequence=seq,
+            num_positions_spanned=1,
+            start_tag=start_tag,
+            end_tag=end_tag
+        ).save()
     def test_get_string(self):
         """
         TileVariant.getString() returns str
@@ -649,76 +954,41 @@ class TestTileVariantMethods(TestCase):
         001.00.0000 => 100
         010.00.0000 => 020
         """
-        tile_int = int('1c403002f', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('1c403002f0f3', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=int('f3',16),
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        #Does not worry about correctness, since not saving any tiles
+        new_tile_variant = TileVariant(tile_variant_name=int('1c403002f0f3', 16))
         self.assertEqual(type(new_tile_variant.getString()), str)
         self.assertEqual(new_tile_variant.getString(), '1c4.03.002f.0f3')
 
-        tile_int = int('0', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('10', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=int('10',16),
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('10',16))
         self.assertEqual(new_tile_variant.getString(), '000.00.0000.010')
 
-        tile_int = int('1000', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('1000100', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=int('100',16),
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('1000100', 16))
         self.assertEqual(new_tile_variant.getString(), '000.00.1000.100')
 
-        tile_int = int('10000', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('10000001', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=int('10',16),
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('10000001', 16))
         self.assertEqual(new_tile_variant.getString(), '000.01.0000.001')
 
-        tile_int = int('100000', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('100000010', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=int('10',16),
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('100000010', 16))
         self.assertEqual(new_tile_variant.getString(), '000.10.0000.010')
 
-        tile_int = int('1000000', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('1000000100', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=int('10',16),
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('1000000100', 16))
         self.assertEqual(new_tile_variant.getString(), '001.00.0000.100')
 
-        tile_int = int('10000000', 16)
-        new_tile = Tile(tilename=tile_int, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('10000000020', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=int('10',16),
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('10000000020', 16))
         self.assertEqual(new_tile_variant.getString(), '010.00.0000.020')
     def test_is_reference(self):
         """
         Tile.isReference() returns boolean
         Testing with Tile 0a1.00.1004
         """
-        tilename = int('a1001004', 16)
-        new_tile = Tile(tilename=tilename, start_tag="ACGT", end_tag="CCCG")
-        tile_variant_int = int('a1001004003', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=3,
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('a1001004003', 16), variant_value=3)
         self.assertEqual(type(new_tile_variant.isReference()), bool)
         self.assertFalse(new_tile_variant.isReference())
 
-        tile_variant_int = int('a1001004001', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=1,
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('a1001004001', 16),variant_value=1)
         self.assertFalse(new_tile_variant.isReference())
 
-        tile_variant_int = int('a1001004000', 16)
-        new_tile_variant = TileVariant(tile_variant_name=tile_variant_int,tile=new_tile, variant_value=0,
-                                       length=250, md5sum="05fee", sequence="TO BIG TO STORE", num_positions_spanned=1)
+        new_tile_variant = TileVariant(tile_variant_name=int('a1001004000', 16), variant_value=0)
         self.assertTrue(new_tile_variant.isReference())
     def test_get_base_at_position(self):
         raise NotImplementedError("get_base_at_position test not implemented")
