@@ -11,6 +11,9 @@ import tile_library.functions as fns
 from errors import EmptyPathError, MissingStatisticsError
 
 def print_friendly_cgf_translator(cgf_translator):
+    """
+    Meant for reducing the number of lines printed while debugging. Not tested
+    """
     new_string = ""
     for i in cgf_translator:
         new_string += str(sorted(i.keys()))+','

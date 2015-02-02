@@ -275,6 +275,9 @@ class GenomeVariant(models.Model):
         )
     created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super(TileLocusAnnotation, self).save(*args, **kwargs)
     def __unicode__(self):
         length = len(self.alternate_bases) - len(self.reference_bases)
         if length > 0 or self.reference_bases == '-':
@@ -287,6 +290,7 @@ class GenomeVariant(models.Model):
     class Meta:
         #Ensures ordering by tilename
         ordering = ['start_tile_position', 'start_increment']
+        unique_together = ('start_tile_position', 'end_increment', 'alternate_bases')
 
 class GenomeVariantTranslation(models.Model):
     """
