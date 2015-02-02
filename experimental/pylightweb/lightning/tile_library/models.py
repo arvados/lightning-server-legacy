@@ -399,8 +399,19 @@ class TileLocusAnnotation(models.Model):
     chromosome = models.PositiveSmallIntegerField(choices=CHR_CHOICES, db_index=True)
     begin_int = models.PositiveIntegerField(db_index=True)
     end_int = models.PositiveIntegerField(db_index=True)
-    chromosome_name = models.CharField(max_length=100)
+    chromosome_name = models.CharField(max_length=100, blank=True)
     tile = models.ForeignKey(Tile, related_name="tile_locus_annotations", db_index=True)
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        try:
+            tile_var_int = basic_fns.convert_position_int_to_tile_variant_int(int(self.tile.tilename))
+            length = TileVariant.objects.get(tile_variant_name=tile_var_int).length
+            validation_fns.validate_locus(TAG_LENGTH, length, self.begin_int, self.end_int)
+        except TileVariant.DoesNotExist:
+            raise ValidationError({'tile':'tile does not have a tilevariant (with a variant value of 0) associated with it'})
+        except TileLibraryValidationError as e:
+            raise ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
+        super(TileLocusAnnotation, self).save(*args, **kwargs)
     def get_readable_chr_name(self):
         if self.chromosome == 26:
             return self.chromosome_name
