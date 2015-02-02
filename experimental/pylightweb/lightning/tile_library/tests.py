@@ -17,15 +17,6 @@ import tile_library.functions as fns
 import tile_library.generate_stats as gen_stats
 import tile_library.query_functions as query_fns
 
-#Currently testing functions defined by basic_functions, functions, and models
-#Check that generate_stats behaves as expected (adds the correct statistics)
-
-#Currently no functions are defined for TileLocusAnnotation or GenomeStatistic
-
-#Needed to check when paths are crossed
-
-#SHOW_ERROR_MESSAGES = True
-
 BASE_LIBRARY_STRUCTURE = {
     1: {
         '0': [
@@ -476,7 +467,6 @@ class TestBasicFunctions(TestCase):
         self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000')
         self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000x')
         self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000a+')
-
 ################################## TEST functions ###################################
 class TestAdvancedFunctions(TestCase):
     def test_get_min_position_and_tile_variant_from_path_int(self):
@@ -557,9 +547,8 @@ class TestAdvancedFunctions(TestCase):
         self.assertRaises(TypeError, fns.get_chromosome_name_from_chromosome_int, '1')
         self.assertRaises(ValueError, fns.get_chromosome_name_from_chromosome_int, -1)
         self.assertRaises(ValueError, fns.get_chromosome_name_from_chromosome_int, 27)
-
 ################################## TEST Tile model ###################################
-class TestTileMethods(TestCase):
+class TestTileModel(TestCase):
     def test_get_tile_string(self):
         """
         Tile.getTileString() returns str
@@ -631,12 +620,13 @@ class TestTileMethods(TestCase):
         with self.assertRaises(ValidationError):
             Tile(tilename=0, start_tag='AA', end_tag='AG').save()
     def test_successful_save(self):
-        start_tag = mk_genome_seq(TAG_LENGTH)
-        end_tag = mk_genome_seq(TAG_LENGTH)
-        new = Tile(tilename=0, start_tag=start_tag, end_tag=end_tag)
-        new.save()
+        make_tile_position(0)
+    def test_same_name_space_failure(self):
+        make_tile_position(0)
+        with self.assertRaises(ValidationError) as cm:
+            make_tile_position(0)
 ################################## TEST TileVariant model ###################################
-class TestTileVariantMethods(TestCase):
+class TestTileVariantModel(TestCase):
     def test_non_int_tile_variant_int(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -935,6 +925,31 @@ class TestTileVariantMethods(TestCase):
             start_tag=start_tag,
             end_tag=end_tag
         ).save()
+    def test_same_name_space_failure(self):
+        tile=make_tile_position(0)
+        seq =  tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        TileVariant(
+            tile_variant_name=0,
+            tile=tile,
+            variant_value=0,
+            length=250,
+            md5sum=digestor.hexdigest(),
+            sequence=seq,
+            num_positions_spanned=1
+        ).save()
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_name=0,
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=digestor.hexdigest(),
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
     def test_get_string(self):
         """
         TileVariant.getString() returns str
@@ -1036,6 +1051,55 @@ class TestTileVariantMethods(TestCase):
         self.assertEqual(tile.getBaseGroupBetweenPositions(1,5), 'GTCN')
         self.assertEqual(tile.getBaseGroupBetweenPositions(1,4), 'GTC')
 
+class TestGenomeVariantModel(TestCase):
+    pass
+
+class TestGenomeVariantTranslationModel(TestCase):
+    pass
+
+class TestTileLocusAnnotationModel(TestCase):
+    pass
+
+class TestGenomeStatisticModel(TestCase):
+    #Just need to test saving
+    def test_negative_statistics_int(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=-1, num_of_positions=0, num_of_tiles=0).save()
+    def test_too_big_statistics_int(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=28, num_of_positions=0, num_of_tiles=0).save()
+    def test_too_small_path_name(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=0, path_name=-2, num_of_positions=0, num_of_tiles=0).save()
+    def test_neg_one_path_name_on_path_statistic(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=27, path_name=-1, num_of_positions=0, num_of_tiles=0).save()
+        print str(cm.exception)
+    def test_negative_num_positions(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=0, num_of_positions=-1, num_of_tiles=0).save()
+    def test_negative_num_tiles(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=0, num_of_positions=0, num_of_tiles=-1).save()
+    def test_more_positions_than_tiles(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=0, num_of_positions=2, num_of_tiles=1).save()
+    def test_tiles_without_positions(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=0, num_of_positions=0, num_of_tiles=1).save()
+    def test_weird_spanning_tiles(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=0, num_of_positions=1, num_of_tiles=1, max_num_positions_spanned=0).save()
+    def test_duplicate_chromosome_statistics(self):
+        GenomeStatistic(statistics_type=0, num_of_positions=1, num_of_tiles=1).save()
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=0, num_of_positions=1, num_of_tiles=2).save()
+        print str(cm.exception)
+    def test_duplicate_path_statistics(self):
+        GenomeStatistic(statistics_type=27, path_name=1, num_of_positions=1, num_of_tiles=1).save()
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=27, path_name=1, num_of_positions=1, num_of_tiles=2).save()
+
 ################################## TEST generate_statistics ###################################
 class TestGenerateStatistics(TestCase):
     def setUp(self):
@@ -1074,7 +1138,7 @@ class TestGenerateStatistics(TestCase):
                 self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, 0)
                 self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, 0)
                 self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
-            self.assertIsNone(whole_genome_or_chrom_stats.path_name)
+            self.assertEqual(whole_genome_or_chrom_stats.path_name, -1)
 
         tile_int, foo = fns.get_min_position_and_tile_variant_from_chromosome_int(2)
         path, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
@@ -1115,7 +1179,7 @@ class TestGenerateStatistics(TestCase):
                 self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, 0)
                 self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, 0)
                 self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
-            self.assertIsNone(whole_genome_or_chrom_stats.path_name)
+            self.assertEqual(whole_genome_or_chrom_stats.path_name, -1)
 
         tile_int, foo = fns.get_min_position_and_tile_variant_from_chromosome_int(2)
         path, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
@@ -1212,7 +1276,7 @@ class TestGenerateStatistics(TestCase):
                 self.assertEqual(genome_piece.num_of_positions, 0)
                 self.assertEqual(genome_piece.num_of_tiles, 0)
                 self.assertIsNone(genome_piece.max_num_positions_spanned)
-            self.assertIsNone(genome_piece.path_name)
+            self.assertEqual(genome_piece.path_name, -1)
 
         tile_int, foo = fns.get_min_position_and_tile_variant_from_chromosome_int(2)
         path_on_2, version, step = basic_fns.get_position_ints_from_position_int(tile_int)

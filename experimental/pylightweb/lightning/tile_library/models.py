@@ -27,16 +27,22 @@ def validate_json(text):
     except ValueError:
         raise ValidationError("Expects json-formatted text")
 
+def validate_gte_neg_one(integer):
+    if integer < -1:
+        raise ValidationError("integer must be greater than or equal to negative one")
+
+def validate_positive(integer):
+    if integer < 0:
+        raise ValidationError("integer must be positive")
+
 def validate_tile_position_int(tile_position_int):
-    if tile_position_int < 0:
-        raise ValidationError("tile position int must be positive")
+    validate_positive(tile_position_int)
     max_tile_position = int('fffffffff', 16)
     if tile_position_int > max_tile_position:
         raise ValidationError("tile position int must be smaller than or equal to 'fff.ff.ffff'")
 
 def validate_tile_variant_int(tile_variant_int):
-    if tile_variant_int < 0:
-        raise ValidationError("tile variant int must be positive")
+    validate_positive(tile_variant_int)
     max_tile_variant = int('ffffffffffff', 16)
     if tile_variant_int > max_tile_variant:
         raise ValidationError("tile variant int must be smaller than or equal to 'fff.ff.ffff.fff'")
@@ -472,14 +478,19 @@ class GenomeStatistic(models.Model):
         (CHR_OTHER, 'Other Chromosomes'),
         (PATH, 'Path'),
     )
-
     statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=NAME_CHOICES)
-    path_name = models.PositiveIntegerField(db_index=True, blank=True, null=True)
-    num_of_positions = models.BigIntegerField()
-    num_of_tiles = models.BigIntegerField()
-    max_num_positions_spanned = models.PositiveIntegerField(blank=True, null=True)
+    path_name = models.IntegerField(db_index=True, default=-1, validators=[validate_gte_neg_one])
+    num_of_positions = models.BigIntegerField(validators=[validate_positive])
+    num_of_tiles = models.BigIntegerField(validators=[validate_positive])
+    max_num_positions_spanned = models.PositiveIntegerField(blank=True, null=True, validators=[validate_num_spanning_tiles])
     def save(self, *args, **kwargs):
         self.full_clean()
+        if self.num_of_positions == 0 and self.num_of_tiles > 0:
+            raise ValidationError({'num_of_positions-num_of_tiles': "No tiles can exist if no positions exist"})
+        if self.num_of_positions  > self.num_of_tiles:
+            raise ValidationError({'num_of_positions-num_of_tiles': "Number of tiles must be larger than or equal to the number of positions"})
+        if self.path_name == -1 and self.statistics_type == 27:
+            raise ValidationError({'path_name_too_low': 'If statistics type is equal to 27, path name must be greater than -1'})
         super(GenomeStatistic, self).save(*args, **kwargs)
     def __unicode__(self):
         if self.statistics_type < 27:
