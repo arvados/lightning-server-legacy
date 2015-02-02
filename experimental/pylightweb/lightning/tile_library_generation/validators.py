@@ -12,7 +12,6 @@ def validate_tile(tile_position_int):
     if len(VALIDATION_ERRORS) > 0:
         raise TileLibraryValidationError(VALIDATION_ERRORS)
 
-
 def validate_tile_variant(TAG_LENGTH, tile_position_int, tile_variant_int, variant_value, sequence, seq_length, seq_md5sum, start_tag, end_tag):
     VALIDATION_ERRORS = {}
     if tile_position_int < 0:
