@@ -87,7 +87,12 @@ def documentation(request):
                     }
                 ],
                 'try_it_url':reverse('population_sequence_query:around_locus_form'),
-                'try_it_examples':[]
+                'try_it_examples':[
+                    {
+                        'description': 'AACA -> TT (BRCA2 K3084Shift)',
+                        'url': 'http://lightning-dev3.curoverse.com'+reverse('api:pop_around_locus')+'?assembly=19&chromosome=13&target_base=32954281&number_around=4'
+                    }
+                ]
             },
             {
                 'id': 'between-loci',
@@ -147,7 +152,16 @@ def documentation(request):
                     }
                 ],
                 'try_it_url':reverse('population_sequence_query:between_loci_form'),
-                'try_it_examples':[]
+                'try_it_examples':[
+                    {
+                        'description': 'T -> C (rs1799966) (BRCA1 S1634G)',
+                        'url':'http://lightning-dev3.curoverse.com'+reverse('api:pop_between_loci')+'?assembly=19&chromosome=17&lower_base=41223092&upper_base=41223095'
+                    },
+                    {
+                        'description': 'CTT -> C',
+                        'url':'http://lightning-dev3.curoverse.com'+reverse('api:pop_between_loci')+'?assembly=19&chromosome=17&lower_base=41196820&upper_base=41196824'
+                    }
+                ]
             }
         ]
     }

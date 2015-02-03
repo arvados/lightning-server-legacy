@@ -121,6 +121,25 @@
           </table>
         </div>
         <h3 id="{{api_call.id}}-try-it"><a href="{{api_call.try_it_url}}">Try it!</a></h3>
+        <p>Example queries:</p>
+        <div class="table-responsive">
+          <table class="table table-striped" id="{{api_call.id}}-try-it-examples">
+            <thead>
+              <tr>
+                <th>Genomic variation observed in some of the population</th>
+                <th>url</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for example in api_call.try_it_examples %}
+              <tr>
+                <td>{{example.description}}</td>
+                <td><code>{{example.url}}</code></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
       {% endfor %}
     </div>
