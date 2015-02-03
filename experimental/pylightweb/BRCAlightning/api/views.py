@@ -158,7 +158,7 @@ def documentation(request):
                         'url':'http://lightning-dev3.curoverse.com'+reverse('api:pop_between_loci')+'?assembly=19&chromosome=17&lower_base=41223092&upper_base=41223095'
                     },
                     {
-                        'description': 'CTT -> C',
+                        'description': 'CTT -> C and CTT -> CT',
                         'url':'http://lightning-dev3.curoverse.com'+reverse('api:pop_between_loci')+'?assembly=19&chromosome=17&lower_base=41196820&upper_base=41196824'
                     }
                 ]

@@ -92,9 +92,9 @@
         <p>If successful, this method returns a response body with the following structure:</p>
         <pre>
           [
-          { {% for property in api_call.RESPONSE_properties %}
-            {% if forloop.last %}{{property.name}}:{{property.value}}{% else %}{{property.name}}:{{property.value}},{% endif %}{% endfor %}
-          }, ...
+            { {% for property in api_call.RESPONSE_properties %}
+              {% if forloop.last %}{{property.name}}:{{property.value}}{% else %}{{property.name}}:{{property.value}},{% endif %}{% endfor %}
+            }, ...
           ]</pre>
         <div class="table-responsive">
           <table class="table table-striped" id="{{api_call.id}}-response-properties">
@@ -120,14 +120,15 @@
             </tbody>
           </table>
         </div>
-        <h3 id="{{api_call.id}}-try-it"><a href="{{api_call.try_it_url}}">Try it!</a></h3>
-        <p>Example queries:</p>
+        <h3 id="{{api_call.id}}-try-it">Try It!</h3>
+        <p>Go to <a href="{{api_call.try_it_url}}">{{api_call.try_it_url}}</a> for an interactive form.</p>
+        <p>Or use the api with your favorite programming language</p>
         <div class="table-responsive">
           <table class="table table-striped" id="{{api_call.id}}-try-it-examples">
             <thead>
               <tr>
-                <th>Genomic variation observed in some of the population</th>
-                <th>url</th>
+                <th>Genomic variation</th>
+                <th>API url</th>
               </tr>
             </thead>
             <tbody>
