@@ -2,16 +2,16 @@
 Needs GLOBAL PATH
 """
 
-from tile_library_generation.fastj_objects import TileObject
+from tile_library_generation.fastj_objects import TileObject, LightTileObject
 from tile_library_generation.constants import SUPPORTED_ASSEMBLIES, CHR_CHOICES
 from tile_library.models import TAG_LENGTH, TileLocusAnnotation
 from errors import NoteParseError
 
-def setup(library_input_file, loci_input_file, sequence_input_file, global_path, genome_variants_file=None):
+def build_tile_library(collection_reader, library_input_filename, loci_input_filename, sequence_input_filename, unpaired_cgf_string_library_filename, global_path):
     """
     Input Files:
         library_input_file format:
-           tile_var_period_sep, tile_variant_name, tile_int, population_size, md5sum
+           tile_var_period_sep, tile_variant_name, tile_int, population_size, md5sum, cgf_string
 
         loci_input_file format:
            tile_int, assembly, chromosome, locus_beg, locus_end, chrom_name
@@ -19,67 +19,75 @@ def setup(library_input_file, loci_input_file, sequence_input_file, global_path,
         sequence_input_file format:
            tilevarname, varname, length, md5sum, created, updated, sequence, start, end, tile_int
 
-        genome_variants_file format:
-           [complicated...]
-
-        cgf_string_library_file format:
-            ...
+        unpaired_cgf_string_library_file format:
+            cgf_string, population_size, md5sum
+            (note: population size is unused)
 
     Return values:
-        POPUL_TILEVARS[tile_int] = [[tile_variant_integer, md5sum, population_size], [tile_variant_integer2, md5sum, population_size], ...]
-        POPUL_LOCI[tile_int] = (assembly_int, chrom_int, locus_beg_int, locus_end_int, chrom_name)
-        REFERENCE_SEQ_LOOKUP[tile_int] = (assembly_int, chrom_int, locus_beg_int, locus_end_int, chrom_name)
-        HG19_GENOME_VARIANTS[(chrom_name, locus_beg_int, locus_end_int, ref_seq, var_seq)] = genome_variant_id
+        tile_library (a populated TileLibrary object)
     """
-    #Used for checking
-    POPUL_LOCI = {}
-    REFERENCE_SEQ_LOOKUP = {}
-
-    #Used to build new library
-    POPUL_TILEVARS = {}
-    CURR_TILEVARS = {}
-    HG19_GENOME_VARIANTS = {}
-    GENOME_VARIANT_ID = int(global_path+'00'+'0000'+'000', 16)
-
+    ### Initialize blank library ###
+    tile_library = TileLibrary(global_path)
     ### Read current library ###
-    with copen(library_input_file, 'r') as f:
+        #Unsure if this will work on gzipped files...
+        #Current library is guaranteed to exist only in path, so don't need to check
+    with collection_reader.open(library_input_filename) as f:
         for line in f:
-            human_readable_name, tile_variant_name, tile_int, popul, md5sum = line.strip().split(',')
-            tile_int = int(tile_int)
-            path_version_hex = hex(tile_int).lstrip('0x').zfill(9)[3:5]
-            assert path_version_hex == '00', "Expects all path versions to be equal to 0"
-            if tile_int not in POPUL_TILEVARS:
-                POPUL_TILEVARS[tile_int] = [[int(tile_variant_name), md5sum, int(popul)]]
-            else:
-                POPUL_TILEVARS[tile_int].append([int(tile_variant_name), md5sum, int(popul)])
-
+            human_readable_name, tile_variant_name, tile_int, popul, md5sum, cgf_string = line.strip().split(',')
+            small_library = tile_library.get_smaller_library(int(tile_int))
+            small_library.initialize_library(int(tile_variant_name), md5sum, int(population_incr), cgf_string)
     ### Read in loci for current library ###
-    with copen(loci_input_file, 'r') as f:
+        #Unsure if this will work on gzipped files...
+        #Loci input might cover multiple paths, so only load loci in if it's in the path
+    with collection_reader.open(loci_input_filename) as f:
         for line in f:
             tile_int, assembly, chromosome, locus_beg, locus_end, chrom_name = line.strip().split(',')
-            tile_int = int(tile_int)
-            assert tile_int not in POPUL_LOCI, "Two conflicting loci at same tile int"
-            if tile_int in POPUL_TILEVARS:
+            path = hex(int(tile_int)).lstrip('0x').zfill(9)[:3]
+            if path == global_path:
+                small_library = tile_library.get_smaller_library(int(tile_int))
                 if chrom_name == '""':
                     chrom_name = ''
-                POPUL_LOCI[tile_int] = (int(assembly), int(chromosome), int(locus_beg), int(locus_end), chrom_name)
-
+                locus = LocusObject(assembly, chromosome, locus_beg, locus_end, chrom_name)
+                small_library.add_locus(locus)
     ### Read in reference sequences for current library ###
-    with copen(sequence_input_file, 'r') as f:
+        #Unsure if this will work on gzipped files...
+        #sequence input might cover multiple paths, so only load sequence in if it's in the path
+    with collection_reader.open(sequence_input_filename) as f:
         for line in f:
             tilevarname, varname, length, md5sum, created, updated, sequence, start, end, tile_int, num_spanning_tiles = line.strip().split(',')
-            tile_int = int(tile_int)
-            assert int(varname) == 0, "Expects only reference sequences"
-            if tile_int in POPUL_TILEVARS:
-                #if it's not, it's not in the path
-                assert POPUL_TILEVARS[tile_int][0][1] == md5sum, "Expects equal md5sums"
-                if POPUL_TILEVARS[tile_int][0][0] != int(tilevarname):
-                    print POPUL_TILEVARS[tile_int]
-                    print tilevarname, varname, length, md5sum, tile_int
-                assert POPUL_TILEVARS[tile_int][0][0] == int(tilevarname), "Expects equal tilevarnames"
-                REFERENCE_SEQ_LOOKUP[tile_int] = sequence
+            path = hex(int(tile_int)).lstrip('0x').zfill(9)[:3]
+            if path == global_path and int(varname) == 0:
+                small_library = tile_library.get_smaller_library(int(tile_int))
+                small_library.add_reference_sequence(sequence, md5sum, tilevarname)
+    ### Read in unpaired cgf strings for current library ###
+        #Unsure if this will work on gzipped files...
+        #input might cover multiple paths, so only load sequence if it's the path
+    with collection_reader.open(unpaired_cgf_string_library_filename) as f:
+        for line in f:
+            cgf_string, population_size, md5sum = line.strip().split(',')
+            path = cgf_string.split('.')[0]
+            position_int = basic_fns.get_position_from_cgf_string(cgf_string)
+            if path == global_path:
+                small_library = tile_library.get_smaller_library(position_int)
+                small_library.add_cgf_string(cgf_string, md5sum)
+    ### Ensure library is built correctly ###
+    tile_library.check_correct_formation()
 
-    ### Read in genome variants for current library if we want to prebuild the dictionary###
+    return tile_library
+
+def build_genome_variants(genome_variants_filename, global_path):
+    """
+    Input Files:
+        genome_variants_file format:
+           genome_variant_id, start_tile_position, start_increment, end_increment, end_tile_position, names (aliases), reference_bases, \
+                alternate_bases, info (in psql-readable json), created, last_modified
+
+    Return values:
+        HG19_GENOME_VARIANTS[(chrom_name, locus_beg_int, locus_end_int, ref_seq, var_seq)] = genome_variant_id
+    """
+    HG19_GENOME_VARIANTS = {}
+    GENOME_VARIANT_ID = int(global_path+'00'+'0000'+'000', 16)
+    ### Read in genome variants for current library if we want to prebuild the dictionary ###
     ### And update GENOME_VARIANT_ID if necessary
     if genome_variants_file != None:
         with copen(genome_variants_file, 'r') as f:
@@ -87,8 +95,6 @@ def setup(library_input_file, loci_input_file, sequence_input_file, global_path,
                 line_list = line.strip().split(',')
                 HG19_GENOME_VARIANTS[(int(line_list[1]), int(line_list[2]), int(line_list[3]), int(line_list[4]), line_list[6], line_list[7])] = int(line_list[0])
                 GENOME_VARIANT_ID = max(GENOME_VARIANT_ID, int(line_list[0])+1)
-
-    return POPUL_LOCI, REFERENCE_SEQ_LOOKUP, POPUL_TILEVARS, CURR_TILEVARS, HG19_GENOME_VARIANTS, GENOME_VARIANT_ID
 
 def parse_fj_header(loadedData):
     """
@@ -406,13 +412,13 @@ def parse_notes(notes, tile_to_save, tile_variant_id, tile_position_int, referen
                 if variant in genome_variants:
                     pass
                     #Happens when multiple tiles are squashed together
-##                    print "----------------------------------"
-##                    print "Variant already in genome variants"
-##                    print "Path:", PATH
-##                    print "Tile id:", hex(tile_variant_id),
-##                    print "Variant making trouble:", variant
-##                    print "Current GenomeVariants:", genome_variants
-##                    print "Read from FJ:", notes
+                    print "----------------------------------"
+                    print "Variant already in genome variants"
+                    print "Path:", PATH
+                    print "Tile id:", hex(tile_variant_id),
+                    print "Variant making trouble:", variant
+                    print "Current GenomeVariants:", genome_variants
+                    print "Read from FJ:", notes
                 else:
                     genome_variants[variant] = (start, end, type_variant)
 
@@ -495,3 +501,86 @@ def parse_notes(notes, tile_to_save, tile_variant_id, tile_position_int, referen
                 curr_genome_variant_id += 1
 
     return genome_variants_at_position, curr_genome_variant_id, wellSequenced, isPhaseA
+
+def get_reference_seq(reference_seq, assembly, chrom, start, length, locus):
+    if assembly == 'hg19':
+        if 19 != locus[0]:
+            return False
+    else:
+        raise Exception("Did not recognize assembly")
+    if chrom in CHR_CHOICES:
+        if CHR_CHOICES[chrom] != locus[1]:
+            return False
+    else:
+        if 26 != locus[1] or chrom != locus[4]:
+            return False
+    start = max([0, eval(start)])
+    tile_start = start - locus[2]
+    return reference_seq[tile_start:tile_start+length].upper()
+
+def writeHuman(isPhaseA, isWellSequenced, int_to_write, num_to_extend=1):
+    if not isWellSequenced:
+        int_to_write = -1
+    if isPhaseA:
+        return ([int_to_write]*num_to_extend, [])
+    else:
+        return ([], [int_to_write]*num_to_extend)
+
+def writeTile(reference_sequence_lengths, notes, toSaveData, popul_tilevars_at_position, population_locus, possible_variants, genome_variants_in_path, curr_genome_variant_id,
+              genome_variant_filename, translation_filename, tilevariant_filename, out):
+    #Append csv statements
+    # things to add:
+    #   for tile_library_tilevariant: tile_variant_name, variant_value, length, md5sum, created, last_modified, sequence, start_tag, end_tag, tile_id, (population)
+    #       start_tag and end_tag only if they differ from the reference (from tags[tile_id])
+    #Add only if tilevariant isn't present
+
+    tile_hex = toSaveData['tilename']
+    tile_int = int(tile_hex, 16)
+    #Check if we have the tile_variant in current database
+    for index, variant in enumerate(popul_tilevars_at_position):
+        if toSaveData['md5sum'] == variant[1]:
+            wellSequenced, isPhaseA = readNotesEfficiently(notes)
+            variant_hex = hex(int(variant[0])).lstrip('0x').zfill(12)[9:]
+            if toSaveData['seedTileLength'] == 1:
+                phaseA, phaseB = writeHuman(isPhaseA, wellSequenced, int(variant_hex,16)) #Write person variant
+            else:
+                phaseA, phaseB = writeHuman(isPhaseA, wellSequenced, int(tile_hex[5:]+variant_hex,16), num_to_extend=toSaveData['seedTileLength'])
+            #Tell caller this tilevariant is in the database, which index in the database it's in, and what to add to phaseA and phaseB
+            return "database", index, phaseA, phaseB
+
+    #Not currently in the database, so might be in current files
+    #Modify current files
+    #Do we have anything at this position in the current files to write?
+    for index, tile_variant_int, md5sum in possible_variants:
+        if toSaveData['md5sum'] == md5sum:
+            wellSequenced, isPhaseA = readNotesEfficiently(notes)
+            variant_hex = hex(int(tile_variant_int)).lstrip('0x').zfill(12)[9:]
+            if toSaveData['seedTileLength'] == 1:
+                phaseA, phaseB = writeHuman(isPhaseA, wellSequenced, int(variant_hex,16)) #Write person variant
+            else:
+                phaseA, phaseB = writeHuman(isPhaseA, wellSequenced, int(tile_hex[5:]+variant_hex,16), num_to_extend=toSaveData['seedTileLength'])
+            #Tell caller this tilevariant is in the current list, which index in the list it's in, and what to add to phaseA and phaseB
+            return "modified current", index, phaseA, phaseB
+    #Add a new variant
+    varname = hex(len(popul_tilevars_at_position) + len(possible_variants)).lstrip('0x').zfill(3)
+    tilevarname = int(tile_hex+varname, 16)
+    check_locus = (toSaveData['assembly'], toSaveData['chromosome'], toSaveData['locus_begin'], toSaveData['locus_end'], toSaveData['chrom_name'])
+    assert population_locus == check_locus, "Locus does not align"
+    if toSaveData['seedTileLength'] == 1:
+        genome_variants_in_path, curr_genome_variant_id, wellSequenced, isPhaseA = readNotes(notes, tilevarname, tile_int, reference_sequence_lengths,
+                                                                                             genome_variants_in_path,
+                                                                                             curr_genome_variant_id, toSaveData['reference_seq'], toSaveData['sequence'],
+                                                                                             population_locus, genome_variant_filename, translation_filename, out)
+        phaseA, phaseB = writeHuman(isPhaseA, wellSequenced, int(varname,16)) #Write person variant
+    else:
+        genome_variants_in_path, curr_genome_variant_id, wellSequenced, isPhaseA = readNotes(notes, tilevarname, tile_int, reference_sequence_lengths,
+                                                                                             genome_variants_in_path,
+                                                                                             curr_genome_variant_id, toSaveData['reference_seq'], toSaveData['sequence'],
+                                                                                             population_locus, genome_variant_filename, translation_filename, out)
+        phaseA, phaseB = writeHuman(isPhaseA, wellSequenced, int(tile_hex[5:]+varname,16), num_to_extend=toSaveData['seedTileLength'])
+
+    now = str(datetime.datetime.now())
+    out.start_new_file(tilevariant_filename)
+    write_line([tilevarname, int(varname,16), toSaveData['length'], toSaveData['md5sum'], now, now, toSaveData['sequence'],
+                toSaveData['start_seq'], toSaveData['end_seq'], tile_int, toSaveData['seedTileLength']], out)
+    return "new current", phaseA, phaseB, genome_variants_in_path, curr_genome_variant_id, [tilevarname, toSaveData['md5sum'], 1]
