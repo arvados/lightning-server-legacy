@@ -121,6 +121,9 @@ class TileLibrary(object):
     def write_library(self, out):
         for trunc_tile_position in sorted(self.library.keys()):
             self.library[trunc_tile_position].write_tile_library(out)
+    def write_unpaired_cgf_strings(self, out):
+        for trunc_tile_position in sorted(self.library.keys()):
+            self.library[trunc_tile_position].write_unpaired_cgf_strings(out):
 
 class TileLibraryAtPosition(object):
     __slots__ = ('path', 'position', 'locus', 'reference_seq', 'variants', 'unpaired_cgf_strings')

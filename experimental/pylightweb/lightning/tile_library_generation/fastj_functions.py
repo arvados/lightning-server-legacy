@@ -75,12 +75,14 @@ def build_tile_library(collection_reader, library_input_filename, loci_input_fil
 
     return tile_library
 
+#GenomeVariants are expected to fade out and be replaced by annotations directly to tile variants in the tile library
+#This data structure is not built to span multiple studies
 def build_genome_variants(genome_variants_filename, global_path):
     """
     Input Files:
         genome_variants_file format:
-           genome_variant_id, start_tile_position, start_increment, end_increment, end_tile_position, names (aliases), reference_bases, \
-                alternate_bases, info (in psql-readable json), created, last_modified
+           genome_variant_id, assembly_int, chrom_int, locus_begin_int, locus_end_int, reference_bases, alternate_bases, \
+                names (aliases), info (in psql-readable json), created, last_modified
 
     Return values:
         HG19_GENOME_VARIANTS[(chrom_name, locus_beg_int, locus_end_int, ref_seq, var_seq)] = genome_variant_id

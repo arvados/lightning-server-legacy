@@ -9,13 +9,13 @@ class GenomeVariantAdmin(admin.ModelAdmin):
     search_fields = ['names', 'info']
     extra = 0
 
-    
+
 class TileLocusAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'assembly', 'chromosome')
     list_filter = ['assembly', 'chromosome']
     extra = 0
     can_delete=False
-    
+
 class TileVarAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'length', 'md5sum')
     extra = 0
@@ -28,9 +28,9 @@ class TileVarAdmin(admin.ModelAdmin):
     can_delete=False
 
 class TileAdmin(admin.ModelAdmin):
-    list_display = ('getTileString', 'created')
+    list_display = ('get_tile_string', 'created')
     can_delete=False
-    
+
 admin.site.register(Tile, TileAdmin)
 admin.site.register(TileVariant, TileVarAdmin)
 admin.site.register(TileLocusAnnotation, TileLocusAdmin)
