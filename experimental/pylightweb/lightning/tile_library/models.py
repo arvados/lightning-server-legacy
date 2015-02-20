@@ -1,10 +1,8 @@
 """
 Tile Library Models
 
-Does not include information about the population - Use Lantern for that
-Population data includes:
-    number of people with particular variant
-    color mapping for slippy map
+Does not include information about the population - Use Lantern for that case
+
 """
 
 import string
@@ -19,7 +17,8 @@ import tile_library.basic_functions as basic_fns
 import tile_library_generation.validators as validation_fns
 import tile_library.human_readable_functions as human_readable_fns
 from errors import TileLibraryValidationError
-from tile_library.constants import TAG_LENGTH, SUPPORTED_ASSEMBLY_CHOICES, CHR_CHOICES, STATISTICS_TYPE_CHOICES
+from tile_library.constants import TAG_LENGTH, SUPPORTED_ASSEMBLY_CHOICES, \
+    CHR_CHOICES, STATISTICS_TYPE_CHOICES, PATH, NUM_HEX_INDEXES_FOR_PATH
 
 def validate_json(text):
     try:
@@ -263,7 +262,7 @@ class GenomeVariant(models.Model):
             self.alternate_bases
         )
     def get_readable_chr_name(self):
-        return human_readable_fns.get_readable_chr_name(self.chromosome, self.alternate_chromosome_name)
+        return human_readable_fns.get_readable_chr_name(self.chromosome_int, self.alternate_chromosome_name)
     class Meta:
         #Ensures ordering by tilename
         ordering = ['chromosome', 'alternate_chromosome_name', 'locus_start_int']
@@ -312,8 +311,10 @@ class TileLocusAnnotation(models.Model):
         start_int(positive int): the 0 indexed start locus
         end_int(positive int): the 0 indexed end locus (exclusive)
 
-        tile(foreignkey): the Tile associated with this locus annotation
+        tile_position(foreignkey): the Tile associated with this locus annotation
             tile_locus_annotations: the related name for these annotations
+        tile_variant_value(positive int): the variant value of the tile variant containing the
+            reference sequence
     """
     assembly_int = models.PositiveSmallIntegerField(choices=SUPPORTED_ASSEMBLY_CHOICES, db_index=True)
     chromosome_int = models.PositiveSmallIntegerField(choices=CHR_CHOICES, db_index=True)
@@ -325,35 +326,31 @@ class TileLocusAnnotation(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         try:
-            tile_var_int = basic_fns.convert_position_int_to_tile_variant_int(int(self.tile.tile_position_int), variant_value=self.tile_variant_value)
-            length = TileVariant.objects.get(tile_variant_name=tile_var_int).length
-            validation_fns.validate_locus(TAG_LENGTH, length, self.begin_int, self.end_int)
+            tile_var_int = basic_fns.convert_position_int_to_tile_variant_int(int(self.tile_position_id), variant_value=int(self.tile_variant_value))
+            length = TileVariant.objects.get(tile_variant_int=tile_var_int).length
+            validation_fns.validate_locus(TAG_LENGTH, length, self.start_int, self.end_int)
         except TileVariant.DoesNotExist:
             raise ValidationError({'tile':'tile does not have a tilevariant (with a variant value of 0) associated with it'})
         except TileLibraryValidationError as e:
             raise ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
         super(TileLocusAnnotation, self).save(*args, **kwargs)
     def get_readable_chr_name(self):
-        if self.chromosome == 26:
-            return self.chromosome_name
-        else:
-            chrom_index = [i for i,j in self.CHR_CHOICES]
-            return self.CHR_CHOICES[chrom_index.index(self.chromosome)][1]
+        return human_readable_fns.get_readable_chr_name(self.chromosome_int, self.alternate_chromosome_name)
     def __unicode__(self):
-        assembly_index = [i for i,j in self.SUPPORTED_ASSEMBLY_CHOICES]
-        humanReadable = self.SUPPORTED_ASSEMBLY_CHOICES[assembly_index.index(self.assembly)][1]
-        return self.tile.getTileString() + ": " + humanReadable + " Translation"
+        assembly = human_readable_fns.get_readable_assembly_name(self.assembly_int)
+        return "%s: %s Translation" % (self.tile_position.get_string(), assembly)
     class Meta:
         #Ensures ordering by tilename
-        ordering = ['tile']
-        unique_together = ("tile", "assembly")
+        ordering = ['tile_position']
+        unique_together = ("tile_position", "assembly_int")
 
 class GenomeStatistic(models.Model):
     """
-    postgres provides good querying capability, but scientists also want statistics...
+        Provides some basic statistics capabilites and a running counter of the maximum
+        number of positions spanned in each path
     """
 
-    statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=NAME_CHOICES)
+    statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=STATISTICS_TYPE_CHOICES)
     path_name = models.IntegerField(db_index=True, default=-1, validators=[validate_gte_neg_one])
     num_of_positions = models.BigIntegerField(validators=[validate_positive])
     num_of_tiles = models.BigIntegerField(validators=[validate_positive])
@@ -364,15 +361,15 @@ class GenomeStatistic(models.Model):
             raise ValidationError({'num_of_positions-num_of_tiles': "No tiles can exist if no positions exist"})
         if self.num_of_positions  > self.num_of_tiles:
             raise ValidationError({'num_of_positions-num_of_tiles': "Number of tiles must be larger than or equal to the number of positions"})
-        if self.path_name == -1 and self.statistics_type == 27:
-            raise ValidationError({'path_name_too_low': 'If statistics type is equal to 27, path name must be greater than -1'})
+        if self.path_name == -1 and self.statistics_type == PATH:
+            raise ValidationError({'path_name_too_low': 'If statistics type is equal to %i, path name must be greater than -1' % (PATH)})
         super(GenomeStatistic, self).save(*args, **kwargs)
     def __unicode__(self):
-        if self.statistics_type < 27:
-            name_index = [i for i,j in self.NAME_CHOICES]
-            humanReadable = self.NAME_CHOICES[name_index.index(self.statistics_type)][1]
+        if self.statistics_type < PATH:
+            name_index = [i for i,j in STATISTICS_TYPE_CHOICES]
+            humanReadable = STATISTICS_TYPE_CHOICES[name_index.index(self.statistics_type)][1]
             return humanReadable + " Statistics"
         else:
-            return "Path " + str(self.path_name) + " Statistics"
+            return "Path %s Statistics" % (hex(self.path_name).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH))
     class Meta:
         unique_together = ("statistics_type", "path_name")

@@ -11,9 +11,9 @@ from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
 
 from errors import MissingStatisticsError, InvalidGenomeError, ExistingStatisticsError
-from tile_library.models import TAG_LENGTH, Tile, TileLocusAnnotation, TileVariant, GenomeVariant, GenomeVariantTranslation, GenomeStatistic
+from tile_library.constants import TAG_LENGTH
+from tile_library.models import Tile, TileLocusAnnotation, TileVariant, GenomeVariant, GenomeVariantTranslation, GenomeStatistic
 import tile_library.basic_functions as basic_fns
-import tile_library.functions as fns
 import tile_library.generate_stats as gen_stats
 import tile_library.query_functions as query_fns
 

@@ -51,6 +51,7 @@ CHR_X = 23
 CHR_Y = 24
 CHR_M = 25
 CHR_OTHER = 26
+CHR_NONEXISTANT = 27
 
 CHR_CHOICES = (
     (CHR_1, 'chr1'),
