@@ -6,8 +6,7 @@ import string
 from django.db.models import Q
 
 from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant, Tile
-import tile_library.basic_functions as basic_fns
-import tile_library.functions as fns
+import tile_library.basic_functions as fns
 from errors import EmptyPathError, MissingStatisticsError
 
 def print_friendly_cgf_translator(cgf_translator):

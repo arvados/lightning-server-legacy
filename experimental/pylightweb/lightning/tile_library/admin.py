@@ -4,15 +4,15 @@ from django.contrib import admin
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, GenomeVariant
 
 class GenomeVariantAdmin(admin.ModelAdmin):
-    list_display = ('__unicode__', 'start_tile_position', 'created', 'last_modified')
+    list_display = ('__unicode__', 'chromosome_int', 'locus_start_int', 'created', 'last_modified')
     list_filter = ['last_modified']
     search_fields = ['names', 'info']
     extra = 0
 
 
 class TileLocusAdmin(admin.ModelAdmin):
-    list_display = ('__unicode__', 'assembly', 'chromosome')
-    list_filter = ['assembly', 'chromosome']
+    list_display = ('__unicode__', 'assembly_int', 'chromosome_int')
+    list_filter = ['assembly_int', 'chromosome_int']
     extra = 0
     can_delete=False
 
@@ -28,7 +28,7 @@ class TileVarAdmin(admin.ModelAdmin):
     can_delete=False
 
 class TileAdmin(admin.ModelAdmin):
-    list_display = ('get_tile_string', 'created')
+    list_display = ('get_string', 'created')
     can_delete=False
 
 admin.site.register(Tile, TileAdmin)

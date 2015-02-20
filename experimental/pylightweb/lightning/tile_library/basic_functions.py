@@ -11,7 +11,7 @@ from tile_library.constants import NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR
     CHR_NONEXISTANT
 
 
-cgf_format_string = '^([0-9a-f]{%i}\.[0-9a-f]{%i}\.[0-9a-f]{%i})\.[0-9a-f]{%i}(?:\+[0-9a-f]+$|$)' % (
+cgf_format_string = '^([0-9a-f]{%i}\.[0-9a-f]{%i}\.[0-9a-f]{%i})\.[0-9a-f]{%i}(?:\+([0-9a-f]+)$|$)' % (
     NUM_HEX_INDEXES_FOR_PATH,
     NUM_HEX_INDEXES_FOR_VERSION,
     NUM_HEX_INDEXES_FOR_STEP,
@@ -93,8 +93,15 @@ def convert_position_int_to_tile_variant_int(tile_int, variant_value=0):
         Expects integer, returns integer
         Raises TypeError and ValueError
     """
+    if type(variant_value) != int:
+        raise TypeError("Requires integer variant value")
+    if variant_value < 0:
+        raise ValueError("Requires positive variant value")
+    hex_variant_value = hex(variant_value).lstrip('0x').rstrip('L').zfill(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+    if len(hex_variant_value) > NUM_HEX_INDEXES_FOR_VARIANT_VALUE:
+        raise ValueError("Requires variant value integer. Given integer too large.")
     path, version, step = get_position_strings_from_position_int(tile_int)
-    return int(path+version+step+hex(variant_value).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_VARIANT_VALUE),16)
+    return int(path+version+step+hex_variant_value,16)
 def convert_tile_variant_int_to_position_int(tile_variant_int):
     """
         Converts tile variant integer to its position integer
@@ -115,7 +122,7 @@ def get_position_from_cgf_string(cgf_str):
     if matching == None:
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
     return int(string.join(matching.group(1).split('.'), ''), 16)
-def get_number_of_tiles_spanned(cgf_str):
+def get_number_of_tiles_spanned_from_cgf_string(cgf_str):
     """
         Returns integer corresponding to the number of positions spanned by a tilevariant encoded
             by a cgf string
@@ -127,14 +134,14 @@ def get_number_of_tiles_spanned(cgf_str):
     matching = re.match(cgf_format_string, cgf_str)
     if matching == None:
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
-    if matching.group(1) == None:
+    if matching.group(2) == None:
         return 1
     else:
-        return int(matching.group(1), 16)
+        return int(matching.group(2), 16)
 def get_min_position_and_tile_variant_from_path_int(path_int, path_version=0):
     """
         Takes a path integer and returns the minimum position integer and minimum tile variant integer
-            in that path. Assumes path version is 0
+            in that path
         Expects integer, returns 2 integers
         Raises TypeError and ValueError
     """
@@ -155,9 +162,9 @@ def get_min_position_and_tile_variant_from_chromosome_int(chr_int):
     """
         Takes chromosome integer and returns the minimum position integer and
             the minimum tile variant integer in that chromosome
-       Expects integer in CHR_CHOICES or equal to CHR_NONEXISTANT, returns 2 integers
-       CHR_NONEXISTANT is for determining the maximum integer possible in the database
-       Raisese TypeError and ValueError
+        Expects integer in CHR_CHOICES or equal to CHR_NONEXISTANT, returns 2 integers
+        CHR_NONEXISTANT is for determining the maximum integer possible in the database
+        Raises TypeError and ValueError
     """
     if type(chr_int) != int:
         raise TypeError("Expects integer for chromosome int")
