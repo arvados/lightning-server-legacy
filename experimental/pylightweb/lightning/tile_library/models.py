@@ -16,7 +16,7 @@ from django.core.exceptions import ValidationError
 import tile_library.basic_functions as basic_fns
 import tile_library_generation.validators as validation_fns
 import tile_library.human_readable_functions as human_readable_fns
-from errors import TileLibraryValidationError
+from errors import TileLibraryValidationError, MissingLocusError
 from tile_library.constants import TAG_LENGTH, SUPPORTED_ASSEMBLY_CHOICES, \
     CHR_CHOICES, STATISTICS_TYPE_CHOICES, PATH, NUM_HEX_INDEXES_FOR_PATH
 
@@ -83,7 +83,7 @@ class Tile(models.Model):
             validation_fns.validate_tile(self.tile_position_int)
             super(Tile, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
-            raise ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
+            raise ValidationError(e.value)
     def get_string(self):
         """Displays hex indexing for tile """
         return basic_fns.get_position_string_from_position_int(int(self.tile_position_int))
@@ -131,12 +131,14 @@ class TileLocusAnnotation(models.Model):
         try:
             tile_var_int = basic_fns.convert_position_int_to_tile_variant_int(int(self.tile_position_id), variant_value=int(self.tile_variant_value))
             length = TileVariant.objects.get(tile_variant_int=tile_var_int).length
-            validation_fns.validate_locus(TAG_LENGTH, length, self.start_int, self.end_int)
+            validation_fns.validate_locus(self.chromosome_int, self.tile_position_id, TAG_LENGTH, length, self.start_int, self.end_int)
         except TileVariant.DoesNotExist:
-            raise ValidationError({'tile':'tile does not have a tilevariant (with a variant value of 0) associated with it'})
+            raise ValidationError({'tile':'tile does not have a tilevariant (with a variant value of %i) associated with it' % (self.tile_variant_value)})
         except TileLibraryValidationError as e:
-            raise ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
+            raise ValidationError(e.value)
         super(TileLocusAnnotation, self).save(*args, **kwargs)
+    def get_reference_sequence(self):
+        return TileVariant.objects.filter(tile_id=self.tile_position).get(variant_value=self.tile_variant_value).sequence
     def get_readable_chr_name(self):
         return human_readable_fns.get_readable_chr_name(self.chromosome_int, self.alternate_chromosome_name)
     def __unicode__(self):
@@ -185,24 +187,57 @@ class TileVariant(models.Model):
     def save(self, *args, **kwargs):
         try:
             self.full_clean()
+            end_tile = None
+            if self.num_positions_spanned > 1:
+                end_tile = Tile.objects.get(tile_position_int=self.tile_id+self.num_positions_spanned-1)
+                #Tiles need to be on same path and version (this also ensures they are on the same chromosome from TileLocusAnnotation checking)
+                validation_fns.validate_spanning_tile(int(self.tile.tile_position_int), int(end_tile.tile_position_int), self.num_positions_spanned)
             start_tag = self.start_tag
             if start_tag == '':
                 start_tag = self.tile.start_tag
             end_tag = self.end_tag
             if end_tag == '':
                 end_tag = self.tile.end_tag
+                if end_tile != None:
+                    end_tag = end_tile.end_tag
             validation_fns.validate_tile_variant(
-                TAG_LENGTH, self.tile_id, self.tile_variant_int, self.variant_value, self.sequence, self.length, self.md5sum, start_tag, end_tag
+                self.tile_id, self.tile_variant_int, self.variant_value, self.sequence, self.length, self.md5sum, start_tag, end_tag
             )
             super(TileVariant, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
-            raise ValidationError("Unable to save TileVariant as it conflicts with validation expectations: " + str(e))
+            raise ValidationError(e.value)
+        except Tile.DoesNotExist as e:
+            raise ValidationError({'num_positions_spanned': 'tile with pk=%i does not exist' % (self.tile_id+self.num_positions_spanned-1)})
     def get_string(self):
         """Displays hex indexing for tile variant"""
         return basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_int))
     get_string.short_description='Variant Name'
     def is_reference(self, assembly_int):
-        return int(self.variant_value) == TileLocusAnnotation.objects.filter(tile_position_id=self.tile_id).get(assembly_int=assembly_int).tile_variant_value
+        if type(assembly_int) != int:
+            raise ValueError("assembly_int must be of type int")
+        if assembly_int not in [i for i,j in SUPPORTED_ASSEMBLY_CHOICES]:
+            raise ValueError("%i not a supported assembly choice" % (assembly_int))
+        try:
+            return int(self.variant_value) == TileLocusAnnotation.objects.filter(tile_position_id=self.tile_id).get(assembly_int=assembly_int).tile_variant_value
+        except TileLocusAnnotation.DoesNotExist:
+            raise MissingLocusError("A locus for assembly %i not found for tile %s" % (assembly_int, str(self.tile)))
+    def get_locus(self, assembly_int):
+        if type(assembly_int) != int:
+            raise ValueError("assembly_int must be of type int")
+        if assembly_int not in [i for i,j in SUPPORTED_ASSEMBLY_CHOICES]:
+            raise ValueError("%i not a supported assembly choice" % (assembly_int))
+        try:
+            start_tile = self.tile_id
+            end_tile = self.tile_id+self.num_positions_spanned-1
+            start_locus = TileLocusAnnotation.objects.filter(tile_position_id=start_tile).get(assembly_int=assembly_int)
+            if start_tile == end_tile:
+                return start_locus.start_int, start_locus.end_int
+            end_locus = TileLocusAnnotation.objects.filter(tile_position_id=end_tile).get(assembly_int=assembly_int)
+            return start_locus.start_int, end_locus.end_int
+        except TileLocusAnnotation.DoesNotExist:
+            start_str = basic_fns.get_position_string_from_position_int(start_tile)
+            end_str = basic_fns.get_position_string_from_position_int(end_tile)
+            raise MissingLocusError("A locus for assembly %i not found for tiles %s-%s" % (assembly_int, start_str, end_str))
     def get_base_at_position(self, position_int):
         position_int = int(position_int) # can raise value error: will be caught downstream
         if position_int >= self.length:
@@ -235,6 +270,10 @@ class TileVariant(models.Model):
 
 class GenomeVariant(models.Model):
     """
+        Does not check:
+            if all tile_variants have an assembly_int that matches
+            if all tile_variants are in the correct chromosome
+
         Implements a Genome Variant object (SNP, SUB, or INDEL) that can be associated with multiple TileVariants.
         Many-to-Many relation with TileVariant.
         Designed to preserve variants called from a particular variant caller, run on data before loaded into lightning
@@ -293,12 +332,12 @@ class GenomeVariant(models.Model):
         validators=[RegexValidator(regex='[ACGT-]+', message="Not a valid sequence")],
         )
     names = models.TextField(help_text="Tab-separated aliases for this variant (rsID tags, RefSNP id, etc.",
-                             blank=True)
+                             blank=True, db_index=True)
     info = models.TextField(
         help_text="Json-formatted. Known keys are 'source': [what generated the variant],\
                    'phenotype': [phenotypes associated with this annotation], 'amino_acid': [predicted amino-acid changes],\
                    'ucsc_trans': [UCSC translation (picked up from GFF files), and 'other': [Other GFF-file related annotations]",
-        validators=[validate_json], db_index=True
+        validators=[validate_json], db_index=True, blank=True
         )
     created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -332,8 +371,8 @@ class GenomeVariantTranslation(models.Model):
         start (integer): Positive integer, zero-indexed, relative to start of the TileVariant
         end (integer): Positive integer, zero-indexed, exclusive, relative to the start of the TileVariant
     """
-    tile_variant = models.ForeignKey(TileVariant, related_name='translation_to_genome_variant')
-    genome_variant = models.ForeignKey(GenomeVariant, related_name='translation_to_tile_variant')
+    tile_variant = models.ForeignKey(TileVariant, related_name='translations_to_genome_variant')
+    genome_variant = models.ForeignKey(GenomeVariant, related_name='translations_to_tile_variant')
     start = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant")
     end = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant. Exclusive")
     def save(self, *args, **kwargs):
@@ -349,7 +388,6 @@ class GenomeStatistic(models.Model):
         Provides some basic statistics capabilites and a running counter of the maximum
         number of positions spanned in each path
     """
-
     statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=STATISTICS_TYPE_CHOICES)
     path_name = models.IntegerField(db_index=True, default=-1)#, validators=[validate_gte_neg_one]
     num_of_positions = models.BigIntegerField(validators=[validate_positive])
@@ -367,11 +405,6 @@ class GenomeStatistic(models.Model):
             raise ValidationError({'path_name': 'If statistics type is not equal to %i, path name must be exactly -1' % (PATH)})
         super(GenomeStatistic, self).save(*args, **kwargs)
     def __unicode__(self):
-        if self.statistics_type < PATH:
-            name_index = [i for i,j in STATISTICS_TYPE_CHOICES]
-            humanReadable = STATISTICS_TYPE_CHOICES[name_index.index(self.statistics_type)][1]
-            return humanReadable + " Statistics"
-        else:
-            return "Path %s Statistics" % (hex(self.path_name).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH))
+        return human_readable_fns.get_readable_genome_statistics_name(self.statistic_type, path=self.path_name) + "Statistics"
     class Meta:
         unique_together = ("statistics_type", "path_name")

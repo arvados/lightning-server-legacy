@@ -1,3 +1,12 @@
+class MissingLocusError(Exception):
+    """
+        Raised when the query given is valid, but no loci were found to match it
+    """
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class LocusOutOfRangeException(Exception):
     def __init__(self, value):
         self.value = value
