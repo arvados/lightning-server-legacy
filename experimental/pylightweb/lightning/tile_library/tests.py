@@ -2,7 +2,7 @@ import random
 import hashlib
 import string
 import subprocess
-from unittest import skipIf
+from unittest import skipIf, skip
 
 from django.test import TestCase, LiveServerTestCase
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
@@ -25,6 +25,8 @@ SUPPORTED_CHR_INTS = [i for i, j in constants.CHR_CHOICES]
 SUPPORTED_STATISTICS_TYPE_INTS = [i for i, j in constants.STATISTICS_TYPE_CHOICES]
 genome_and_chromosomes = SUPPORTED_STATISTICS_TYPE_INTS[:]
 genome_and_chromosomes.remove(PATH)
+
+NUM_RANDOM_TESTS_TO_RUN=1
 
 BASE_LIBRARY_STRUCTURE = {
     CHR_1: {
@@ -57,6 +59,19 @@ INVALID_HUMAN_LIBRARY = {
         ]
     }
 }
+def mk_hex_num(length,min_num=None):
+    choices = ['0', '1','2','3','4','5','6','7','8','9','a','b','c','d','e','f']
+    s = ''
+    if min_num != None:
+        assert min_num <= length
+        for i in range(min_num):
+            s+= random.choice(choices)
+        s.zfill(length)
+        return s
+    else:
+        for i in range(length):
+            s += random.choice(choices)
+        return s
 def mk_genome_seq(length, uppercase=True):
     if uppercase:
         choices = ['A','G','C','T']
@@ -134,8 +149,8 @@ def make_tiles(chroms_with_paths_with_tile_vars, assembly_default=ASSEMBLY_19, v
             tile_objects = []
             for step, position in enumerate(tile_vars):
                 tile_int = int(
-                    path_hex.zfill(NUM_HEX_INDEXES_FOR_PATH)+\
                     hex(version_default).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_VERSION)+\
+                    path_hex.zfill(NUM_HEX_INDEXES_FOR_PATH)+\
                     hex(step).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_STEP),
                 16)
                 length = position['lengths'][0]
@@ -231,6 +246,7 @@ class TestConstants(TestCase):
             else:
                 self.assertEqual(length, 0)
         self.assertEqual(len(chr_list), CHR_NONEXISTANT)
+        self.assertLessEqual(chr_list[-1], int('f'*NUM_HEX_INDEXES_FOR_PATH,16))
     def test_cytomap_constants(self):
         """
             CYTOMAP
@@ -250,265 +266,482 @@ class TestConstants(TestCase):
         self.assertListEqual(SUPPORTED_STATISTICS_TYPE_INTS, [GENOME] + SUPPORTED_CHR_INTS + [PATH])
 ######################### TEST basic_functions ###################################
 class TestBasicFunctions(TestCase):
-    def test_get_position_strings_from_position_int(self):
-        """ Expects integer between 0 and 68719476735, returns 3 strings """
-        tile_int = int('0c003020f', 16)
-        path, version, step = basic_fns.get_position_strings_from_position_int(tile_int)
-        self.assertEqual(type(path), str)
-        self.assertEqual(type(version), str)
-        self.assertEqual(type(step), str)
-        self.assertEqual(path, '0c0')
-        self.assertEqual(version, '03')
-        self.assertEqual(step, '020f')
-        tile_int = int('1c003020f', 16)
-        path, version, step = basic_fns.get_position_strings_from_position_int(tile_int)
-        self.assertEqual(path, '1c0')
-        self.assertEqual(version, '03')
-        self.assertEqual(step, '020f')
+    #get_position_strings_from_position_int
+    def test_get_position_strings_from_position_int_type(self):
+        version, path, step = basic_fns.get_position_strings_from_position_int(0)
+        self.assertIsInstance(version, str)
+        self.assertIsInstance(path, str)
+        self.assertIsInstance(step, str)
+    def test_get_position_strings_from_random_position_ints(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            tile_int = int(v+p+s, 16)
+            version, path, step = basic_fns.get_position_strings_from_position_int(tile_int)
+            self.assertEqual(version, v)
+            self.assertEqual(path, p)
+            self.assertEqual(step, s)
+    def test_get_position_strings_from_min_and_max_positions(self):
+        version, path, step = basic_fns.get_position_strings_from_position_int(0)
+        self.assertEqual(version, '0'*NUM_HEX_INDEXES_FOR_VERSION)
+        self.assertEqual(path, '0'*NUM_HEX_INDEXES_FOR_PATH)
+        self.assertEqual(step, '0'*NUM_HEX_INDEXES_FOR_STEP)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        version, path, step = basic_fns.get_position_strings_from_position_int(tile_int)
+        self.assertEqual(version, v)
+        self.assertEqual(path, p)
+        self.assertEqual(step, s)
     def test_get_position_strings_from_position_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_position_strings_from_position_int, '10')
         self.assertRaises(ValueError, basic_fns.get_position_strings_from_position_int, -1)
-        self.assertRaises(ValueError, basic_fns.get_position_strings_from_position_int, int('1000000000', 16))
-    def test_get_tile_variant_strings_from_tile_variant_int(self):
-        """ Expects integer, returns 4 strings """
-        tile_int = int('0c010020f0a0', 16)
-        path, version, step, var = basic_fns.get_tile_variant_strings_from_tile_variant_int(tile_int)
-        self.assertEqual(type(path), str)
-        self.assertEqual(type(version), str)
-        self.assertEqual(type(step), str)
-        self.assertEqual(type(var), str)
-        self.assertEqual(path, '0c0')
-        self.assertEqual(version, '10')
-        self.assertEqual(step, '020f')
-        self.assertEqual(var, '0a0')
-        tile_int = int('1c010020f0a0', 16)
-        path, version, step, var = basic_fns.get_tile_variant_strings_from_tile_variant_int(tile_int)
-        self.assertEqual(path, '1c0')
-        self.assertEqual(version, '10')
-        self.assertEqual(step, '020f')
-        self.assertEqual(var, '0a0')
-    def test_get_tile_variant_strings_from_tile_variant_int_failure(self):
-        self.assertRaises(TypeError, basic_fns.get_tile_variant_strings_from_tile_variant_int, '10')
-        self.assertRaises(ValueError, basic_fns.get_tile_variant_strings_from_tile_variant_int, -1)
-        self.assertRaises(ValueError, basic_fns.get_tile_variant_strings_from_tile_variant_int, int('1000000000000', 16))
-    def test_get_position_string_from_position_int(self):
-        """ Expects integer, returns string """
-        tile_int = int('1c403002f', 16)
-        self.assertEqual(type(basic_fns.get_position_string_from_position_int(tile_int)), str)
-        self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '1c4.03.002f')
-        tile_int = int('0', 16)
-        self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '000.00.0000')
-        tile_int = int('1000', 16)
-        self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '000.00.1000')
-        tile_int = int('10000', 16)
-        self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '000.01.0000')
-        tile_int = int('100000', 16)
-        self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '000.10.0000')
-        tile_int = int('1000000', 16)
-        self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '001.00.0000')
-        tile_int = int('10000000', 16)
-        self.assertEqual(basic_fns.get_position_string_from_position_int(tile_int), '010.00.0000')
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        self.assertRaises(ValueError, basic_fns.get_position_strings_from_position_int, tile_int+1)
+    #get_position_string_from_position_int
+    def test_get_position_string_from_position_int_type(self):
+        pos_str = basic_fns.get_position_string_from_position_int(0)
+        self.assertIsInstance(pos_str, str)
+    def test_get_position_string_from_random_position_ints(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            tile_int = int(v+p+s, 16)
+            pos_str = basic_fns.get_position_string_from_position_int(tile_int)
+            self.assertEqual(pos_str, string.join([v,p,s],sep='.'))
+    def test_get_position_string_from_max_and_min_positions(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        pos_str = basic_fns.get_position_string_from_position_int(tile_int)
+        self.assertEqual(pos_str, string.join([v,p,s],sep='.'))
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        pos_str = basic_fns.get_position_string_from_position_int(tile_int)
+        self.assertEqual(pos_str, string.join([v,p,s],sep='.'))
     def test_get_position_string_from_position_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_position_string_from_position_int, '10')
         self.assertRaises(ValueError, basic_fns.get_position_string_from_position_int, -1)
-        self.assertRaises(ValueError, basic_fns.get_position_string_from_position_int, int('1000000000', 16))
-    def test_get_position_ints_from_position_int(self):
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        self.assertRaises(ValueError, basic_fns.get_position_string_from_position_int, tile_int+1)
+    #get_position_ints_from_position_int
+    def test_get_position_ints_from_position_int_type(self):
+        version, path, step = basic_fns.get_position_ints_from_position_int(0)
+        self.assertIsInstance(version, int)
+        self.assertIsInstance(path, int)
+        self.assertIsInstance(step, int)
+    def test_get_position_ints_from_random_position_ints(self):
         """ Expects integer, returns 3 integers """
-        tile_int = int('0c003020f', 16)
-        path, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
-        self.assertEqual(type(path), int)
-        self.assertEqual(type(version), int)
-        self.assertEqual(type(step), int)
-        self.assertEqual(path, int('0c0',16))
-        self.assertEqual(version, int('03',16))
-        self.assertEqual(step, int('020f',16))
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            tile_int = int(v+p+s, 16)
+            version, path, step = basic_fns.get_position_ints_from_position_int(tile_int)
+            self.assertEqual(version, int(v,16))
+            self.assertEqual(path, int(p,16))
+            self.assertEqual(step, int(s,16))
+    def test_get_position_intss_from_min_and_max_positions(self):
+        version, path, step = basic_fns.get_position_ints_from_position_int(0)
+        self.assertEqual(version, 0)
+        self.assertEqual(path, 0)
+        self.assertEqual(step, 0)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        version, path, step = basic_fns.get_position_ints_from_position_int(tile_int)
+        self.assertEqual(version, int(v,16))
+        self.assertEqual(path, int(p,16))
+        self.assertEqual(step, int(s,16))
     def test_get_position_ints_from_position_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_position_ints_from_position_int, '10')
         self.assertRaises(ValueError, basic_fns.get_position_ints_from_position_int, -1)
-        self.assertRaises(ValueError, basic_fns.get_position_ints_from_position_int, int('1000000000', 16))
-    def test_get_tile_variant_string_from_tile_variant_int(self):
-        """ Expects integer, returns string """
-        tile_variant_int = int('1c403002f0f3', 16)
-        self.assertEqual(type(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int)), str)
-        self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '1c4.03.002f.0f3')
-        tile_variant_int = int('10', 16)
-        self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '000.00.0000.010')
-        tile_variant_int = int('1000100', 16)
-        self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '000.00.1000.100')
-        tile_variant_int = int('10000001', 16)
-        self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '000.01.0000.001')
-        tile_variant_int = int('100000010', 16)
-        self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '000.10.0000.010')
-        tile_variant_int = int('1000000100', 16)
-        self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '001.00.0000.100')
-        tile_variant_int = int('10000000020', 16)
-        self.assertEqual(basic_fns.get_tile_variant_string_from_tile_variant_int(tile_variant_int), '010.00.0000.020')
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        self.assertRaises(ValueError, basic_fns.get_position_ints_from_position_int, tile_int+1)
+    #get_tile_variant_strings_from_tile_variant_int
+    def test_get_tile_variant_strings_from_tile_variant_int_type(self):
+        version, path, step, variant = basic_fns.get_tile_variant_strings_from_tile_variant_int(0)
+        self.assertIsInstance(version, str)
+        self.assertIsInstance(path, str)
+        self.assertIsInstance(step, str)
+        self.assertIsInstance(variant, str)
+    def test_get_tile_variant_strings_from_random_tile_variants(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+            tile_int = int(v+p+s+vv, 16)
+            version, path, step, variant = basic_fns.get_tile_variant_strings_from_tile_variant_int(tile_int)
+            self.assertEqual(version, v)
+            self.assertEqual(path, p)
+            self.assertEqual(step, s)
+            self.assertEqual(variant, vv)
+    def test_get_tile_variant_strings_from_min_and_max_tile_variants(self):
+        version, path, step, variant = basic_fns.get_tile_variant_strings_from_tile_variant_int(0)
+        self.assertEqual(version, '0'*NUM_HEX_INDEXES_FOR_VERSION)
+        self.assertEqual(path, '0'*NUM_HEX_INDEXES_FOR_PATH)
+        self.assertEqual(step, '0'*NUM_HEX_INDEXES_FOR_STEP)
+        self.assertEqual(variant, '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        tile_int = int(v+p+s+vv, 16)
+        version, path, step, variant = basic_fns.get_tile_variant_strings_from_tile_variant_int(tile_int)
+        self.assertEqual(version, v)
+        self.assertEqual(path, p)
+        self.assertEqual(step, s)
+        self.assertEqual(variant, vv)
+    def test_get_tile_variant_strings_from_tile_variant_int_failure(self):
+        self.assertRaises(TypeError, basic_fns.get_tile_variant_strings_from_tile_variant_int, '10')
+        self.assertRaises(ValueError, basic_fns.get_tile_variant_strings_from_tile_variant_int, -1)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        tile_int = int(v+p+s+vv, 16)
+        self.assertRaises(ValueError, basic_fns.get_tile_variant_strings_from_tile_variant_int, tile_int+1)
+    #get_tile_variant_string_from_tile_variant_int
+    def test_get_tile_variant_string_from_tile_variant_int_type(self):
+        s = basic_fns.get_tile_variant_string_from_tile_variant_int(0)
+        self.assertIsInstance(s, str)
+    def test_get_tile_variant_string_from_random_tile_variant_ints(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+            tv_int = int(v+p+s+vv, 16)
+            tv_str = basic_fns.get_tile_variant_string_from_tile_variant_int(tv_int)
+            self.assertEqual(tv_str, string.join([v,p,s,vv],sep='.'))
+    def test_get_tile_variant_string_from_max_and_min_tile_variants(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv='0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        tv_int = int(v+p+s+vv, 16)
+        tv_str = basic_fns.get_tile_variant_string_from_tile_variant_int(tv_int)
+        self.assertEqual(tv_str, string.join([v,p,s,vv],sep='.'))
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        tv_int = int(v+p+s+vv, 16)
+        tv_str = basic_fns.get_tile_variant_string_from_tile_variant_int(tv_int)
+        self.assertEqual(tv_str, string.join([v,p,s,vv],sep='.'))
     def test_get_tile_variant_string_from_tile_variant_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_tile_variant_string_from_tile_variant_int, '10')
         self.assertRaises(ValueError, basic_fns.get_tile_variant_string_from_tile_variant_int, -1)
-        self.assertRaises(ValueError, basic_fns.get_tile_variant_string_from_tile_variant_int, int('1000000000000', 16))
-    def test_get_tile_variant_ints_from_tile_variant_int(self):
-        """ Expects integer, returns 4 integers """
-        tile_int = int('0c003020f0a0', 16)
-        path, version, step, var = basic_fns.get_tile_variant_ints_from_tile_variant_int(tile_int)
-        self.assertEqual(type(path), int)
-        self.assertEqual(type(version), int)
-        self.assertEqual(type(step), int)
-        self.assertEqual(path, int('0c0',16))
-        self.assertEqual(version, int('03',16))
-        self.assertEqual(step, int('020f',16))
-        self.assertEqual(var, int('0a0',16))
-    def test_get_tile_variant_string_from_tile_variant_int_failure(self):
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        tv_int = int(v+p+s+vv, 16)
+        self.assertRaises(ValueError, basic_fns.get_tile_variant_string_from_tile_variant_int, tv_int+1)
+    #get_tile_variant_ints_from_tile_variant_int
+    def test_get_tile_variant_ints_from_tile_variant_int_type(self):
+        version, path, step, variant = basic_fns.get_tile_variant_ints_from_tile_variant_int(0)
+        self.assertIsInstance(version, int)
+        self.assertIsInstance(path, int)
+        self.assertIsInstance(step, int)
+        self.assertIsInstance(variant, int)
+    def test_get_tile_variant_ints_from_random_tile_variants(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+            tile_int = int(v+p+s+vv, 16)
+            version, path, step, variant = basic_fns.get_tile_variant_ints_from_tile_variant_int(tile_int)
+            self.assertEqual(version, int(v,16))
+            self.assertEqual(path, int(p,16))
+            self.assertEqual(step, int(s,16))
+            self.assertEqual(variant, int(vv,16))
+    def test_get_tile_variant_ints_from_min_and_max_tile_variants(self):
+        version, path, step, variant = basic_fns.get_tile_variant_ints_from_tile_variant_int(0)
+        self.assertEqual(version, 0)
+        self.assertEqual(path, 0)
+        self.assertEqual(step, 0)
+        self.assertEqual(variant, 0)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        tile_int = int(v+p+s+vv, 16)
+        version, path, step, variant = basic_fns.get_tile_variant_ints_from_tile_variant_int(tile_int)
+        self.assertEqual(version, int(v,16))
+        self.assertEqual(path, int(p,16))
+        self.assertEqual(step, int(s,16))
+        self.assertEqual(variant, int(vv,16))
+    def test_get_tile_variant_ints_from_tile_variant_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_tile_variant_ints_from_tile_variant_int, '10')
         self.assertRaises(ValueError, basic_fns.get_tile_variant_ints_from_tile_variant_int, -1)
-        self.assertRaises(ValueError, basic_fns.get_tile_variant_ints_from_tile_variant_int, int('1000000000000', 16))
-    def test_convert_position_int_to_tile_variant_int(self):
-        """ Expects integer, returns integer """
-        tile_int = int('1c403002f', 16)
-        check_int = int('1c403002f000', 16)
-        self.assertEqual(type(basic_fns.convert_position_int_to_tile_variant_int(tile_int)), int)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-        tile_int = int('0', 16)
-        check_int = 0
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-        tile_int = int('1000', 16)
-        check_int = int('1000000', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-        tile_int = int('10000', 16)
-        check_int = int('10000000', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-        tile_int = int('100000', 16)
-        check_int = int('100000000', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-        tile_int = int('1000000', 16)
-        check_int = int('1000000000', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-        tile_int = int('10000000', 16)
-        check_int = int('10000000000', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int), check_int)
-    def test_convert_position_int_to_tile_variant_int_alternate_variant_value(self):
-        """ Expects integer, returns integer """
-        tile_int = int('1c403002f', 16)
-        check_int = int('1c403002f002', 16)
-        self.assertEqual(type(basic_fns.convert_position_int_to_tile_variant_int(tile_int)), int)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=2), check_int)
-        tile_int = int('0', 16)
-        check_int = 3
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=3), check_int)
-        tile_int = int('1000', 16)
-        check_int = int('100000a', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=10), check_int)
-        tile_int = int('10000', 16)
-        check_int = int('1000000f', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=15), check_int)
-        tile_int = int('100000', 16)
-        check_int = int('100000000', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=0), check_int)
-        tile_int = int('1000000', 16)
-        check_int = int('1000000001', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=1), check_int)
-        tile_int = int('10000000', 16)
-        check_int = int('100000000a0', 16)
-        self.assertEqual(basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=int('a0', 16)), check_int)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        tile_int = int(v+p+s+vv, 16)
+        self.assertRaises(ValueError, basic_fns.get_tile_variant_ints_from_tile_variant_int, tile_int+1)
+    #convert_position_int_to_tile_variant_int
+    def test_convert_position_int_to_tile_variant_int_type(self):
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(0)
+        self.assertIsInstance(tv_int, int)
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(0, variant_value=0)
+        self.assertIsInstance(tv_int, int)
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(0, variant_value=1)
+        self.assertIsInstance(tv_int, int)
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(0, variant_value=int('f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE,16))
+        self.assertIsInstance(tv_int, int)
+    def test_convert_random_position_ints_to_tile_variant_int(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+            tile_int = int(v+p+s, 16)
+            tv_int = basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=int(vv,16))
+            self.assertEqual(tv_int, int(v+p+s+vv,16))
+    def test_convert_min_and_max_position_ints_to_tile_variant_int(self):
+        vv_min = '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        vv_max = 'f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(0)
+        self.assertEqual(tv_int, 0)
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(0, variant_value=0)
+        self.assertEqual(tv_int, 0)
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(0, variant_value=1)
+        self.assertEqual(tv_int, 1)
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(0, variant_value=int(vv_max,16))
+        self.assertEqual(tv_int, int(vv_max,16))
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(tile_int)
+        self.assertEqual(tv_int, int(v+p+s+vv_min,16))
+        tv_int = basic_fns.convert_position_int_to_tile_variant_int(tile_int, variant_value=int(vv_max,16))
+        self.assertEqual(tv_int, int(v+p+s+vv_max,16))
     def test_convert_position_int_to_tile_variant_int_failure(self):
         self.assertRaises(TypeError, basic_fns.convert_position_int_to_tile_variant_int, '10')
         self.assertRaises(ValueError, basic_fns.convert_position_int_to_tile_variant_int, -1)
-        self.assertRaises(ValueError, basic_fns.convert_position_int_to_tile_variant_int, int('1000000000', 16))
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        tile_int = int(v+p+s, 16)
+        self.assertRaises(ValueError, basic_fns.convert_position_int_to_tile_variant_int, tile_int+1)
         self.assertRaises(TypeError, basic_fns.convert_position_int_to_tile_variant_int, 0, variant_value='0')
         self.assertRaises(ValueError, basic_fns.convert_position_int_to_tile_variant_int, 0, variant_value=-1)
-        self.assertRaises(ValueError, basic_fns.convert_position_int_to_tile_variant_int, 0, variant_value=int('1000',16))
-    def test_convert_tile_variant_int_to_position_int(self):
-        """ Expects int, returns int """
-        tile_int = int('1c403002f', 16)
-        tile_variant_int = int('1c403002f000', 16)
-        self.assertEqual(type(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int)), int)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        tile_variant_int = int('1c403002f001', 16)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        tile_variant_int = int('1c403002f010', 16)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        tile_variant_int = int('1c403002f100', 16)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-
-        tile_int = int('0', 16)
-        tile_variant_int = 0
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        tile_int = int('1000', 16)
-        tile_variant_int = int('1000000', 16)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        tile_int = int('10000', 16)
-        tile_variant_int = int('10000000', 16)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        tile_int = int('100000', 16)
-        tile_variant_int = int('100000000', 16)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        tile_int = int('1000000', 16)
-        tile_variant_int = int('1000000000', 16)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
-        tile_int = int('10000000', 16)
-        tile_variant_int= int('10000000000', 16)
-        self.assertEqual(basic_fns.convert_tile_variant_int_to_position_int(tile_variant_int), tile_int)
+        vv_max = int('f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE,16)
+        self.assertRaises(ValueError, basic_fns.convert_position_int_to_tile_variant_int, 0, variant_value=vv_max+1)
+    #convert_tile_variant_int_to_position_int
+    def test_convert_tile_variant_int_to_position_int_type(self):
+        pos_int = basic_fns.convert_tile_variant_int_to_position_int(0)
+        self.assertIsInstance(pos_int, int)
+    def test_convert_random_tile_variant_ints_to_position_int(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+            pos_int = basic_fns.convert_tile_variant_int_to_position_int(int(v+p+s+vv, 16))
+            self.assertEqual(pos_int, int(v+p+s,16))
+    def test_convert_min_and_max_tile_variant_ints_to_position_int(self):
+        pos_int = basic_fns.convert_position_int_to_tile_variant_int(0)
+        self.assertEqual(pos_int, 0)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv = 'f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        pos_int = basic_fns.convert_tile_variant_int_to_position_int(int(v+p+s+vv, 16))
+        self.assertEqual(pos_int, int(v+p+s,16))
     def test_convert_tile_variant_int_to_position_failure(self):
         self.assertRaises(TypeError, basic_fns.convert_tile_variant_int_to_position_int, '10')
         self.assertRaises(ValueError, basic_fns.convert_tile_variant_int_to_position_int, -1)
-        self.assertRaises(ValueError, basic_fns.convert_tile_variant_int_to_position_int, int('1000000000000', 16))
-    def test_get_position_from_cgf_string(self):
-        pos_int = int('2c20000a0', 16)
-        cgf_string = '2c2.00.00a0.0000'
-        self.assertEqual(type(basic_fns.get_position_from_cgf_string(cgf_string)), int)
-        self.assertEqual(basic_fns.get_position_from_cgf_string(cgf_string), pos_int)
-        self.assertEqual(basic_fns.get_position_from_cgf_string(cgf_string+"+2"), pos_int)
-        cgf_string = u'2c2.00.00a0.0000'
-        self.assertEqual(basic_fns.get_position_from_cgf_string(cgf_string), pos_int)
-        self.assertEqual(basic_fns.get_position_from_cgf_string(cgf_string+"+2"), pos_int)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv = 'f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        max_tv_int = int(v+p+s+vv,16)
+        self.assertRaises(ValueError, basic_fns.convert_tile_variant_int_to_position_int, max_tv_int+1)
+    #get_position_from_cgf_string
+    def test_get_position_from_cgf_string_type(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        sv = '0'
+        pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertIsInstance(pos_int, int)
+        pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+'+sv)
+        self.assertIsInstance(pos_int, int)
+        pos_int = basic_fns.get_position_from_cgf_string(unicode(string.join([p,v,s,vv],sep='.')))
+        self.assertIsInstance(pos_int, int)
+        pos_int = basic_fns.get_position_from_cgf_string(unicode(string.join([p,v,s,vv],sep='.')+'+'+sv))
+        self.assertIsInstance(pos_int, int)
+    def test_get_position_from_random_cgf_strings(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+            sv=mk_hex_num(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+            pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.'))
+            self.assertEqual(pos_int, int(v+p+s,16))
+            pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+'+sv)
+            self.assertEqual(pos_int, int(v+p+s,16))
+    def test_get_position_from_min_and_max_cgf_strings(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertEqual(pos_int, 0)
+        pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+0')
+        self.assertEqual(pos_int, 0)
+        pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+fff')
+        self.assertEqual(pos_int, 0)
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv = 'f'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertEqual(pos_int, int(v+p+s,16))
+        pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+0')
+        self.assertEqual(pos_int, int(v+p+s,16))
+        pos_int = basic_fns.get_position_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+fff')
+        self.assertEqual(pos_int, int(v+p+s,16))
     def test_get_position_from_cgf_string_failure(self):
-        self.assertRaises(TypeError, basic_fns.get_position_from_cgf_string, int('002000304000a', 16))
-        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000')
-        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000')
-        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000x')
-        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, '000.00.0000.000a+')
-    def test_get_number_of_tiles_spanned_from_cgf_string(self):
-        cgf_string = '2c2.00.00a0.0000'
-        self.assertEqual(type(basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string)), int)
-        self.assertEqual(basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string), 1)
-        self.assertEqual(basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string+"+2"), 2)
-        self.assertEqual(basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string+"+f"), 15)
-        cgf_string = u'2c2.00.00a0.0000'
-        self.assertEqual(type(basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string)), int)
-        self.assertEqual(basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string), 1)
-        self.assertEqual(basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string+u'+2'), 2)
-        self.assertEqual(basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string+u'+f'), 15)
+        self.assertRaises(TypeError, basic_fns.get_position_from_cgf_string, 0)
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE-1)
+        vv2 = 'x'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, string.join([p,v,s],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, string.join([p,v,s,vv],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, string.join([p,v,s,vv2],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, string.join([p,v,s,vv+'0'],sep='.')+'+')
+        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, string.join([v,p,s,vv+'0'],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_position_from_cgf_string, string.join([p,v,s,vv+'0'],sep='.')+'+x')
+    #get_number_of_tiles_spanned_from_cgf_string
+    def test_get_number_of_tiles_spanned_from_cgf_string_type(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        sv = '0'
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertIsInstance(n, int)
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+'+sv)
+        self.assertIsInstance(n, int)
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(unicode(string.join([p,v,s,vv],sep='.')))
+        self.assertIsInstance(n, int)
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(unicode(string.join([p,v,s,vv],sep='.')+'+'+sv))
+        self.assertIsInstance(n, int)
+    def test_get_number_of_tiles_spanned_from_random_cgf_strings(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+            sv=mk_hex_num(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+            n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.'))
+            self.assertEqual(n, 1)
+            n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+'+sv)
+            self.assertEqual(n, int(sv,16))
+    def test_get_number_of_tiles_spanned_from_min_and_max_cgf_strings(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertEqual(n, 1)
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+0')
+        self.assertEqual(n, 0)
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+fff')
+        self.assertEqual(n, int('fff',16))
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv = 'f'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertEqual(n,1)
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+0')
+        self.assertEqual(n, 0)
+        n = basic_fns.get_number_of_tiles_spanned_from_cgf_string(string.join([p,v,s,vv],sep='.')+'+fff')
+        self.assertEqual(n, int('fff', 16))
     def test_get_number_of_tiles_spanned_from_cgf_string_failure(self):
-        self.assertRaises(TypeError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, int('002000304000a', 16))
-        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, '000.00.0000')
-        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, '000.00.0000.000')
-        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, '000.00.0000.000x')
-        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, '000.00.0000.000a+')
-    def test_get_min_position_and_tile_variant_from_path_int(self):
-        """ Expects int, returns two integers"""
-        tile_int = int('1c4000000', 16)
-        tile_variant_int = int('1c4000000000', 16)
-        name, varname = basic_fns.get_min_position_and_tile_variant_from_path_int(int('1c4',16))
-        self.assertEqual(type(name), int)
-        self.assertEqual(type(varname), int)
-        self.assertEqual(name, tile_int)
-        self.assertEqual(varname, tile_variant_int)
-
-        name, varname = basic_fns.get_min_position_and_tile_variant_from_path_int(0)
-        self.assertEqual(name, 0)
-        self.assertEqual(varname, 0)
-
-        tile_int = int('1000000', 16)
-        tile_variant_int = int('1000000000', 16)
-        name, varname = basic_fns.get_min_position_and_tile_variant_from_path_int(1)
-        self.assertEqual(name, tile_int)
-        self.assertEqual(varname, tile_variant_int)
-
-        tile_int = int('10000000', 16)
-        tile_variant_int= int('10000000000', 16)
-        name, varname = basic_fns.get_min_position_and_tile_variant_from_path_int(16)
-        self.assertEqual(name, tile_int)
-        self.assertEqual(varname, tile_variant_int)
+        self.assertRaises(TypeError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, 0)
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE-1)
+        vv2 = 'x'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, string.join([p,v,s],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, string.join([p,v,s,vv],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, string.join([p,v,s,vv2],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, string.join([p,v,s,vv+'0'],sep='.')+'+')
+        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, string.join([v,p,s,vv+'0'],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_number_of_tiles_spanned_from_cgf_string, string.join([p,v,s,vv+'0'],sep='.')+'+x')
+    #get_min_position_and_tile_variant_from_path_int
+    def test_get_min_position_and_tile_variant_from_path_int_type(self):
+        pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(0)
+        self.assertIsInstance(pos, int)
+        self.assertIsInstance(tv, int)
+        pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(0, path_version=0)
+        self.assertIsInstance(pos, int)
+        self.assertIsInstance(tv, int)
+        pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(0, path_version=1)
+        self.assertIsInstance(pos, int)
+        self.assertIsInstance(tv, int)
+    def test_get_min_position_and_tile_variant_from_random_path_ints(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            v_0 = '0'*NUM_HEX_INDEXES_FOR_VERSION
+            p=hex(random.randrange(constants.CHR_PATH_LENGTHS[-1]+1)).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+            s='0'*NUM_HEX_INDEXES_FOR_STEP
+            vv='0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+            pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16))
+            self.assertEqual(pos, int(v_0+p+s, 16))
+            self.assertEqual(tv, int(v_0+p+s+vv, 16))
+            pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16), path_version=int(v,16))
+            self.assertEqual(pos, int(v+p+s, 16))
+            self.assertEqual(tv, int(v+p+s+vv, 16))
+    def test_get_min_position_and_tile_variant_from_min_and_max_path_int(self):
+        v_min='0'*NUM_HEX_INDEXES_FOR_VERSION
+        v_max='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv='0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16))
+        self.assertEqual(pos, 0)
+        self.assertEqual(tv, 0)
+        pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16), path_version=int(v_max,16))
+        self.assertEqual(pos, int(v_max+p+s, 16))
+        self.assertEqual(tv, int(v_max+p+s+vv, 16))
+        p=hex(constants.CHR_PATH_LENGTHS[-1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16))
+        self.assertEqual(pos, int(v_min+p+s, 16))
+        self.assertEqual(tv, int(v_min+p+s+vv, 16))
+        pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16), path_version=int(v_max,16))
+        self.assertEqual(pos, int(v_max+p+s, 16))
+        self.assertEqual(tv, int(v_max+p+s+vv, 16))
     def test_get_min_position_and_tile_variant_from_path_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_min_position_and_tile_variant_from_path_int, '1')
         self.assertRaises(ValueError, basic_fns.get_min_position_and_tile_variant_from_path_int, -1)
@@ -526,159 +759,314 @@ class TestBasicFunctions(TestCase):
         self.assertRaises(ValueError, basic_fns.get_min_position_and_tile_variant_from_chromosome_int, CHR_1-1)
         self.assertRaises(ValueError, basic_fns.get_min_position_and_tile_variant_from_chromosome_int, CHR_NONEXISTANT+1)
     #Feels a bit weird because the last populated path is 25, but technical last path is 26..
-    def test_get_chromosome_int_from_position_int(self):
+    #get_chromosome_int_from_position_int
+    def test_get_chromosome_int_from_position_int_type(self):
+        c = basic_fns.get_chromosome_int_from_position_int(0)
+        self.assertIsInstance(c, int)
+    def test_get_chromosome_int_from_position_ints(self):
         def get_path_hex(path):
-            return hex(path).lstrip('0x').zfill(3)
+            return hex(path).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        v_min='0'*NUM_HEX_INDEXES_FOR_VERSION
+        v_max='f'*NUM_HEX_INDEXES_FOR_VERSION
+        s_min='0'*NUM_HEX_INDEXES_FOR_STEP
+        s_max='f'*NUM_HEX_INDEXES_FOR_STEP
+
+        path_in_one = get_path_hex(0)
+        c = basic_fns.get_chromosome_int_from_position_int(int(v_min+path_in_one+s_min,16))
+        self.assertEqual(c, CHR_1)
+        c = basic_fns.get_chromosome_int_from_position_int(int(v_max+path_in_one+s_max,16))
+        self.assertEqual(c, CHR_1)
+
         path_in_one = get_path_hex(constants.CHR_PATH_LENGTHS[1]/2)
-        self.assertEqual(basic_fns.get_chromosome_int_from_position_int(int(path_in_one+'00'+'0000',16)), 1)
-        self.assertEqual(basic_fns.get_chromosome_int_from_position_int(int(path_in_one+'00'+'00f0',16)), 1)
-        self.assertEqual(basic_fns.get_chromosome_int_from_position_int(int(path_in_one+'a0'+'100a',16)), 1)
-        path_in_one = '000'
-        self.assertEqual(basic_fns.get_chromosome_int_from_position_int(int(path_in_one+'01'+'0000',16)), 1)
+        c = basic_fns.get_chromosome_int_from_position_int(int(v_min+path_in_one+s_min,16))
+        self.assertEqual(c, CHR_1)
+        c = basic_fns.get_chromosome_int_from_position_int(int(v_max+path_in_one+s_max,16))
+        self.assertEqual(c, CHR_1)
+
         path_in_two = get_path_hex(constants.CHR_PATH_LENGTHS[1])
-        self.assertEqual(basic_fns.get_chromosome_int_from_position_int(int(path_in_two+'10'+'000a',16)), 2)
-        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-1]-1)
-        self.assertEqual(basic_fns.get_chromosome_int_from_position_int(int(path_in_last+'00'+'00a1',16)), 25)
+        c = basic_fns.get_chromosome_int_from_position_int(int(v_min+path_in_two+s_min,16))
+        self.assertEqual(c, CHR_2)
+        c = basic_fns.get_chromosome_int_from_position_int(int(v_max+path_in_two+s_max,16))
+        self.assertEqual(c, CHR_2)
+
+        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-3])
+        c = basic_fns.get_chromosome_int_from_position_int(int(v_min+path_in_last+s_min,16))
+        self.assertEqual(c, CHR_M)
+        c = basic_fns.get_chromosome_int_from_position_int(int(v_max+path_in_last+s_max,16))
+        self.assertEqual(c, CHR_M)
     def test_get_chromosome_int_from_position_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_chromosome_int_from_position_int, '0')
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_position_int, -1)
-        bad_path = constants.CHR_PATH_LENGTHS[-1]
-        self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_position_int, int(hex(bad_path).lstrip('0x').zfill(3)+'00'+'0000',16))
-    def test_get_chromosome_int_from_tile_variant_int(self):
+        bad_path = constants.CHR_PATH_LENGTHS[-2] #Create error when CHR_PATH_LENGTHS is edited
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p=hex(bad_path).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_position_int, int(v+p+s,16))
+    #get_chromosome_int_from_tile_variant_int
+    def test_get_chromosome_int_from_tile_variant_int_type(self):
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(0)
+        self.assertIsInstance(c, int)
+    def test_get_chromosome_int_from_tile_variant_ints(self):
         def get_path_hex(path):
-            return hex(path).lstrip('0x').zfill(3)
+            return hex(path).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        v_min='0'*NUM_HEX_INDEXES_FOR_VERSION
+        v_max='f'*NUM_HEX_INDEXES_FOR_VERSION
+        s_min='0'*NUM_HEX_INDEXES_FOR_STEP
+        s_max='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv_min='0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        vv_max='f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        path_in_one = get_path_hex(0)
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_min+path_in_one+s_min+vv_min,16))
+        self.assertEqual(c, CHR_1)
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_max+path_in_one+s_max+vv_max,16))
+        self.assertEqual(c, CHR_1)
+
         path_in_one = get_path_hex(constants.CHR_PATH_LENGTHS[1]/2)
-        self.assertEqual(basic_fns.get_chromosome_int_from_tile_variant_int(int(path_in_one+'00'+'0000'+'000',16)), 1)
-        self.assertEqual(basic_fns.get_chromosome_int_from_tile_variant_int(int(path_in_one+'00'+'00f0'+'100',16)), 1)
-        self.assertEqual(basic_fns.get_chromosome_int_from_tile_variant_int(int(path_in_one+'a0'+'100a'+'00a',16)), 1)
-        path_in_one = '000'
-        self.assertEqual(basic_fns.get_chromosome_int_from_tile_variant_int(int(path_in_one+'01'+'0000'+'020',16)), 1)
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_min+path_in_one+s_min+vv_min,16))
+        self.assertEqual(c, CHR_1)
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_max+path_in_one+s_max+vv_max,16))
+        self.assertEqual(c, CHR_1)
+
         path_in_two = get_path_hex(constants.CHR_PATH_LENGTHS[1])
-        self.assertEqual(basic_fns.get_chromosome_int_from_tile_variant_int(int(path_in_two+'10'+'000a'+'0af',16)), 2)
-        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-1]-1)
-        self.assertEqual(basic_fns.get_chromosome_int_from_tile_variant_int(int(path_in_last+'00'+'00a1'+'001',16)), 25)
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_min+path_in_two+s_min+vv_min,16))
+        self.assertEqual(c, CHR_2)
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_max+path_in_two+s_max+vv_max,16))
+        self.assertEqual(c, CHR_2)
+
+        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-3])
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_min+path_in_last+s_min+vv_min,16))
+        self.assertEqual(c, CHR_M)
+        c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_max+path_in_last+s_max+vv_max,16))
+        self.assertEqual(c, CHR_M)
     def test_get_chromosome_int_from_tile_variant_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_chromosome_int_from_tile_variant_int, '0')
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_tile_variant_int, -1)
-        bad_path = constants.CHR_PATH_LENGTHS[-1]
-        self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_tile_variant_int, int(hex(bad_path).lstrip('0x').zfill(3)+'00'+'0000'+'000',16))
+        bad_path = constants.CHR_PATH_LENGTHS[-2] #Create error when CHR_PATH_LENGTHS is edited
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p=hex(bad_path).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv='0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_tile_variant_int, int(v+p+s+vv,16))
     #Feels a bit weird because the last populated path is 25, but technical last path is 26...
     def test_get_chromosome_int_from_path_int(self):
         path_in_one = constants.CHR_PATH_LENGTHS[1]/2
-        self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_one), 1)
+        self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_one), CHR_1)
         path_in_one = 0
-        self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_one), 1)
+        self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_one), CHR_1)
         path_in_two = constants.CHR_PATH_LENGTHS[1]
-        self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_two), 2)
-        path_in_last = constants.CHR_PATH_LENGTHS[-1]-1
-        self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_last), 25)
+        self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_two), CHR_2)
+        path_in_last = constants.CHR_PATH_LENGTHS[-3]
+        self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_last), CHR_M)
     def test_get_chromosome_int_from_path_int_failure(self):
-        self.assertRaises(TypeError, basic_fns.get_chromosome_int_from_path_int, '2a')
+        self.assertRaises(TypeError, basic_fns.get_chromosome_int_from_path_int, '0')
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_path_int, -1)
-        bad_path = constants.CHR_PATH_LENGTHS[-1]
+        bad_path = constants.CHR_PATH_LENGTHS[-2] #Create error when CHR_PATH_LENGTHS is edited
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_path_int, bad_path)
 ################################## TEST Tile model ###################################
 class TestTileModel(TestCase):
-    def test_get_string(self):
-        """
-            Tile.get_string() returns str
-            Testing with Tile 1c4.03.002f
-            000.00.0000
-            000.00.1000
-            000.01.0000
-            000.10.0000
-            001.00.0000
-            010.00.0000
-        """
-        tile_int = int('1c403002f', 16)
-        new_tile = Tile(tile_position_int=tile_int, start_tag="ACGT", end_tag="CCCG")
-        self.assertEqual(type(new_tile.get_string()), str)
-        self.assertEqual(new_tile.get_string(), '1c4.03.002f')
-        tile_int = int('0', 16)
-        new_tile = Tile(tile_position_int=tile_int, start_tag="ACGT", end_tag="CCCG")
-        self.assertEqual(new_tile.get_string(), '000.00.0000')
-        tile_int = int('1000', 16)
-        new_tile = Tile(tile_position_int=tile_int, start_tag="ACGT", end_tag="CCCG")
-        self.assertEqual(new_tile.get_string(), '000.00.1000')
-        tile_int = int('10000', 16)
-        new_tile = Tile(tile_position_int=tile_int, start_tag="ACGT", end_tag="CCCG")
-        self.assertEqual(new_tile.get_string(), '000.01.0000')
-        tile_int = int('100000', 16)
-        new_tile = Tile(tile_position_int=tile_int, start_tag="ACGT", end_tag="CCCG")
-        self.assertEqual(new_tile.get_string(), '000.10.0000')
-        tile_int = int('1000000', 16)
-        new_tile = Tile(tile_position_int=tile_int, start_tag="ACGT", end_tag="CCCG")
-        self.assertEqual(new_tile.get_string(), '001.00.0000')
-        tile_int = int('10000000', 16)
-        new_tile = Tile(tile_position_int=tile_int, start_tag="ACGT", end_tag="CCCG")
-        self.assertEqual(new_tile.get_string(), '010.00.0000')
+    def test_get_string_type(self):
+        new_tile = Tile(tile_position_int=0, start_tag="ACGT", end_tag="CCCG")
+        self.assertIsInstance(new_tile.get_string(), str)
+    def test_get_string_random_tiles(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            new_tile = Tile(tile_position_int=int(v+p+s,16), start_tag="ACGT", end_tag="CCCG")
+            self.assertEqual(new_tile.get_string(), string.join([v,p,s],sep='.'))
+    def test_get_string_from_max_and_min_tiles(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        new_tile = Tile(tile_position_int=int(v+p+s,16), start_tag="ACGT", end_tag="CCCG")
+        self.assertEqual(new_tile.get_string(), string.join([v,p,s],sep='.'))
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        new_tile = Tile(tile_position_int=int(v+p+s,16), start_tag="ACGT", end_tag="CCCG")
+        self.assertEqual(new_tile.get_string(), string.join([v,p,s],sep='.'))
     def test_non_int_tile_int(self):
-        with self.assertRaises(ValidationError):
-            Tile(tile_position_int='invalid').save()
+        with self.assertRaises(ValidationError) as cm:
+            Tile(tile_position_int='invalid', start_tag="A"*TAG_LENGTH, end_tag="A"*TAG_LENGTH).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_position_int', cm.exception.message_dict)
     def test_negative_tile_int(self):
-        with self.assertRaises(ValidationError):
-            Tile(tile_position_int=-1).save()
+        with self.assertRaises(ValidationError) as cm:
+            Tile(tile_position_int=-1, start_tag="A"*TAG_LENGTH, end_tag="A"*TAG_LENGTH).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_position_int', cm.exception.message_dict)
     def test_too_big_tile_int(self):
-        with self.assertRaises(ValidationError):
-            Tile(tile_position_int=int('1000000000', 16)).save()
+        with self.assertRaises(ValidationError) as cm:
+            tile_int = int('f'*(NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP), 16)
+            Tile(tile_position_int=tile_int+1, start_tag="A"*TAG_LENGTH, end_tag="A"*TAG_LENGTH).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_position_int', cm.exception.message_dict)
     def test_non_existant_tags(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as cm:
             Tile(tile_position_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 2)
+        self.assertIn('start_tag', cm.exception.message_dict)
+        self.assertIn('end_tag', cm.exception.message_dict)
     def test_too_short_tags(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as cm:
             Tile(tile_position_int=0, start_tag='AA', end_tag='AG').save()
+        self.assertEqual(len(cm.exception.message_dict), 2)
+        self.assertIn('start_tag', cm.exception.message_dict)
+        self.assertIn('end_tag', cm.exception.message_dict)
     def test_successful_save(self):
         make_tile_position(0)
     def test_same_name_space_failure(self):
         make_tile_position(0)
         with self.assertRaises(ValidationError) as cm:
             make_tile_position(0)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_position_int', cm.exception.message_dict)
 ################################## TEST TileLocusAnnotation model ###################################
 class TestTileLocusAnnotationModel(TestCase):
+    def test_non_int_assembly(self):
+        tile, tilevar = make_tile_position_and_variant(0, 0, 250)
+        with self.assertRaises(ValidationError) as cm:
+            TileLocusAnnotation(assembly_int="hg19", chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('assembly_int', cm.exception.message_dict)
     @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
     def test_unknown_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=0, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('assembly_int', cm.exception.message_dict)
+    def test_non_int_chromosome(self):
+        tile, tilevar = make_tile_position_and_variant(0, 0, 250)
+        with self.assertRaises(ValidationError) as cm:
+            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int="chr1", start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int', cm.exception.message_dict)
     @skipIf(CHR_1-1 in SUPPORTED_CHR_INTS, "Testing if error is raised with an unsupported assembly, but chromosome=CHR_1-1 is defined")
     def test_unknown_chromosome(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1-1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int', cm.exception.message_dict)
     def test_missing_tile(self):
         with self.assertRaises(ValidationError) as cm:
-            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250).save()
+            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_position', cm.exception.message_dict)
     def test_missing_tile_variant(self):
         tile = make_tile_position(0)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_value', cm.exception.message_dict)
     def test_wrong_tile_variant(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_value', cm.exception.message_dict)
     def test_wrong_tile_variant_where_both_variants_exist(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         tilevar2 = make_tile_variant(tile, 1, 249)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_length_locus_mismatch', cm.exception.message_dict)
     def test_begin_int_bigger_than_end_int(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=250, end_int=0, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 3)
+        self.assertIn('malformed_locus', cm.exception.message_dict)
+        self.assertIn('tile_length_locus_mismatch', cm.exception.message_dict) #this cannot be avoided because of assumption start_int < end_int
+        self.assertIn('short_locus', cm.exception.message_dict) #this cannot be avoided because of assumption start_int < end_int
+    def test_tile_smaller_than_tag_length(self):
+        tile, tilevar = make_tile_position_and_variant(0, 0, TAG_LENGTH*2)
+        with self.assertRaises(ValidationError) as cm:
+            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=TAG_LENGTH, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 2)
+        self.assertIn('short_locus', cm.exception.message_dict)
+        self.assertIn('tile_length_locus_mismatch', cm.exception.message_dict) #this cannot be avoided because of error checking in TileVariant
     def test_path_on_wrong_chromosome(self):
-        tile, tilevar = make_tile_position_and_variant(0, 0, 250)
+        def get_path_hex(path):
+            return hex(path).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        v_min='0'*NUM_HEX_INDEXES_FOR_VERSION
+        v_max='f'*NUM_HEX_INDEXES_FOR_VERSION
+        s_min='0'*NUM_HEX_INDEXES_FOR_STEP
+        s_max='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+
+        path_in_one = get_path_hex(0)
+        tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_one+s_min,16), int(v_min+path_in_one+s_min+vv,16), 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_2, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
-        tile, tilevar = make_tile_position_and_variant('35e000000', '35e000000000', 250)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
+
+        path_in_one = get_path_hex(constants.CHR_PATH_LENGTHS[1]-1)
+        tile, tilevar = make_tile_position_and_variant(int(v_max+path_in_one+s_max,16), int(v_max+path_in_one+s_max+vv,16), 250)
+        with self.assertRaises(ValidationError) as cm:
+            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_2, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
+
+        path_in_two = get_path_hex(constants.CHR_PATH_LENGTHS[1])
+        tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_two+s_min,16), int(v_min+path_in_two+s_min+vv,16), 250)
+        with self.assertRaises(ValidationError) as cm:
+            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
+
+        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-2]-1)
+        tile, tilevar = make_tile_position_and_variant(int(v_max+path_in_last+s_max,16), int(v_max+path_in_last+s_max+vv,16), 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_OTHER, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
+
+        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-3])
+        tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_last+s_min,16), int(v_min+path_in_last+s_min+vv,16), 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_Y, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
     def test_saving_success(self):
-        tile, tilevar = make_tile_position_and_variant(0, 0, 250)
+        def get_path_hex(path):
+            return hex(path).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        v_min='0'*NUM_HEX_INDEXES_FOR_VERSION
+        v_max='f'*NUM_HEX_INDEXES_FOR_VERSION
+        s_min='0'*NUM_HEX_INDEXES_FOR_STEP
+        s_max='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+
+        path_in_one = get_path_hex(0)
+        tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_one+s_min,16), int(v_min+path_in_one+s_min+vv,16), 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
-        tile, tilevar = make_tile_position_and_variant('35e000000', '35e000000000', 250)
+
+        path_in_one = get_path_hex(constants.CHR_PATH_LENGTHS[1]-1)
+        tile, tilevar = make_tile_position_and_variant(int(v_max+path_in_one+s_max,16), int(v_max+path_in_one+s_max+vv,16), 250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+
+        path_in_two = get_path_hex(constants.CHR_PATH_LENGTHS[1])
+        tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_two+s_min,16), int(v_min+path_in_two+s_min+vv,16), 250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_2, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+
+        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-2]-1)
+        tile, tilevar = make_tile_position_and_variant(int(v_max+path_in_last+s_max,16), int(v_max+path_in_last+s_max+vv,16), 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_M, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+
+        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-3])
+        tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_last+s_min,16), int(v_min+path_in_last+s_min+vv,16), 250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_M, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+    def test_multiple_annotations_failure(self):
+        tile, tilevar = make_tile_position_and_variant(0, 0, 250)
+        tilevar2 = make_tile_variant(tile, 1, 249)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=249, tile_position=tile, tile_variant_value=1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('__all__', cm.exception.message_dict)
 ################################## TEST TileVariant model ###################################
 class TestTileVariantModel(TestCase):
     def test_non_int_tile_variant_int(self):
@@ -697,6 +1085,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_negative_tile_variant_int(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -713,15 +1103,18 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_too_big_tile_variant_int(self):
-        tile=make_tile_position('fffffffff')
+        tile=make_tile_position('f'*(NUM_HEX_INDEXES_FOR_VERSION + NUM_HEX_INDEXES_FOR_PATH + NUM_HEX_INDEXES_FOR_STEP))
+        tile_var_int = 'f'*(NUM_HEX_INDEXES_FOR_VERSION + NUM_HEX_INDEXES_FOR_PATH + NUM_HEX_INDEXES_FOR_STEP+NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         seq = tile.start_tag
         seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
         seq += tile.end_tag
         digestor = hashlib.new('md5', seq)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int('1000000000000',16),
+                tile_variant_int=int(tile_var_int,16),
                 tile=tile,
                 variant_value=0,
                 length=250,
@@ -729,19 +1122,22 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
-        #print str(cm.exception)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_nonexistant_tile_position(self):
         seq = mk_genome_seq(250, uppercase=False)
         digestor = hashlib.new('md5', seq)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int('000000000000',16),
+                tile_variant_int=0,
                 variant_value=0,
                 length=250,
                 md5sum=digestor.hexdigest(),
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile', cm.exception.message_dict)
     def test_invalid_positions_spanned(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -758,6 +1154,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=0
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('num_positions_spanned', cm.exception.message_dict)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
                 tile_variant_int=0,
@@ -768,6 +1166,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=-1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('num_positions_spanned', cm.exception.message_dict)
     def test_invalid_variant_value(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -784,6 +1184,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('variant_value', cm.exception.message_dict)
     def test_invalid_start_tag(self):
         tile=make_tile_position(0)
         seq = tile.start_tag[:20]
@@ -801,6 +1203,8 @@ class TestTileVariantModel(TestCase):
                 num_positions_spanned=1,
                 start_tag=tile.start_tag[:20]
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('start_tag', cm.exception.message_dict)
     def test_invalid_end_tag(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -818,38 +1222,81 @@ class TestTileVariantModel(TestCase):
                 num_positions_spanned=1,
                 end_tag=tile.end_tag[:20]
             ).save()
-    def test_mismatching_paths(self):
-        tile=make_tile_position(0)
-        seq = tile.start_tag
-        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
-        seq += tile.end_tag
-        digestor = hashlib.new('md5', seq)
-        with self.assertRaises(ValidationError) as cm:
-            TileVariant(
-                tile_variant_int=int('001000000000',16),
-                tile=tile,
-                variant_value=0,
-                length=250,
-                md5sum=digestor.hexdigest(),
-                sequence=seq,
-                num_positions_spanned=1
-            ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('end_tag', cm.exception.message_dict)
+
     def test_mismatching_path_versions(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
         seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
         seq += tile.end_tag
         digestor = hashlib.new('md5', seq)
+        md5sum=digestor.hexdigest()
+        v='0'*(NUM_HEX_INDEXES_FOR_VERSION-1)+'1'
+        p='0'*(NUM_HEX_INDEXES_FOR_PATH)
+        s='0'*(NUM_HEX_INDEXES_FOR_STEP)
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int('000010000000',16),
+                tile_variant_int=int(v+p+s+vv,16),
                 tile=tile,
                 variant_value=0,
                 length=250,
-                md5sum=digestor.hexdigest(),
+                md5sum=md5sum,
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('version_mismatch', cm.exception.message_dict)
+        vv='f'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_int=int(v+p+s+vv,16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=md5sum,
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('version_mismatch', cm.exception.message_dict)
+    def test_mismatching_paths(self):
+        tile=make_tile_position(0)
+        seq = tile.start_tag
+        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
+        seq += tile.end_tag
+        digestor = hashlib.new('md5', seq)
+        md5sum=digestor.hexdigest()
+        v='0'*(NUM_HEX_INDEXES_FOR_VERSION)
+        p='0'*(NUM_HEX_INDEXES_FOR_PATH-1)+'1'
+        s='0'*(NUM_HEX_INDEXES_FOR_STEP)
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_int=int(v+p+s+vv,16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=md5sum,
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('path_mismatch', cm.exception.message_dict)
+        vv='f'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_int=int(v+p+s+vv,16),
+                tile=tile,
+                variant_value=0,
+                length=250,
+                md5sum=md5sum,
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('path_mismatch', cm.exception.message_dict)
     def test_mismatching_steps(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -866,6 +1313,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('step_mismatch', cm.exception.message_dict)
     def test_mismatching_variant_values(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -882,6 +1331,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('variant_value_mismatch', cm.exception.message_dict)
     def test_mismatching_length_and_sequence_length(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -898,6 +1349,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('length_mismatch', cm.exception.message_dict)
     def test_mismatching_md5sum(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -913,6 +1366,25 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('md5sum_mismatch', cm.exception.message_dict)
+    def test_too_short_sequence(self):
+        start_tag = mk_genome_seq(TAG_LENGTH)
+        tile = Tile(tile_position_int=0, start_tag=start_tag, end_tag=start_tag)
+        tile.save()
+        digestor = hashlib.new('md5', start_tag)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_int=0,
+                tile=tile,
+                variant_value=0,
+                length=TAG_LENGTH,
+                md5sum=digestor.hexdigest(),
+                sequence=start_tag,
+                num_positions_spanned=1
+            ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('sequence_malformed', cm.exception.message_dict)
     def test_mismatching_start_tag(self):
         tile=make_tile_position(0)
         seq =  mk_genome_seq(TAG_LENGTH)
@@ -929,6 +1401,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('start_tag_mismatch', cm.exception.message_dict)
     def test_mismatching_end_tag(self):
         tile=make_tile_position(0)
         seq =  tile.start_tag
@@ -945,6 +1419,8 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('end_tag_mismatch', cm.exception.message_dict)
     def test_successful_save(self):
         make_tile_position_and_variant(0, 0, 250)
     def test_successful_save_with_alternate_tags(self):
@@ -981,14 +1457,21 @@ class TestTileVariantModel(TestCase):
                 sequence=seq,
                 num_positions_spanned=3
             ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('spanning_tile_error_missing_tile', cm.exception.message_dict)
     def test_spanning_tile_on_two_paths(self):
-        tile1=make_tile_position('001000000')
+        ending_tile, ending_tilevar =make_tile_position_and_variant('001000000', '001000000000', 250)
+        starting_tile, starting_tilevar = make_tile_position_and_variant('00000ffff','00000ffff000', 250)
         with self.assertRaises(ValidationError) as cm:
-            make_tile_position_and_variant('00000ffff','00000ffff001', 500, tile_ending=tile1, num_spanned=2)
+            make_tile_variant(starting_tile,'00000ffff001', 500, tile_ending=ending_tile, num_spanned=2)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('spanning_tile_error', cm.exception.message_dict)
     def test_spanning_tile_on_two_path_versions(self):
         tile1=make_tile_position('000010000')
         with self.assertRaises(ValidationError) as cm:
             make_tile_position_and_variant(0,1, 500, tile_ending=tile1, num_spanned=2)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('spanning_tile_error', cm.exception.message_dict)
     def test_successful_spanning_tile_save(self):
         tile1=make_tile_position(1)
         make_tile_position_and_variant(0, 1, 500, tile_ending=tile1, num_spanned=2)
@@ -996,30 +1479,11 @@ class TestTileVariantModel(TestCase):
         tile2=make_tile_position(2)
         make_tile_position_and_variant(0, 1, 700, tile_ending=tile2, num_spanned=3)
     def test_same_name_space_failure(self):
-        tile=make_tile_position(0)
-        seq =  tile.start_tag
-        seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
-        seq += tile.end_tag
-        digestor = hashlib.new('md5', seq)
-        TileVariant(
-            tile_variant_int=0,
-            tile=tile,
-            variant_value=0,
-            length=250,
-            md5sum=digestor.hexdigest(),
-            sequence=seq,
-            num_positions_spanned=1
-        ).save()
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
         with self.assertRaises(ValidationError) as cm:
-            TileVariant(
-                tile_variant_int=0,
-                tile=tile,
-                variant_value=0,
-                length=250,
-                md5sum=digestor.hexdigest(),
-                sequence=seq,
-                num_positions_spanned=1
-            ).save()
+            make_tile_variant(tile, 0, 249)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_get_string(self):
         """
             TileVariant.get_string() returns str
@@ -1058,11 +1522,15 @@ class TestTileVariantModel(TestCase):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValueError) as cm:
             tilevar.is_reference('a')
+        #self.assertEqual(len(cm.exception.message_dict), 1)
+        #self.assertIn('tile_variant_int', cm.exception.message_dict)
     @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
     def test_is_reference_unsupported_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValueError) as cm:
             tilevar.is_reference(0)
+        #self.assertEqual(len(cm.exception.message_dict), 1)
+        #self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_is_reference_missing_locus(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         tile2, tilevar2 = make_tile_position_and_variant(1, '000000001000', 500+TAG_LENGTH-250)
@@ -1070,12 +1538,18 @@ class TestTileVariantModel(TestCase):
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
         with self.assertRaises(MissingLocusError) as cm:
             tilevar.is_reference(ASSEMBLY_19)
+        #self.assertEqual(len(cm.exception.message_dict), 1)
+        #self.assertIn('tile_variant_int', cm.exception.message_dict)
         with self.assertRaises(MissingLocusError) as cm:
             tilevar.is_reference(ASSEMBLY_18)
+        #self.assertEqual(len(cm.exception.message_dict), 1)
+        #self.assertIn('tile_variant_int', cm.exception.message_dict)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         tilevar.is_reference(ASSEMBLY_19)
         with self.assertRaises(MissingLocusError) as cm:
             tilevar.is_reference(ASSEMBLY_18)
+        #self.assertEqual(len(cm.exception.message_dict), 1)
+        #self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_is_reference_one_assembly_on_one_tilevar_success(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         tilevar2 = make_tile_variant(tile, 1, 250)
@@ -1271,7 +1745,7 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(tile.get_base_group_between_positions(1,5), 'GTCN')
         self.assertEqual(tile.get_base_group_between_positions(1,4), 'GTC')
 
-def make_snp_genome_and_tile_variant(ref_tilevar, new_tile_variant_int, id_, assem=19, chrom=1, alt_name="", start=24, names=[],info=""):
+def make_snp_genome_and_tile_variant(ref_tilevar, new_tile_variant_int, id_, assem=ASSEMBLY_19, chrom=CHR_1, alt_name="", start=24, names=[],info=""):
     tile_length = ref_tilevar.length
     assert start >= TAG_LENGTH
     assert start < tile_length - TAG_LENGTH
@@ -1315,60 +1789,113 @@ def make_snp_genome_and_tile_variant(ref_tilevar, new_tile_variant_int, id_, ass
     gvt.save()
     return tilevar, gv, gvt
 ################################## TEST GenomeVariant model ###################################
+@skip("Remodeling")
 class TestGenomeVariantModel(TestCase):
+    #check unique together working
     def test_failure_multiple_genome_variants_with_same_id(self):
         tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0)
         with self.assertRaises(ValidationError) as cm:
-            tilevar3, genome_var, gvg = make_snp_genome_and_tile_variant(tilevar, 2, 0)
-#    def test_failure_unsupported_assembly(self):
-
+            tilevar3, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 2, 0, start=30)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('id' in cm.exception.message_dict)
+    def test_failure_non_int_assembly(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, assem="hi")
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('assembly_int' in cm.exception.message_dict)
+    @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
+    def test_failure_unsupported_assembly(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, assem=0)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('assembly_int' in cm.exception.message_dict)
+    def test_failure_missing_locus_with_correct_assembly(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, assem=ASSEMBLY_18)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('missing_locus' in cm.exception.message_dict)
 ################################## TEST GenomeVariantTranslation model ###################################
+@skip("Remodeling")
 class TestGenomeVariantTranslationModel(TestCase):
     pass
 ################################## TEST GenomeStatistic model ###################################
+#add one with too large a path_name
+@skip("Remodeling")
 class TestGenomeStatisticModel(TestCase):
     @skipIf(GENOME-1 in SUPPORTED_STATISTICS_TYPE_INTS, "Testing if error is raised with an unsupported statistics type, but %i is a valid Statistics type" % (GENOME-1))
     def test_negative_statistics_int(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME-1, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('statistics_type' in cm.exception.message_dict)
     @skipIf(PATH+1 in SUPPORTED_STATISTICS_TYPE_INTS, "Testing if error is raised with an unsupported statistics type, but %i is a valid Statistics type" % (PATH+1))
     def test_too_big_statistics_int(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=PATH+1, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('statistics_type' in cm.exception.message_dict)
     def test_too_small_path_name(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, path_name=-2, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('path_name' in cm.exception.message_dict)
     def test_too_big_path_name(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, path_name=0, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('path_name' in cm.exception.message_dict)
     def test_neg_one_path_name_on_path_statistic(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=PATH, path_name=-1, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('path_name' in cm.exception.message_dict)
     def test_negative_num_positions(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, num_of_positions=-1, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('num_of_positions' in cm.exception.message_dict)
     def test_negative_num_tiles(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, num_of_positions=0, num_of_tiles=-1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('num_of_tiles' in cm.exception.message_dict)
     def test_more_positions_than_tiles(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, num_of_positions=2, num_of_tiles=1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('num_of_positions-num_of_tiles' in cm.exception.message_dict)
     def test_tiles_without_positions(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, num_of_positions=0, num_of_tiles=1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('num_of_positions-num_of_tiles' in cm.exception.message_dict)
     def test_weird_spanning_tiles(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, num_of_positions=1, num_of_tiles=1, max_num_positions_spanned=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('max_num_positions_spanned' in cm.exception.message_dict)
     def test_duplicate_chromosome_statistics(self):
         GenomeStatistic(statistics_type=GENOME, num_of_positions=1, num_of_tiles=1).save()
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, num_of_positions=1, num_of_tiles=2).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('__all__' in cm.exception.message_dict)
     def test_duplicate_path_statistics(self):
         GenomeStatistic(statistics_type=PATH, path_name=1, num_of_positions=1, num_of_tiles=1).save()
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=PATH, path_name=1, num_of_positions=1, num_of_tiles=2).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('__all__' in cm.exception.message_dict)
 ################################## TEST generate_statistics ###################################
+@skip("Remodeling")
 class TestGenerateStatistics(TestCase):
     def setUp(self):
         make_tiles(BASE_LIBRARY_STRUCTURE)

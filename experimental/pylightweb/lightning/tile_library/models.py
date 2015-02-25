@@ -18,38 +18,43 @@ import tile_library_generation.validators as validation_fns
 import tile_library.human_readable_functions as human_readable_fns
 from errors import TileLibraryValidationError, MissingLocusError
 from tile_library.constants import TAG_LENGTH, SUPPORTED_ASSEMBLY_CHOICES, \
-    CHR_CHOICES, STATISTICS_TYPE_CHOICES, PATH, NUM_HEX_INDEXES_FOR_PATH
+    CHR_CHOICES, STATISTICS_TYPE_CHOICES, PATH, CHR_PATH_LENGTHS
 
 def validate_json(text):
     try:
-        json.loads(text)
-    except ValueError:
-        raise ValidationError("Expects json-formatted text")
-def validate_gte_neg_one(integer):
-    if integer < -1:
-        raise ValidationError("integer must be greater than or equal to negative one")
+        validation_fns.validate_json(text)
+    except TileLibraryValidationError as e:
+        raise ValidationError(e.value)
 def validate_positive(integer):
-    if integer < 0:
-        raise ValidationError("integer must be positive")
+    try:
+        validation_fns.validate_positive(integer)
+    except TileLibraryValidationError as e:
+        raise ValidationError(e.value)
 def validate_tile_position_int(tile_position_int):
-    validate_positive(tile_position_int)
-    max_tile_position = int('fffffffff', 16)
-    if tile_position_int > max_tile_position:
-        raise ValidationError("tile position int must be smaller than or equal to 'fff.ff.ffff'")
+    try:
+        validation_fns.validate_tile_position_int(tile_position_int)
+    except TileLibraryValidationError as e:
+        raise ValidationError(e.value['tile_position_int'])
 def validate_tile_variant_int(tile_variant_int):
-    validate_positive(tile_variant_int)
-    max_tile_variant = int('ffffffffffff', 16)
-    if tile_variant_int > max_tile_variant:
-        raise ValidationError("tile variant int must be smaller than or equal to 'fff.ff.ffff.fff'")
+    try:
+        validation_fns.validate_tile_variant_int(tile_variant_int)
+    except TileLibraryValidationError as e:
+        raise ValidationError(e.value['tile_variant_int'])
 def validate_tag(tag):
-    if len(tag) != TAG_LENGTH:
-        raise ValidationError("Tag length must be equal to the set TAG_LENGTH")
+    try:
+        validation_fns.validate_tag(tag)
+    except TileLibraryValidationError as e:
+        raise ValidationError(e.value)
 def validate_variant_tag(tag):
-    if len(tag) != TAG_LENGTH and len(tag) != 0:
-        raise ValidationError("Tag length must be equal to the set TAG_LENGTH or must be empty")
+    try:
+        validation_fns.validate_variant_tag(tag)
+    except TileLibraryValidationError as e:
+        raise ValidationError(e.value)
 def validate_num_spanning_tiles(num_spanning):
-    if num_spanning < 1:
-        raise ValidationError("num positions spanned must be greater than or equal to 1")
+    try:
+        validation_fns.validate_num_spanning_tiles(num_spanning)
+    except TileLibraryValidationError as e:
+        raise ValidationError(e.value)
 class Tile(models.Model):
     """
     Implements a Tile object - the meta-data associated with a tile position.
@@ -62,8 +67,8 @@ class Tile(models.Model):
 
     Values in database:
         tile_position_int (bigint, primary key): _integer_ of the 9 digit hexidecimal identifier for the tile position
-            First 3 digits of the hexidecimal identifier indicate the path
-            Next 2 digits indicate the path version
+            First 2 digits indicate the path version
+            Next 3 digits of the hexidecimal identifier indicate the path
             Next 4 digits indicate the step
         start_tag(charfield(24)): start Tag
         end_tag(charfield(24)): end Tag
@@ -78,12 +83,8 @@ class Tile(models.Model):
     end_tag = models.CharField(max_length=TAG_LENGTH, validators=[validate_tag])
     created = models.DateTimeField(auto_now_add=True)
     def save(self, *args, **kwargs):
-        try:
-            self.full_clean()
-            validation_fns.validate_tile(self.tile_position_int)
-            super(Tile, self).save(*args, **kwargs)
-        except TileLibraryValidationError as e:
-            raise ValidationError(e.value)
+        self.full_clean()
+        super(Tile, self).save(*args, **kwargs)
     def get_string(self):
         """Displays hex indexing for tile """
         return basic_fns.get_position_string_from_position_int(int(self.tile_position_int))
@@ -93,31 +94,33 @@ class Tile(models.Model):
     class Meta:
         #Ensures ordering by tilename
         ordering = ['tile_position_int']
-
 class TileLocusAnnotation(models.Model):
     """
-    Implements translations between assemblies and tile id.
-    From looking at UCSC Genome Browser definitions of chromosome bands, we deduce these are currently:
-        0-indexed.
-        [begin_int, end_int) (exclusive end int)
+        Warning on checking: though it checks if the length of the reference sequence is correct, it
+            does not know what the sequence should be. That is left to the person populating the database
 
-    Example input from FASTJ:
-        Tile x  : {"build":"hg19 chr9 135900000-24 135900225"} => begin_int: 135900000; end_int: 135900225
-        Tile x+1: {"build":"hg19 chr9 135900201 135900450"} => begin_int: 135900201; end_int: 135900450
+        Implements translations between assemblies and tile id.
+        From looking at UCSC Genome Browser definitions of chromosome bands, we deduce these are currently:
+            0-indexed.
+            [begin_int, end_int) (exclusive end int)
 
-    Values in database:
-        assembly_int (positive small integer): the integer mapping to the name of the assembly;
-            Choices given by SUPPORTED_ASSEMBLY_CHOICES (defined in tile_library.constants.py)
-        chromosome_int (positive small integer): the integer mapping to the chromosome the tile is on;
-            Choices given by CHR_CHOICES (defined in tile_library.constants.py)
-        alternate_chromosome_name(charfield(100)): the name of the chromosome if chromosome=26 (OTHER)
-        start_int(positive int): the 0 indexed start locus
-        end_int(positive int): the 0 indexed end locus (exclusive)
+        Example input from FASTJ:
+            Tile x  : {"build":"hg19 chr9 135900000-24 135900225"} => begin_int: 135900000; end_int: 135900225
+            Tile x+1: {"build":"hg19 chr9 135900201 135900450"} => begin_int: 135900201; end_int: 135900450
 
-        tile_position(foreignkey): the Tile associated with this locus annotation
-            tile_locus_annotations: the related name for these annotations
-        tile_variant_value(positive int): the variant value of the tile variant containing the
-            reference sequence
+        Values in database:
+            assembly_int (positive small integer): the integer mapping to the name of the assembly;
+                Choices given by SUPPORTED_ASSEMBLY_CHOICES (defined in tile_library.constants.py)
+            chromosome_int (positive small integer): the integer mapping to the chromosome the tile is on;
+                Choices given by CHR_CHOICES (defined in tile_library.constants.py)
+            alternate_chromosome_name(charfield(100)): the name of the chromosome if chromosome=26 (OTHER)
+            start_int(positive int): the 0 indexed start locus
+            end_int(positive int): the 0 indexed end locus (exclusive)
+
+            tile_position(foreignkey): the Tile associated with this locus annotation
+                tile_locus_annotations: the related name for these annotations
+            tile_variant_value(positive int): the variant value of the tile variant containing the
+                reference sequence
     """
     assembly_int = models.PositiveSmallIntegerField(choices=SUPPORTED_ASSEMBLY_CHOICES, db_index=True)
     chromosome_int = models.PositiveSmallIntegerField(choices=CHR_CHOICES, db_index=True)
@@ -133,7 +136,7 @@ class TileLocusAnnotation(models.Model):
             length = TileVariant.objects.get(tile_variant_int=tile_var_int).length
             validation_fns.validate_locus(self.chromosome_int, self.tile_position_id, TAG_LENGTH, length, self.start_int, self.end_int)
         except TileVariant.DoesNotExist:
-            raise ValidationError({'tile':'tile does not have a tilevariant (with a variant value of %i) associated with it' % (self.tile_variant_value)})
+            raise ValidationError({'tile_variant_value':'tile does not have a tilevariant (with a variant value of %i) associated with it' % (self.tile_variant_value)})
         except TileLibraryValidationError as e:
             raise ValidationError(e.value)
         super(TileLocusAnnotation, self).save(*args, **kwargs)
@@ -148,7 +151,6 @@ class TileLocusAnnotation(models.Model):
         #Ensures ordering by tilename
         ordering = ['tile_position']
         unique_together = ("tile_position", "assembly_int")
-
 class TileVariant(models.Model):
     """
     Implements a TileVariant. Each Tile can have many TileVariants (one-to-many relation).
@@ -207,7 +209,7 @@ class TileVariant(models.Model):
         except TileLibraryValidationError as e:
             raise ValidationError(e.value)
         except Tile.DoesNotExist as e:
-            raise ValidationError({'num_positions_spanned': 'tile with pk=%i does not exist' % (self.tile_id+self.num_positions_spanned-1)})
+            raise ValidationError({'spanning_tile_error_missing_tile': 'tile with pk=%i does not exist' % (self.tile_id+self.num_positions_spanned-1)})
     def get_string(self):
         """Displays hex indexing for tile variant"""
         return basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_int))
@@ -270,10 +272,6 @@ class TileVariant(models.Model):
 
 class GenomeVariant(models.Model):
     """
-        Does not check:
-            if all tile_variants have an assembly_int that matches
-            if all tile_variants are in the correct chromosome
-
         Implements a Genome Variant object (SNP, SUB, or INDEL) that can be associated with multiple TileVariants.
         Many-to-Many relation with TileVariant.
         Designed to preserve variants called from a particular variant caller, run on data before loaded into lightning
@@ -343,7 +341,30 @@ class GenomeVariant(models.Model):
     last_modified = models.DateTimeField(auto_now=True)
     def save(self, *args, **kwargs):
         self.full_clean()
-        super(GenomeVariant, self).save(*args, **kwargs)
+        assembly = int(self.assembly_int)
+        chrom = int(self.chromosome_int)
+        start = int(self.locus_start_int)
+        end = int(self.locus_end_int)
+        loci = TileLocusAnnotation.objects.filter(assembly_int=assembly).filter(chromosome_int=chrom).filter(start_int__lt=end).filter(end_int__gt=start).order_by('start_int')
+        if loci.count() == 0:
+            raise ValidationError(
+                {'missing_locus':'Unable to find any loci in assembly %i, chromosome %i, with a begin_int less than %i and an end in greater than %i' % (assembly, chrom, end, start)}
+            )
+        reference_seq = ''
+        zero = 0
+        for locus in loci:
+            reference_tile_variant_sequence = locus.get_reference_sequence()
+            if reference_seq == '':
+                zero = locus.start_int
+                reference_seq += reference_tile_variant_sequence
+            else:
+                assert reference_seq[-TAG_LENGTH:].upper() == reference_tile_variant_sequence[:TAG_LENGTH].upper()
+                reference_seq += reference_tile_variant_sequence[TAG_LENGTH:]
+        try:
+            validation_fns.validate_reference_bases(reference_seq, start-zero, end-zero, self.reference_bases)
+            super(GenomeVariant, self).save(*args, **kwargs)
+        except TileLibraryValidationError as e:
+            raise ValidationError(e.value)
     def __unicode__(self):
         return "Assembly %s, Chromosome %s, [%i, %i), %s => %s" % (
             human_readable_fns.get_readable_assembly_name(self.assembly_int),
@@ -362,14 +383,14 @@ class GenomeVariant(models.Model):
 
 class GenomeVariantTranslation(models.Model):
     """
-    Implements the Many-to-Many relation between GenomeVariant and TileVariant as well the translation between them
-    As with GenomeVariant, expected to fade out as annotations on TileVariants become more popular
+        Implements the Many-to-Many relation between GenomeVariant and TileVariant as well the translation between them
+        As with GenomeVariant, expected to fade out as annotations on TileVariants become more popular
 
-    Values in database:
-        tile_variant (foreignkey): the id of the TileVariant
-        genome_variant(foreignkey): the id of the GenomeVariant
-        start (integer): Positive integer, zero-indexed, relative to start of the TileVariant
-        end (integer): Positive integer, zero-indexed, exclusive, relative to the start of the TileVariant
+        Values in database:
+            tile_variant (foreignkey): the id of the TileVariant
+            genome_variant(foreignkey): the id of the GenomeVariant
+            start (integer): Positive integer, zero-indexed, relative to start of the TileVariant
+            end (integer): Positive integer, zero-indexed, exclusive, relative to the start of the TileVariant
     """
     tile_variant = models.ForeignKey(TileVariant, related_name='translations_to_genome_variant')
     genome_variant = models.ForeignKey(GenomeVariant, related_name='translations_to_tile_variant')
@@ -377,7 +398,22 @@ class GenomeVariantTranslation(models.Model):
     end = models.PositiveIntegerField(help_text="Positive integer, zero-indexed, relative to start of that tilevariant. Exclusive")
     def save(self, *args, **kwargs):
         self.full_clean()
-        super(GenomeVariantTranslation, self).save(*args, **kwargs)
+        try:
+            gv = self.genome_variant
+            tv = self.tile_variant
+            start_int, end_int = tv.get_locus(gv.assembly_int)
+            for tile_position in range(int(tv.tile_id), int(tv.num_positions_spanned)):
+                locus = TileLocusAnnotation.objects.filter(tile_position=tile_position).get(assembly_int=gv.assembly_int)
+                validation_fns.validate_same_chromosome(locus.chromosome_int, gv.chromosome_int, locus.alternate_chromosome_name, gv.alternate_chromosome_name)
+            validation_fns.validate_tile_variant_loci_encompass_genome_variant_loci(gv.locus_start_int, gv.locus_end_int, start_int, end_int)
+            validation_fns.validate_alternate_bases(tv.sequence, gv.alternate_bases, self.start, self.end)
+            super(GenomeVariantTranslation, self).save(*args, **kwargs)
+        except TileLibraryValidationError as e:
+            raise ValidationError(e.value)
+        except MissingLocusError as e:
+            raise ValidationError({'genome_variant.assembly_int':str(e)})
+        except TileLocusAnnotation.DoesNotExist:
+            raise ValidationError({'genome_variant.assembly_int':'Locus for assembly %i not found for tile variant' % (self.genome_variant.assembly_int)})
     def __unicode__(self):
         return "Tile Variant %s to Genome Variant %s (id: %i)" % (self.tile_variant.__unicode__(), self.genome_variant.__unicode__(), self.genome_variant.id)
     class Meta:
@@ -389,7 +425,7 @@ class GenomeStatistic(models.Model):
         number of positions spanned in each path
     """
     statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=STATISTICS_TYPE_CHOICES)
-    path_name = models.IntegerField(db_index=True, default=-1)#, validators=[validate_gte_neg_one]
+    path_name = models.IntegerField(db_index=True, default=-1)
     num_of_positions = models.BigIntegerField(validators=[validate_positive])
     num_of_tiles = models.BigIntegerField(validators=[validate_positive])
     max_num_positions_spanned = models.PositiveIntegerField(blank=True, null=True, validators=[validate_num_spanning_tiles])
@@ -399,8 +435,11 @@ class GenomeStatistic(models.Model):
             raise ValidationError({'num_of_positions-num_of_tiles': "No tiles can exist if no positions exist"})
         if self.num_of_positions  > self.num_of_tiles:
             raise ValidationError({'num_of_positions-num_of_tiles': "Number of tiles must be larger than or equal to the number of positions"})
-        if self.path_name == -1 and self.statistics_type == PATH:
-            raise ValidationError({'path_name_too_low': 'If statistics type is equal to %i, path name must be greater than -1' % (PATH)})
+        if self.statistics_type == PATH:
+            if self.path_name < 0:
+                raise ValidationError({'path_name': 'If statistics type is equal to %i, path name must be greater than -1' % (PATH)})
+            if self.path_name >= CHR_PATH_LENGTHS[-1]:
+                raise ValidationError({'path_name': 'Path name must be less than %i' % (CHR_PATH_LENGTHS[-1])})
         if self.path_name != -1 and self.statistics_type != PATH:
             raise ValidationError({'path_name': 'If statistics type is not equal to %i, path name must be exactly -1' % (PATH)})
         super(GenomeStatistic, self).save(*args, **kwargs)
