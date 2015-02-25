@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='genomestatistic',
             name='path_name',
-            field=models.IntegerField(default=-1, db_index=True, validators=[tile_library.models.validate_gte_neg_one]),
+            field=models.IntegerField(default=-1, db_index=True),
             preserve_default=True,
         ),
     ]

@@ -20,7 +20,7 @@ cgf_format_string = '^([0-9a-f]{%i}\.[0-9a-f]{%i}\.[0-9a-f]{%i})\.[0-9a-f]{%i}(?
 
 def get_position_strings_from_position_int(position_int):
     """
-        Returns path, version, and step
+        Returns version, path, and step
         Expects integer, returns 3 strings
         Raises TypeError and ValueError
     """
@@ -29,16 +29,32 @@ def get_position_strings_from_position_int(position_int):
     if position_int < 0:
         raise ValueError("Requires positive argument")
     str_tile_name = hex(position_int).lstrip('0x').rstrip('L')
-    if len(str_tile_name) > NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_STEP:
+    if len(str_tile_name) > NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP:
         raise ValueError("Requires Tile integer. Given integer too large.")
-    str_tile_name = str_tile_name.zfill(NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_STEP)
-    path = str_tile_name[:NUM_HEX_INDEXES_FOR_PATH]
-    version = str_tile_name[NUM_HEX_INDEXES_FOR_PATH:NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION]
+    str_tile_name = str_tile_name.zfill(NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP)
+    version = str_tile_name[:NUM_HEX_INDEXES_FOR_VERSION]
+    path = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION:NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH]
     step = str_tile_name[NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION:]
-    return path, version, step
+    return version, path, step
+def get_position_string_from_position_int(position_int):
+    """
+        Returns hex indexing for tile position
+        Expects integer, returns string
+        Raises TypeError and ValueError
+    """
+    version, path, step = get_position_strings_from_position_int(position_int)
+    return string.join([version, path, step], ".")
+def get_position_ints_from_position_int(position_int):
+    """
+        Returns integers for path, version, and step for tile position
+        Expects integer, returns 3 integers
+        Raises TypeError and ValueError
+    """
+    version, path, step = get_position_strings_from_position_int(position_int)
+    return int(version,16), int(path,16), int(step,16)
 def get_tile_variant_strings_from_tile_variant_int(tile_variant_int):
     """
-        Returns path, version, step, and var
+        Returns version, path, step, and var
         Expects integer, returns 3 strings
         Raises TypeError and ValueError
     """
@@ -47,46 +63,30 @@ def get_tile_variant_strings_from_tile_variant_int(tile_variant_int):
     if tile_variant_int < 0:
         raise ValueError("Requires positive argument.")
     str_tile_name = hex(tile_variant_int).lstrip('0x').rstrip('L')
-    if len(str_tile_name) > NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_STEP+NUM_HEX_INDEXES_FOR_VARIANT_VALUE:
+    if len(str_tile_name) >NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP+NUM_HEX_INDEXES_FOR_VARIANT_VALUE:
         raise ValueError("Requires valid TileVariant integer. Given integer too large.")
-    str_tile_name = str_tile_name.zfill(NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_STEP+NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
-    path = str_tile_name[:NUM_HEX_INDEXES_FOR_PATH]
-    version = str_tile_name[NUM_HEX_INDEXES_FOR_PATH:NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION]
-    step = str_tile_name[NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION:NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_STEP]
-    var = str_tile_name[NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_STEP:]
-    return path, version, step, var
-def get_position_string_from_position_int(position_int):
-    """
-        Returns hex indexing for tile position
-        Expects integer, returns string
-        Raises TypeError and ValueError
-    """
-    path, version, step = get_position_strings_from_position_int(position_int)
-    return string.join([path, version, step], ".")
-def get_position_ints_from_position_int(position_int):
-    """
-        Returns integers for path, version, and step for tile position
-        Expects integer, returns 3 integers
-        Raises TypeError and ValueError
-    """
-    path, version, step = get_position_strings_from_position_int(position_int)
-    return int(path,16), int(version,16), int(step,16)
+    str_tile_name = str_tile_name.zfill(NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP+NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+    version = str_tile_name[:NUM_HEX_INDEXES_FOR_VERSION]
+    path = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION:NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH]
+    step = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH:NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP]
+    var = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP:]
+    return version, path, step, var
 def get_tile_variant_string_from_tile_variant_int(tile_variant_int):
     """
         Returns hex indexing for tile variant
         Expects integer, returns string
         Raises TypeError and ValueError
     """
-    path, version, step, var = get_tile_variant_strings_from_tile_variant_int(tile_variant_int)
-    return string.join([path, version, step, var], ".")
+    version, path, step, var = get_tile_variant_strings_from_tile_variant_int(tile_variant_int)
+    return string.join([version, path, step, var], ".")
 def get_tile_variant_ints_from_tile_variant_int(tile_variant_int):
     """
         Returns integers for path, version, step, and variant for tile variant
         Expects integer, returns 4 integers
         Raises TypeError and ValueError
     """
-    path, version, step, var = get_tile_variant_strings_from_tile_variant_int(tile_variant_int)
-    return int(path,16), int(version,16), int(step,16), int(var,16)
+    version, path, step, var = get_tile_variant_strings_from_tile_variant_int(tile_variant_int)
+    return int(version,16), int(path,16), int(step,16), int(var,16)
 def convert_position_int_to_tile_variant_int(tile_int, variant_value=0):
     """
         Converts position integer to tile variant integer with a variant value of variant_value
@@ -100,16 +100,16 @@ def convert_position_int_to_tile_variant_int(tile_int, variant_value=0):
     hex_variant_value = hex(variant_value).lstrip('0x').rstrip('L').zfill(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
     if len(hex_variant_value) > NUM_HEX_INDEXES_FOR_VARIANT_VALUE:
         raise ValueError("Requires variant value integer. Given integer too large.")
-    path, version, step = get_position_strings_from_position_int(tile_int)
-    return int(path+version+step+hex_variant_value,16)
+    version, path, step = get_position_strings_from_position_int(tile_int)
+    return int(version+path+step+hex_variant_value,16)
 def convert_tile_variant_int_to_position_int(tile_variant_int):
     """
         Converts tile variant integer to its position integer
         Expects integer, returns integer
         Raises TypeError and ValueError
     """
-    path, version, step, var = get_tile_variant_strings_from_tile_variant_int(tile_variant_int)
-    return int(path+version+step,16)
+    version, path, step, var = get_tile_variant_strings_from_tile_variant_int(tile_variant_int)
+    return int(version+path+step,16)
 def get_position_from_cgf_string(cgf_str):
     """
         Returns integer corresponding to the position pointed to by a cgf string
@@ -121,7 +121,8 @@ def get_position_from_cgf_string(cgf_str):
     matching = re.match(cgf_format_string, cgf_str)
     if matching == None:
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
-    return int(string.join(matching.group(1).split('.'), ''), 16)
+    path, version, step = matching.group(1).split('.')
+    return int(version+path+step, 16)
 def get_number_of_tiles_spanned_from_cgf_string(cgf_str):
     """
         Returns integer corresponding to the number of positions spanned by a tilevariant encoded
@@ -151,8 +152,8 @@ def get_min_position_and_tile_variant_from_path_int(path_int, path_version=0):
         raise ValueError("Path integer expected to be greater than 0.")
     if path_int > CHR_PATH_LENGTHS[-1]:
         raise ValueError("Path integer expected to be smaller than the maximum number of paths.")
-    name = hex(path_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)+ \
-           hex(path_version).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_VERSION)+ \
+    name = hex(path_version).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_VERSION)+ \
+           hex(path_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)+ \
            "".zfill(NUM_HEX_INDEXES_FOR_STEP)
     varname = name + "".zfill(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
     name = int(name, 16)
@@ -178,7 +179,7 @@ def get_chromosome_int_from_position_int(position_int):
         Expects an int, returns an int
         Raises TypeError and ValueError
     """
-    path, version, step = get_position_ints_from_position_int(position_int)
+    version, path, step = get_position_ints_from_position_int(position_int)
     return get_chromosome_int_from_path_int(path)
 def get_chromosome_int_from_tile_variant_int(tile_variant_int):
     """
@@ -186,7 +187,7 @@ def get_chromosome_int_from_tile_variant_int(tile_variant_int):
         Expects an int, returns an int
         Raises TypeError and ValueError
     """
-    path, version, step, variant_value = get_tile_variant_ints_from_tile_variant_int(tile_variant_int)
+    version, path, step, variant_value = get_tile_variant_ints_from_tile_variant_int(tile_variant_int)
     return get_chromosome_int_from_path_int(path)
 def get_chromosome_int_from_path_int(path_int):
     """
