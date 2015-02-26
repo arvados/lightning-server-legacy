@@ -1,4 +1,5 @@
 import hashlib
+import json
 
 import tile_library.basic_functions as basic_fns
 from tile_library.constants import CHR_PATH_LENGTHS, CHR_OTHER, TAG_LENGTH, \
@@ -105,7 +106,7 @@ def validate_reference_bases(reference_seq, start, end, reference_bases):
     """
         check genome variant reference bases are the bases in the reference sequence
     """
-    if reference_seq[start:end] != reference_bases.strip('-'):
+    if reference_seq[start:end].upper() != reference_bases.strip('-').upper():
         raise TileLibraryValidationError(
             {'reference_bases':"Reference bases (%s) do not match bases in reference tile variant (%s)" % (reference_bases, reference_seq[start:end])}
         )
@@ -116,9 +117,9 @@ def validate_same_chromosome(locus_chrom_int, variant_chrom_int, locus_chrom_nam
     """
     VALIDATION_ERRORS = {}
     if locus_chrom_int != variant_chrom_int:
-        VALIDATION_ERRORS['genome_variant.chromosome_int'] = 'Locus for tile variant is not in chromosome %i' % (variant_chrom_int)
+        VALIDATION_ERRORS['chromosome_int'] = 'Locus for tile variant is not in chromosome %i' % (variant_chrom_int)
     if locus_chrom_name != variant_chrom_name:
-        VALIDATION_ERRORS['genome_variant.alternate_chromosome_name'] = "Locus for tile variant is not in chromosome %s" % (variant_chrom_name)
+        VALIDATION_ERRORS['alternate_chromosome_name'] = "Locus for tile variant is not in chromosome %s" % (variant_chrom_name)
     if len(VALIDATION_ERRORS) > 0:
         raise TileLibraryValidationError(VALIDATION_ERRORS)
 
@@ -142,7 +143,7 @@ def validate_alternate_bases(tile_var_seq, alternate_bases, through_start, throu
     """
         check the genome variant alternate bases are the bases in the variant
     """
-    if tile_var_seq[through_start:through_end] != alternate_bases.strip('-'):
+    if tile_var_seq[through_start:through_end].upper() != alternate_bases.strip('-').upper():
         raise TileLibraryValidationError(
             {'genome_variant.alternate_bases':"Alternate bases (%s) do not match bases in tile variant (%s)" % (alternate_bases, tile_var_seq[through_start:through_end])}
         )

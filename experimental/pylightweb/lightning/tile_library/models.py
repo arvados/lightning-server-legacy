@@ -6,8 +6,6 @@ Does not include information about the population - Use Lantern for that case
 """
 
 import string
-import json
-import warnings
 
 from django.db import models
 from django.core.validators import RegexValidator
@@ -26,10 +24,8 @@ def validate_json(text):
     except TileLibraryValidationError as e:
         raise ValidationError(e.value)
 def validate_positive(integer):
-    try:
-        validation_fns.validate_positive(integer)
-    except TileLibraryValidationError as e:
-        raise ValidationError(e.value)
+    if integer < 0:
+        raise ValidationError("Expects integer to be positive")
 def validate_tile_position_int(tile_position_int):
     try:
         validation_fns.validate_tile_position_int(tile_position_int)
@@ -133,8 +129,8 @@ class TileLocusAnnotation(models.Model):
         self.full_clean()
         try:
             tile_var_int = basic_fns.convert_position_int_to_tile_variant_int(int(self.tile_position_id), variant_value=int(self.tile_variant_value))
-            length = TileVariant.objects.get(tile_variant_int=tile_var_int).length
-            validation_fns.validate_locus(self.chromosome_int, self.tile_position_id, TAG_LENGTH, length, self.start_int, self.end_int)
+            length = int(TileVariant.objects.get(tile_variant_int=tile_var_int).length)
+            validation_fns.validate_locus(int(self.chromosome_int), int(self.tile_position_id), TAG_LENGTH, length, int(self.start_int), int(self.end_int))
         except TileVariant.DoesNotExist:
             raise ValidationError({'tile_variant_value':'tile does not have a tilevariant (with a variant value of %i) associated with it' % (self.tile_variant_value)})
         except TileLibraryValidationError as e:
@@ -193,7 +189,7 @@ class TileVariant(models.Model):
             if self.num_positions_spanned > 1:
                 end_tile = Tile.objects.get(tile_position_int=self.tile_id+self.num_positions_spanned-1)
                 #Tiles need to be on same path and version (this also ensures they are on the same chromosome from TileLocusAnnotation checking)
-                validation_fns.validate_spanning_tile(int(self.tile.tile_position_int), int(end_tile.tile_position_int), self.num_positions_spanned)
+                validation_fns.validate_spanning_tile(int(self.tile.tile_position_int), int(end_tile.tile_position_int), int(self.num_positions_spanned))
             start_tag = self.start_tag
             if start_tag == '':
                 start_tag = self.tile.start_tag
@@ -203,7 +199,7 @@ class TileVariant(models.Model):
                 if end_tile != None:
                     end_tag = end_tile.end_tag
             validation_fns.validate_tile_variant(
-                self.tile_id, self.tile_variant_int, self.variant_value, self.sequence, self.length, self.md5sum, start_tag, end_tag
+                int(self.tile_id), int(self.tile_variant_int), int(self.variant_value), self.sequence, int(self.length), self.md5sum, start_tag, end_tag
             )
             super(TileVariant, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
@@ -269,7 +265,6 @@ class TileVariant(models.Model):
     class Meta:
         #Ensures ordering by tilename
         ordering = ['tile_variant_int']
-
 class GenomeVariant(models.Model):
     """
         Implements a Genome Variant object (SNP, SUB, or INDEL) that can be associated with multiple TileVariants.
@@ -345,6 +340,10 @@ class GenomeVariant(models.Model):
         chrom = int(self.chromosome_int)
         start = int(self.locus_start_int)
         end = int(self.locus_end_int)
+        if end < start:
+            raise ValidationError(
+                {'locus_start_int-locus_end_int':'locus_end_int (%i) is smaller than locus_start_int (%i)' % (end, start)}
+            )
         loci = TileLocusAnnotation.objects.filter(assembly_int=assembly).filter(chromosome_int=chrom).filter(start_int__lt=end).filter(end_int__gt=start).order_by('start_int')
         if loci.count() == 0:
             raise ValidationError(
@@ -358,7 +357,8 @@ class GenomeVariant(models.Model):
                 zero = locus.start_int
                 reference_seq += reference_tile_variant_sequence
             else:
-                assert reference_seq[-TAG_LENGTH:].upper() == reference_tile_variant_sequence[:TAG_LENGTH].upper()
+                assert reference_seq[-TAG_LENGTH:].upper() == reference_tile_variant_sequence[:TAG_LENGTH].upper(), \
+                    "Tags mismatching at locus %s: %s not %s" % (loci, reference_seq, reference_tile_variant_sequence)
                 reference_seq += reference_tile_variant_sequence[TAG_LENGTH:]
         try:
             validation_fns.validate_reference_bases(reference_seq, start-zero, end-zero, self.reference_bases)
@@ -402,7 +402,7 @@ class GenomeVariantTranslation(models.Model):
             gv = self.genome_variant
             tv = self.tile_variant
             start_int, end_int = tv.get_locus(gv.assembly_int)
-            for tile_position in range(int(tv.tile_id), int(tv.num_positions_spanned)):
+            for tile_position in range(int(tv.tile_id), int(tv.tile_id) + int(tv.num_positions_spanned)):
                 locus = TileLocusAnnotation.objects.filter(tile_position=tile_position).get(assembly_int=gv.assembly_int)
                 validation_fns.validate_same_chromosome(locus.chromosome_int, gv.chromosome_int, locus.alternate_chromosome_name, gv.alternate_chromosome_name)
             validation_fns.validate_tile_variant_loci_encompass_genome_variant_loci(gv.locus_start_int, gv.locus_end_int, start_int, end_int)
@@ -411,9 +411,9 @@ class GenomeVariantTranslation(models.Model):
         except TileLibraryValidationError as e:
             raise ValidationError(e.value)
         except MissingLocusError as e:
-            raise ValidationError({'genome_variant.assembly_int':str(e)})
+            raise ValidationError({'assembly_int.get_locus_error':str(e)})
         except TileLocusAnnotation.DoesNotExist:
-            raise ValidationError({'genome_variant.assembly_int':'Locus for assembly %i not found for tile variant' % (self.genome_variant.assembly_int)})
+            raise ValidationError({'assembly_int':'Locus for assembly %i not found for tile variant' % (self.genome_variant.assembly_int)})
     def __unicode__(self):
         return "Tile Variant %s to Genome Variant %s (id: %i)" % (self.tile_variant.__unicode__(), self.genome_variant.__unicode__(), self.genome_variant.id)
     class Meta:

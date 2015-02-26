@@ -28,6 +28,11 @@ genome_and_chromosomes.remove(PATH)
 
 NUM_RANDOM_TESTS_TO_RUN=1
 
+step_min = '0'*NUM_HEX_INDEXES_FOR_STEP
+step_max = 'f'*NUM_HEX_INDEXES_FOR_STEP
+variant_value_min = '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+variant_value_max = 'f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+
 BASE_LIBRARY_STRUCTURE = {
     CHR_1: {
         '0': [
@@ -103,7 +108,7 @@ def mk_tilevars(num_vars, lengths, tile, spanning_nums=[], start_variant_value=0
         spanning_nums = [1 for i in range(num_vars)]
     assert (len(spanning_nums)==num_vars)
     for i in range(start_variant_value, num_vars):
-        tile_int = tile.tile_position_int
+        tile_int = int(tile.tile_position_int)
         tile_hex = string.join(basic_fns.get_position_strings_from_position_int(tile_int), "")
         tile_hex += hex(i).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         tile_var_int = int(tile_hex, 16)
@@ -224,10 +229,6 @@ def make_tile_position_and_variant(tile_position, tile_variant, length, tile_end
     tile=make_tile_position(tile_position)
     tilevar = make_tile_variant(tile, tile_variant, length, tile_ending=tile_ending, num_spanned=num_spanned)
     return tile, tilevar
-
-# Test suite makes assumptions about constants. Tell the user if the constants don't hold
-if NUM_HEX_INDEXES_FOR_PATH != 3 or NUM_HEX_INDEXES_FOR_VERSION != 2 or NUM_HEX_INDEXES_FOR_STEP != 4 or NUM_HEX_INDEXES_FOR_VARIANT_VALUE != 3 or NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE != 4:
-    raise Exception("Testing currently assumes certain values for NUM_HEX_INDEXES_FOR_* constant values")
 
 ######################### TEST basic_functions ###################################
 class TestConstants(TestCase):
@@ -1114,7 +1115,7 @@ class TestTileVariantModel(TestCase):
         digestor = hashlib.new('md5', seq)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int(tile_var_int,16),
+                tile_variant_int=int(tile_var_int,16)+1,
                 tile=tile,
                 variant_value=0,
                 length=250,
@@ -1188,7 +1189,7 @@ class TestTileVariantModel(TestCase):
         self.assertIn('variant_value', cm.exception.message_dict)
     def test_invalid_start_tag(self):
         tile=make_tile_position(0)
-        seq = tile.start_tag[:20]
+        seq = tile.start_tag[:TAG_LENGTH-1]
         seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
         seq += tile.end_tag
         digestor = hashlib.new('md5', seq)
@@ -1201,7 +1202,7 @@ class TestTileVariantModel(TestCase):
                 md5sum=digestor.hexdigest(),
                 sequence=seq,
                 num_positions_spanned=1,
-                start_tag=tile.start_tag[:20]
+                start_tag=tile.start_tag[:TAG_LENGTH-1]
             ).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('start_tag', cm.exception.message_dict)
@@ -1209,7 +1210,7 @@ class TestTileVariantModel(TestCase):
         tile=make_tile_position(0)
         seq = tile.start_tag
         seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
-        seq += tile.end_tag[:20]
+        seq += tile.end_tag[:TAG_LENGTH-1]
         digestor = hashlib.new('md5', seq)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
@@ -1220,11 +1221,10 @@ class TestTileVariantModel(TestCase):
                 md5sum=digestor.hexdigest(),
                 sequence=seq,
                 num_positions_spanned=1,
-                end_tag=tile.end_tag[:20]
+                end_tag=tile.end_tag[:TAG_LENGTH-1]
             ).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('end_tag', cm.exception.message_dict)
-
     def test_mismatching_path_versions(self):
         tile=make_tile_position(0)
         seq = tile.start_tag
@@ -1253,7 +1253,7 @@ class TestTileVariantModel(TestCase):
             TileVariant(
                 tile_variant_int=int(v+p+s+vv,16),
                 tile=tile,
-                variant_value=0,
+                variant_value=int(vv,16),
                 length=250,
                 md5sum=md5sum,
                 sequence=seq,
@@ -1289,7 +1289,7 @@ class TestTileVariantModel(TestCase):
             TileVariant(
                 tile_variant_int=int(v+p+s+vv,16),
                 tile=tile,
-                variant_value=0,
+                variant_value=int(vv,16),
                 length=250,
                 md5sum=md5sum,
                 sequence=seq,
@@ -1303,13 +1303,31 @@ class TestTileVariantModel(TestCase):
         seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
         seq += tile.end_tag
         digestor = hashlib.new('md5', seq)
+        md5sum=digestor.hexdigest()
+        v='0'*(NUM_HEX_INDEXES_FOR_VERSION)
+        p='0'*(NUM_HEX_INDEXES_FOR_PATH)
+        s='0'*(NUM_HEX_INDEXES_FOR_STEP-1)+'1'
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int('000000001000',16),
+                tile_variant_int=int(v+p+s+vv,16),
                 tile=tile,
                 variant_value=0,
                 length=250,
-                md5sum=digestor.hexdigest(),
+                md5sum=md5sum,
+                sequence=seq,
+                num_positions_spanned=1
+            ).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('step_mismatch', cm.exception.message_dict)
+        vv='f'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        with self.assertRaises(ValidationError) as cm:
+            TileVariant(
+                tile_variant_int=int(v+p+s+vv,16),
+                tile=tile,
+                variant_value=int(vv,16),
+                length=250,
+                md5sum=md5sum,
                 sequence=seq,
                 num_positions_spanned=1
             ).save()
@@ -1321,9 +1339,13 @@ class TestTileVariantModel(TestCase):
         seq += mk_genome_seq(250-TAG_LENGTH*2, uppercase=False)
         seq += tile.end_tag
         digestor = hashlib.new('md5', seq)
+        v='0'*(NUM_HEX_INDEXES_FOR_VERSION)
+        p='0'*(NUM_HEX_INDEXES_FOR_PATH)
+        s='0'*(NUM_HEX_INDEXES_FOR_STEP)
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE-1)+'1'
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int('000000000001',16),
+                tile_variant_int=int(v+p+s+vv,16),
                 tile=tile,
                 variant_value=0,
                 length=250,
@@ -1358,7 +1380,7 @@ class TestTileVariantModel(TestCase):
         seq += tile.end_tag
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int('000000000000',16),
+                tile_variant_int=0,
                 tile=tile,
                 variant_value=0,
                 length=250,
@@ -1393,7 +1415,7 @@ class TestTileVariantModel(TestCase):
         digestor = hashlib.new('md5', seq)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int('000000000000',16),
+                tile_variant_int=0,
                 tile=tile,
                 variant_value=0,
                 length=250,
@@ -1411,7 +1433,7 @@ class TestTileVariantModel(TestCase):
         digestor = hashlib.new('md5', seq)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
-                tile_variant_int=int('000000000000',16),
+                tile_variant_int=0,
                 tile=tile,
                 variant_value=0,
                 length=250,
@@ -1460,18 +1482,49 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('spanning_tile_error_missing_tile', cm.exception.message_dict)
     def test_spanning_tile_on_two_paths(self):
-        ending_tile, ending_tilevar =make_tile_position_and_variant('001000000', '001000000000', 250)
-        starting_tile, starting_tilevar = make_tile_position_and_variant('00000ffff','00000ffff000', 250)
+        v='0'*(NUM_HEX_INDEXES_FOR_VERSION)
+        starting_p='0'*(NUM_HEX_INDEXES_FOR_PATH)
+        ending_p='0'*(NUM_HEX_INDEXES_FOR_PATH-1)+'1'
+        starting_s='f'*(NUM_HEX_INDEXES_FOR_STEP)
+        ending_s='0'*(NUM_HEX_INDEXES_FOR_STEP)
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        ending_tile, ending_tilevar =make_tile_position_and_variant(v+ending_p+ending_s, v+ending_p+ending_s+vv, 250)
+        starting_tile, starting_tilevar = make_tile_position_and_variant(v+starting_p+starting_s,v+starting_p+starting_s+vv, 250)
         with self.assertRaises(ValidationError) as cm:
-            make_tile_variant(starting_tile,'00000ffff001', 500, tile_ending=ending_tile, num_spanned=2)
+            make_tile_variant(starting_tile,v+starting_p+starting_s+'0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE-1)+'1', 500, tile_ending=ending_tile, num_spanned=2)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('spanning_tile_error', cm.exception.message_dict)
+    def test_spanning_tile_on_two_path_versions_and_two_paths(self):
+        #Prevented by the small int restriction on num_positions spanned
+        starting_v='0'*(NUM_HEX_INDEXES_FOR_VERSION)
+        ending_v='0'*(NUM_HEX_INDEXES_FOR_VERSION-1)+'1'
+        starting_p='f'*(NUM_HEX_INDEXES_FOR_PATH)
+        ending_p='0'*(NUM_HEX_INDEXES_FOR_PATH)
+        starting_s='f'*(NUM_HEX_INDEXES_FOR_STEP)
+        ending_s='0'*(NUM_HEX_INDEXES_FOR_STEP)
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        ending_tile, ending_tilevar=make_tile_position_and_variant(ending_v+ending_p+ending_s, ending_v+ending_p+ending_s+vv,250)
+        starting_tile, starting_tilevar = make_tile_position_and_variant(starting_v+starting_p+starting_s, starting_v+starting_p+starting_s+vv,250)
+        with self.assertRaises(ValidationError) as cm:
+            next_tilevar_int = int(starting_v+starting_p+starting_s+vv,16)+1
+            make_tile_variant(starting_tile,next_tilevar_int, 500, tile_ending=ending_tile, num_spanned=2)
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('spanning_tile_error', cm.exception.message_dict)
     def test_spanning_tile_on_two_path_versions(self):
-        tile1=make_tile_position('000010000')
+        #Prevented by the small int restriction on num_positions spanned
+        starting_v='0'*(NUM_HEX_INDEXES_FOR_VERSION)
+        ending_v='0'*(NUM_HEX_INDEXES_FOR_VERSION-1)+'1'
+        p='0'*(NUM_HEX_INDEXES_FOR_PATH)
+        starting_s='f'*(NUM_HEX_INDEXES_FOR_STEP)
+        ending_s='0'*(NUM_HEX_INDEXES_FOR_STEP)
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        ending_tile, ending_tilevar=make_tile_position_and_variant(ending_v+p+ending_s, ending_v+p+ending_s+vv,250)
+        starting_tile, starting_tilevar = make_tile_position_and_variant(starting_v+p+starting_s, starting_v+p+starting_s+vv,250)
         with self.assertRaises(ValidationError) as cm:
-            make_tile_position_and_variant(0,1, 500, tile_ending=tile1, num_spanned=2)
+            num_spanned=int(ending_v+p+ending_s,16)-int(starting_v+p+starting_s,16)
+            make_tile_variant(starting_tile, int(starting_v+p+starting_s+vv,16)+1, 500, tile_ending=ending_tile, num_spanned=num_spanned)
         self.assertEqual(len(cm.exception.message_dict), 1)
-        self.assertIn('spanning_tile_error', cm.exception.message_dict)
+        self.assertIn('num_positions_spanned', cm.exception.message_dict)
     def test_successful_spanning_tile_save(self):
         tile1=make_tile_position(1)
         make_tile_position_and_variant(0, 1, 500, tile_ending=tile1, num_spanned=2)
@@ -1484,77 +1537,59 @@ class TestTileVariantModel(TestCase):
             make_tile_variant(tile, 0, 249)
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('tile_variant_int', cm.exception.message_dict)
-    def test_get_string(self):
-        """
-            TileVariant.get_string() returns str
-            Testing with Tile 1c4.03.002f
-            TileVariant 1c4.03.002f.0f3
-            000.00.0000 => 010
-            000.00.1000 => 100
-            000.01.0000 => 001
-            000.10.0000 => 010
-            001.00.0000 => 100
-            010.00.0000 => 020
-        """
-        #Does not worry about correctness, since not saving any tiles
-        new_tile_variant = TileVariant(tile_variant_int=int('1c403002f0f3', 16))
-        self.assertEqual(type(new_tile_variant.get_string()), str)
-        self.assertEqual(new_tile_variant.get_string(), '1c4.03.002f.0f3')
-
-        new_tile_variant = TileVariant(tile_variant_int=int('10',16))
-        self.assertEqual(new_tile_variant.get_string(), '000.00.0000.010')
-
-        new_tile_variant = TileVariant(tile_variant_int=int('1000100', 16))
-        self.assertEqual(new_tile_variant.get_string(), '000.00.1000.100')
-
-        new_tile_variant = TileVariant(tile_variant_int=int('10000001', 16))
-        self.assertEqual(new_tile_variant.get_string(), '000.01.0000.001')
-
-        new_tile_variant = TileVariant(tile_variant_int=int('100000010', 16))
-        self.assertEqual(new_tile_variant.get_string(), '000.10.0000.010')
-
-        new_tile_variant = TileVariant(tile_variant_int=int('1000000100', 16))
-        self.assertEqual(new_tile_variant.get_string(), '001.00.0000.100')
-
-        new_tile_variant = TileVariant(tile_variant_int=int('10000000020', 16))
-        self.assertEqual(new_tile_variant.get_string(), '010.00.0000.020')
+    def test_get_string_type(self):
+        new_tile = TileVariant(tile_variant_int=0)
+        self.assertIsInstance(new_tile.get_string(), str)
+    def test_get_string_random_tiles(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+            new_tile = TileVariant(tile_variant_int=int(v+p+s+vv,16))
+            self.assertEqual(new_tile.get_string(), string.join([v,p,s,vv],sep='.'))
+    def test_get_string_from_max_and_min_tiles(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        new_tile = TileVariant(tile_variant_int=int(v+p+s+vv,16))
+        self.assertEqual(new_tile.get_string(), string.join([v,p,s,vv],sep='.'))
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv='f'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        new_tile = TileVariant(tile_variant_int=int(v+p+s+vv,16))
+        self.assertEqual(new_tile.get_string(), string.join([v,p,s,vv],sep='.'))
     def test_is_reference_non_int_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValueError) as cm:
             tilevar.is_reference('a')
-        #self.assertEqual(len(cm.exception.message_dict), 1)
-        #self.assertIn('tile_variant_int', cm.exception.message_dict)
     @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
     def test_is_reference_unsupported_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValueError) as cm:
             tilevar.is_reference(0)
-        #self.assertEqual(len(cm.exception.message_dict), 1)
-        #self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_is_reference_missing_locus(self):
+        s='0'*(NUM_HEX_INDEXES_FOR_STEP-1)+'1'
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
-        tile2, tilevar2 = make_tile_position_and_variant(1, '000000001000', 500+TAG_LENGTH-250)
+        tile2, tilevar2 = make_tile_position_and_variant(1, int(s+vv,16), 500+TAG_LENGTH-250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
         with self.assertRaises(MissingLocusError) as cm:
             tilevar.is_reference(ASSEMBLY_19)
-        #self.assertEqual(len(cm.exception.message_dict), 1)
-        #self.assertIn('tile_variant_int', cm.exception.message_dict)
         with self.assertRaises(MissingLocusError) as cm:
             tilevar.is_reference(ASSEMBLY_18)
-        #self.assertEqual(len(cm.exception.message_dict), 1)
-        #self.assertIn('tile_variant_int', cm.exception.message_dict)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         tilevar.is_reference(ASSEMBLY_19)
         with self.assertRaises(MissingLocusError) as cm:
             tilevar.is_reference(ASSEMBLY_18)
-        #self.assertEqual(len(cm.exception.message_dict), 1)
-        #self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_is_reference_one_assembly_on_one_tilevar_success(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         tilevar2 = make_tile_variant(tile, 1, 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
-        self.assertEqual(type(tilevar.is_reference(ASSEMBLY_19)), bool)
+        self.assertIsInstance(tilevar.is_reference(ASSEMBLY_19), bool)
         self.assertTrue(tilevar.is_reference(ASSEMBLY_19))
         self.assertFalse(tilevar2.is_reference(ASSEMBLY_19))
         # Adding another assembly to the same tilevariant should only change 1 query
@@ -1568,7 +1603,7 @@ class TestTileVariantModel(TestCase):
         tilevar2 = make_tile_variant(tile, 1, 249)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=0, end_int=249, tile_position=tile, tile_variant_value=1).save()
-        self.assertEqual(type(tilevar.is_reference(ASSEMBLY_19)), bool)
+        self.assertIsInstance(tilevar.is_reference(ASSEMBLY_19), bool)
         self.assertTrue(tilevar.is_reference(ASSEMBLY_19))
         self.assertFalse(tilevar2.is_reference(ASSEMBLY_19))
         self.assertFalse(tilevar.is_reference(ASSEMBLY_18))
@@ -1604,8 +1639,9 @@ class TestTileVariantModel(TestCase):
         with self.assertRaises(ValueError) as cm:
             tilevar.get_locus(0)
     def test_get_locus_missing_locus(self):
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
-        tile2, tilevar2 = make_tile_position_and_variant(1, '000000001000', 500+TAG_LENGTH-250)
+        tile2, tilevar2 = make_tile_position_and_variant(1, int('1'+vv,16), 500+TAG_LENGTH-250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
         with self.assertRaises(MissingLocusError) as cm:
@@ -1620,12 +1656,11 @@ class TestTileVariantModel(TestCase):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
-
-        tile2, tilevar2 = make_tile_position_and_variant(1, '000000001000', 500+TAG_LENGTH-250)
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        tile2, tilevar2 = make_tile_position_and_variant(1, int('1'+vv,16), 500+TAG_LENGTH-250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
-
-        tile3, tilevar3 = make_tile_position_and_variant(2, '000000002000', 750+TAG_LENGTH-500)
+        tile3, tilevar3 = make_tile_position_and_variant(2, int('2'+vv,16), 750+TAG_LENGTH-500)
 
         spanning_tilevar = make_tile_variant(tile, 1, 750, tile_ending=tile3, num_spanned=3)
 
@@ -1638,22 +1673,23 @@ class TestTileVariantModel(TestCase):
         with self.assertRaises(MissingLocusError) as cm:
             spanning_tilevar.get_locus(ASSEMBLY_18) # should still raise an error
     def test_get_locus_type_return(self):
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
-        tile2, tilevar2 = make_tile_position_and_variant(1, '000000001000', 500+TAG_LENGTH-250)
+        tile2, tilevar2 = make_tile_position_and_variant(1, int('1'+vv,16), 500+TAG_LENGTH-250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile2, tile_variant_value=0).save()
-        tile3, tilevar3 = make_tile_position_and_variant(2, '000000002000', 750+TAG_LENGTH-500)
+        tile3, tilevar3 = make_tile_position_and_variant(2, int('2'+vv,16), 750+TAG_LENGTH-500)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=500-TAG_LENGTH, end_int=750, tile_position=tile3, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=500-TAG_LENGTH, end_int=750, tile_position=tile3, tile_variant_value=0).save()
         spanning_tilevar = make_tile_variant(tile, 1, 750, tile_ending=tile3, num_spanned=3)
         start, end = tilevar.get_locus(ASSEMBLY_19)
-        self.assertEqual(type(start), int)
-        self.assertEqual(type(end), int)
+        self.assertIsInstance(start, int)
+        self.assertIsInstance(end, int)
         start, end = tilevar.get_locus(ASSEMBLY_18)
-        self.assertEqual(type(start), int)
-        self.assertEqual(type(end), int)
+        self.assertIsInstance(start, int)
+        self.assertIsInstance(end, int)
     def test_get_locus_non_spanning_success(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         tilevar2 = make_tile_variant(tile, 1, 249)
@@ -1672,16 +1708,17 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(start, 0)
         self.assertEqual(end, 249)
     def test_get_locus_spanning_success(self):
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         tilevar_var1 = make_tile_variant(tile, 1, 249)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=0, end_int=249, tile_position=tile, tile_variant_value=1).save()
 
-        tile1, tilevar1 = make_tile_position_and_variant(1, '000000001000', 500+TAG_LENGTH-250)
+        tile1, tilevar1 = make_tile_position_and_variant(1, int('1'+vv,16), 500+TAG_LENGTH-250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=250-TAG_LENGTH, end_int=500, tile_position=tile1, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=249-TAG_LENGTH, end_int=499, tile_position=tile1, tile_variant_value=0).save()
 
-        tile2, tilevar2 = make_tile_position_and_variant(2, '000000002000', 750+TAG_LENGTH-500)
+        tile2, tilevar2 = make_tile_position_and_variant(2, int('2'+vv,16), 750+TAG_LENGTH-500)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=500-TAG_LENGTH, end_int=750, tile_position=tile2, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=499-TAG_LENGTH, end_int=749, tile_position=tile2, tile_variant_value=0).save()
 
@@ -1694,12 +1731,13 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(start, 0)
         self.assertEqual(end, 749)
     def test_get_locus_spanning_success_missing_middle_info(self):
+        vv='0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         tilevar_var1 = make_tile_variant(tile, 1, 249)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=0, end_int=249, tile_position=tile, tile_variant_value=1).save()
 
-        tile3, tilevar3 = make_tile_position_and_variant(2, '000000002000', 750+TAG_LENGTH-500)
+        tile3, tilevar3 = make_tile_position_and_variant(2, int('2'+vv,16), 750+TAG_LENGTH-500)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=500-TAG_LENGTH, end_int=750, tile_position=tile3, tile_variant_value=0).save()
         TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=499-TAG_LENGTH, end_int=749, tile_position=tile3, tile_variant_value=0).save()
 
@@ -1745,7 +1783,7 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(tile.get_base_group_between_positions(1,5), 'GTCN')
         self.assertEqual(tile.get_base_group_between_positions(1,4), 'GTC')
 
-def make_snp_genome_and_tile_variant(ref_tilevar, new_tile_variant_int, id_, assem=ASSEMBLY_19, chrom=CHR_1, alt_name="", start=24, names=[],info=""):
+def make_snp_genome_and_tile_variant(ref_tilevar, new_tile_variant_int, id_, assem=ASSEMBLY_19, chrom=CHR_1, alt_name="", start=24, end=None, names=[],info=""):
     tile_length = ref_tilevar.length
     assert start >= TAG_LENGTH
     assert start < tile_length - TAG_LENGTH
@@ -1772,26 +1810,26 @@ def make_snp_genome_and_tile_variant(ref_tilevar, new_tile_variant_int, id_, ass
         num_positions_spanned=1
     )
     tilevar.save()
+    if end == None:
+        end=start+1
     gv = GenomeVariant(
         id=id_,
         assembly_int=assem,
         chromosome_int=chrom,
         alternate_chromosome_name=alt_name,
         locus_start_int=start,
-        locus_end_int=start+1,
+        locus_end_int=end,
         reference_bases=ref,
         alternate_bases=alt,
         names=names,
         info=info
     )
     gv.save()
-    gvt = GenomeVariantTranslation(tile_variant=tilevar, genome_variant=gv, start=start, end=start+1)
+    gvt = GenomeVariantTranslation(tile_variant=tilevar, genome_variant=gv, start=start, end=end)
     gvt.save()
     return tilevar, gv, gvt
 ################################## TEST GenomeVariant model ###################################
-@skip("Remodeling")
 class TestGenomeVariantModel(TestCase):
-    #check unique together working
     def test_failure_multiple_genome_variants_with_same_id(self):
         tile, tilevar = make_tile_position_and_variant(0,0,250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
@@ -1799,14 +1837,14 @@ class TestGenomeVariantModel(TestCase):
         with self.assertRaises(ValidationError) as cm:
             tilevar3, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 2, 0, start=30)
         self.assertEqual(len(cm.exception.message_dict), 1)
-        self.assertTrue('id' in cm.exception.message_dict)
+        self.assertIn('id', cm.exception.message_dict)
     def test_failure_non_int_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0,0,250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         with self.assertRaises(ValidationError) as cm:
             tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, assem="hi")
         self.assertEqual(len(cm.exception.message_dict), 1)
-        self.assertTrue('assembly_int' in cm.exception.message_dict)
+        self.assertIn('assembly_int', cm.exception.message_dict)
     @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
     def test_failure_unsupported_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0,0,250)
@@ -1814,21 +1852,530 @@ class TestGenomeVariantModel(TestCase):
         with self.assertRaises(ValidationError) as cm:
             tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, assem=0)
         self.assertEqual(len(cm.exception.message_dict), 1)
-        self.assertTrue('assembly_int' in cm.exception.message_dict)
+        self.assertIn('assembly_int', cm.exception.message_dict)
     def test_failure_missing_locus_with_correct_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0,0,250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         with self.assertRaises(ValidationError) as cm:
             tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, assem=ASSEMBLY_18)
         self.assertEqual(len(cm.exception.message_dict), 1)
-        self.assertTrue('missing_locus' in cm.exception.message_dict)
+        self.assertIn('missing_locus', cm.exception.message_dict)
+    def test_failure_non_int_chromosome(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, chrom="hi")
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int', cm.exception.message_dict)
+    @skipIf(0 in SUPPORTED_CHR_INTS, "Testing if error is raised with an unsupported chromosome, but chromosome=0 is defined")
+    def test_failure_unsupported_chromosome(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, chrom=0)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int', cm.exception.message_dict)
+    def test_failure_missing_locus_with_correct_chromosome(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, chrom=CHR_2)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('missing_locus', cm.exception.message_dict)
+    def test_failure_locus_end_int_smaller_than_start_int(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, start=50, end=49)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('locus_start_int-locus_end_int', cm.exception.message_dict)
+    def test_failure_missing_locus_in_correct_range(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0)
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('missing_locus', cm.exception.message_dict)
+    def test_failure_reference_bases_not_regex_sequence(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        gv = GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=25,
+            reference_bases='X',
+            alternate_bases='A',
+            names="",
+            info=""
+        )
+        with self.assertRaises(ValidationError) as cm:
+            gv.save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('reference_bases', cm.exception.message_dict)
+    def test_failure_alternate_bases_not_regex_sequence(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        ref = tilevar.sequence[24]
+        gv = GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=25,
+            reference_bases=ref,
+            alternate_bases='X',
+            names="",
+            info=""
+        )
+        with self.assertRaises(ValidationError) as cm:
+            gv.save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('alternate_bases', cm.exception.message_dict)
+    def test_failure_not_reference_sequence(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        ref = tilevar.sequence[24]
+        new_bases = ['A','G','C','T']
+        new_bases.remove(ref)
+        alt = random.choice(new_bases)
+        gv = GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=25,
+            reference_bases=alt,
+            alternate_bases=alt,
+            names="",
+            info=""
+        )
+        with self.assertRaises(ValidationError) as cm:
+            gv.save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('reference_bases', cm.exception.message_dict)
+    def test_failure_same_genome_variant(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        ref = tilevar.sequence[24]
+        new_bases = ['A','G','C','T']
+        new_bases.remove(ref)
+        alt = random.choice(new_bases)
+        GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=25,
+            reference_bases=ref,
+            alternate_bases=alt,
+            names="",
+            info=""
+        ).save()
+        gv = GenomeVariant(
+            id=1,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=25,
+            reference_bases=ref,
+            alternate_bases=alt,
+            names="",
+            info=""
+        )
+        with self.assertRaises(ValidationError) as cm:
+            gv.save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('__all__', cm.exception.message_dict)
+    def test_failure_info_not_json(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        with self.assertRaises(ValidationError) as cm:
+            tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0, info="I don't know what the phenotype is")
+    def test_success_snp(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0)
+        tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 2, 1, start=50, names="dbsnp120:rs12299\tdbsnp121:rs120")
+        tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 3, 2, start=100, names="dbsnp120:rs12299\tdbsnp121:rs120", info='{"phenotype":"Unknown!"}')
+        tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 4, 3, start=75, info='{"phenotype":"Unknown!"}')
+    def test_success_insertion(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=24,
+            reference_bases='-',
+            alternate_bases="AAAG",
+            names="",
+            info=""
+        ).save()
+    def test_success_deletion(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        ref = tilevar.sequence[24:30]
+        GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=30,
+            reference_bases=ref,
+            alternate_bases='-',
+            names="",
+            info=""
+        ).save()
+    def test_success_sub(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        ref = tilevar.sequence[24:30]
+        GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=30,
+            reference_bases=ref,
+            alternate_bases='AAG',
+            names="",
+            info=""
+        ).save()
 ################################## TEST GenomeVariantTranslation model ###################################
-@skip("Remodeling")
+#TODO: Check alternate_chromosome_name changes
 class TestGenomeVariantTranslationModel(TestCase):
-    pass
+    #Check failures
+    #tv missing gv assembly
+    def test_failure_tile_variant_missing_genome_variant_assembly(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        tile2 = Tile(tile_position_int=1, start_tag=tile.start_tag, end_tag=tile.end_tag)
+        tile2.save()
+        tilevar2 = TileVariant(
+            tile_variant_int=int('1'+variant_value_min,16),
+            tile=tile2,
+            variant_value=0,
+            length=250,
+            md5sum=tilevar.md5sum,
+            sequence=tilevar.sequence,
+            num_positions_spanned=1
+        )
+        tilevar2.save()
+        TileLocusAnnotation(assembly_int=ASSEMBLY_18, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile2, tile_variant_value=0).save()
+        ref = tilevar.sequence[24]
+        new_bases = ['A','G','C','T']
+        new_bases.remove(ref)
+        alt = random.choice(new_bases)
+        gv = GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=25,
+            reference_bases=ref,
+            alternate_bases=alt,
+            names="",
+            info=""
+        )
+        gv.save()
+        with self.assertRaises(ValidationError) as cm:
+            GenomeVariantTranslation(tile_variant=tilevar2, genome_variant=gv, start=24, end=25).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('assembly_int.get_locus_error', cm.exception.message_dict)
+    def test_failure_spanning_tile_variant_missing_genome_variant_assembly_in_middle_tile(self):
+        NEW_LIBRARY = {
+            CHR_1: {
+                '0': [
+                    {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+                    {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+                    {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+                ]
+            }
+        }
+        make_tiles(NEW_LIBRARY, assembly_default=ASSEMBLY_18)
+        tile0 = Tile.objects.get(tile_position_int=0)
+        tile2 = Tile.objects.get(tile_position_int=2)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile0, tile_variant_value=0).save()
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=500-TAG_LENGTH*2, end_int=750-TAG_LENGTH*2, tile_position=tile2, tile_variant_value=0).save()
+        tilevar0 = TileVariant.objects.get(tile_variant_int=0)
+        tilevar1 = TileVariant.objects.get(tile_variant_int=int('1'+variant_value_min,16))
+        tilevar2 = TileVariant.objects.get(tile_variant_int=int('2'+variant_value_min,16))
+        seq = tilevar0.sequence[:50]+tilevar0.sequence[51:]+tilevar1.sequence[TAG_LENGTH:]+tilevar2.sequence[TAG_LENGTH:]
+        digestor = hashlib.new('md5', seq)
+        tilevar3 = TileVariant(
+            tile_variant_int=1,
+            tile=tile0,
+            variant_value=1,
+            length=len(seq),
+            md5sum=digestor.hexdigest(),
+            sequence=seq,
+            num_positions_spanned=3
+        )
+        tilevar3.save()
+        ref = tilevar0.sequence[50]
+        gv = GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=50,
+            locus_end_int=51,
+            reference_bases=ref.upper(),
+            alternate_bases='-',
+            names="",
+            info=""
+        )
+        gv.save()
+        with self.assertRaises(ValidationError) as cm:
+            GenomeVariantTranslation(tile_variant=tilevar3, genome_variant=gv, start=50, end=50).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('assembly_int', cm.exception.message_dict)
+    #gv on different chromosome
+    def test_failure_tile_variant_different_chromosome_int(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        chr2_path = hex(constants.CHR_PATH_LENGTHS[CHR_1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        chr2_tile = Tile(tile_position_int=int(chr2_path+step_min,16), start_tag=tile.start_tag, end_tag=tile.end_tag)
+        chr2_tile.save()
+        TileVariant(
+            tile_variant_int=int(chr2_path+step_min+variant_value_min,16),
+            tile=chr2_tile,
+            variant_value=0,
+            length=250,
+            md5sum=tilevar.md5sum,
+            sequence=tilevar.sequence,
+            num_positions_spanned=1
+        ).save()
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_2, start_int=0, end_int=250, tile_position=chr2_tile, tile_variant_value=0).save()
+        ref = tilevar.sequence[24]
+        new_bases = ['A','G','C','T']
+        new_bases.remove(ref)
+        alt = random.choice(new_bases)
+        seq = tilevar.sequence[:24]+alt+tilevar.sequence[25:]
+        digestor = hashlib.new('md5', seq)
+        chr2_tilevar1 = TileVariant(
+            tile_variant_int=int(chr2_path+step_min+variant_value_min,16)+1,
+            tile=chr2_tile,
+            variant_value=1,
+            length=250,
+            md5sum=digestor.hexdigest(),
+            sequence=seq,
+            num_positions_spanned=1
+        )
+        chr2_tilevar1.save()
+        gv = GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_1,
+            alternate_chromosome_name="",
+            locus_start_int=24,
+            locus_end_int=25,
+            reference_bases=ref,
+            alternate_bases=alt,
+            names="",
+            info=""
+        )
+        gv.save()
+        with self.assertRaises(ValidationError) as cm:
+            GenomeVariantTranslation(tile_variant=chr2_tilevar1, genome_variant=gv, start=24, end=25).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int', cm.exception.message_dict)
+    def test_failure_spanning_tile_variant_different_chromosome_in_middle_tile(self):
+        NEW_LIBRARY = {
+            CHR_1: {
+                '0': [
+                    {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+                    {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+                    {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+                ]
+            }
+        }
+        make_tiles(NEW_LIBRARY)
+        tile = Tile.objects.get(tile_position_int=0)
+
+        tilevar0 = TileVariant.objects.get(tile_variant_int=0)
+        tilevar1 = TileVariant.objects.get(tile_variant_int=int('1'+variant_value_min,16))
+        tilevar2 = TileVariant.objects.get(tile_variant_int=int('2'+variant_value_min,16))
+        seq = tilevar0.sequence[:50]+tilevar0.sequence[51:]+tilevar1.sequence[TAG_LENGTH:]+tilevar2.sequence[TAG_LENGTH:]
+        digestor = hashlib.new('md5', seq)
+        tilevar3 = TileVariant(
+            tile_variant_int=1,
+            tile=tile,
+            variant_value=1,
+            length=len(seq),
+            md5sum=digestor.hexdigest(),
+            sequence=seq,
+            num_positions_spanned=3
+        )
+        tilevar3.save()
+
+        chr2_path = hex(constants.CHR_PATH_LENGTHS[CHR_1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        chr2_tile = Tile(tile_position_int=int(chr2_path+step_min,16), start_tag=tile.start_tag, end_tag=tile.end_tag)
+        chr2_tile.save()
+        TileVariant(
+            tile_variant_int=int(chr2_path+step_min+variant_value_min,16),
+            tile=chr2_tile,
+            variant_value=0,
+            length=250,
+            md5sum=tilevar0.md5sum,
+            sequence=tilevar0.sequence,
+            num_positions_spanned=1
+        ).save()
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_2, start_int=0, end_int=250, tile_position=chr2_tile, tile_variant_value=0).save()
+
+        ref = tilevar0.sequence[50]
+        gv = GenomeVariant(
+            id=0,
+            assembly_int=ASSEMBLY_19,
+            chromosome_int=CHR_2,
+            alternate_chromosome_name="",
+            locus_start_int=50,
+            locus_end_int=51,
+            reference_bases=ref.upper(),
+            alternate_bases='-',
+            names="",
+            info=""
+        )
+        gv.save()
+        with self.assertRaises(ValidationError) as cm:
+            GenomeVariantTranslation(tile_variant=tilevar3, genome_variant=gv, start=50, end=50).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('chromosome_int', cm.exception.message_dict)
+    #gv loci not covered
+    #def test_failure_tile_variant_loci_smaller_than_genome_variant_loci(self):
+    #    NEW_LIBRARY = {
+    #        CHR_1: {
+    #            '0': [
+    #                {'vars':2, 'lengths':[250,250], 'spanning_nums':[1,1]},
+    #                {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+    #                {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+    #            ]
+    #        }
+    #    }
+    #    make_tiles(NEW_LIBRARY)
+#
+    #    ref = tilevar.sequence[24]
+    #    new_bases = ['A','G','C','T']
+    #    new_bases.remove(ref)
+    #    alt = random.choice(new_bases)
+    #    seq = tilevar.sequence[:24]+alt+tilevar.sequence[25:]
+    #    digestor = hashlib.new('md5', seq)
+    #    chr2_tilevar1 = TileVariant(
+    #        tile_variant_int=int(chr2_path+step_min+variant_value_min,16)+1,
+    #        tile=chr2_tile,
+    #        variant_value=1,
+    #        length=250,
+    #        md5sum=digestor.hexdigest(),
+    #        sequence=seq,
+    #        num_positions_spanned=1
+    #    )
+    #    chr2_tilevar1.save()
+    #    gv = GenomeVariant(
+    #        id=0,
+    #        assembly_int=ASSEMBLY_19,
+    #        chromosome_int=CHR_1,
+    #        alternate_chromosome_name="",
+    #        locus_start_int=24,
+    #        locus_end_int=25,
+    #        reference_bases=ref,
+    #        alternate_bases=alt,
+    #        names="",
+    #        info=""
+    #    )
+    #    gv.save()
+    #    with self.assertRaises(ValidationError) as cm:
+    #        GenomeVariantTranslation(tile_variant=chr2_tilevar1, genome_variant=gv, start=24, end=25).save()
+    #    self.assertEqual(len(cm.exception.message_dict), 1)
+    #    self.assertIn('chromosome_int', cm.exception.message_dict)
+    #def test_failure_spanning_tile_variant_different_chromosome_in_middle_tile(self):
+    #    NEW_LIBRARY = {
+    #        CHR_1: {
+    #            '0': [
+    #                {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+    #                {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+    #                {'vars':1, 'lengths':[250], 'spanning_nums':[1]},
+    #            ]
+    #        }
+    #    }
+    #    make_tiles(NEW_LIBRARY)
+    #    tile = Tile.objects.get(tile_position_int=0)
+#
+    #    tilevar0 = TileVariant.objects.get(tile_variant_int=0)
+    #    tilevar1 = TileVariant.objects.get(tile_variant_int=int('1'+variant_value_min,16))
+    #    tilevar2 = TileVariant.objects.get(tile_variant_int=int('2'+variant_value_min,16))
+    #    seq = tilevar0.sequence[:50]+tilevar0.sequence[51:]+tilevar1.sequence[TAG_LENGTH:]+tilevar2.sequence[TAG_LENGTH:]
+    #    digestor = hashlib.new('md5', seq)
+    #    tilevar3 = TileVariant(
+    #        tile_variant_int=1,
+    #        tile=tile,
+    #        variant_value=1,
+    #        length=len(seq),
+    #        md5sum=digestor.hexdigest(),
+    #        sequence=seq,
+    #        num_positions_spanned=3
+    #    )
+    #    tilevar3.save()
+
+    #    chr2_path = hex(constants.CHR_PATH_LENGTHS[CHR_1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+    #    chr2_tile = Tile(tile_position_int=int(chr2_path+step_min,16), start_tag=tile.start_tag, end_tag=tile.end_tag)
+    #    chr2_tile.save()
+    #    TileVariant(
+    #        tile_variant_int=int(chr2_path+step_min+variant_value_min,16),
+    #        tile=chr2_tile,
+    #        variant_value=0,
+    #        length=250,
+    #        md5sum=tilevar0.md5sum,
+    #        sequence=tilevar0.sequence,
+    #        num_positions_spanned=1
+    #    ).save()
+    #    TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_2, start_int=0, end_int=250, tile_position=chr2_tile, tile_variant_value=0).save()
+#
+    #    ref = tilevar0.sequence[50]
+    #    gv = GenomeVariant(
+    #        id=0,
+    #        assembly_int=ASSEMBLY_19,
+    #        chromosome_int=CHR_2,
+    #        alternate_chromosome_name="",
+    #        locus_start_int=50,
+    #        locus_end_int=51,
+    #        reference_bases=ref.upper(),
+    #        alternate_bases='-',
+    #        names="",
+    #        info=""
+    #    )
+    #    gv.save()
+    #    with self.assertRaises(ValidationError) as cm:
+    #        GenomeVariantTranslation(tile_variant=tilevar3, genome_variant=gv, start=50, end=50).save()
+    #    self.assertEqual(len(cm.exception.message_dict), 1)
+    #    self.assertIn('chromosome_int', cm.exception.message_dict)
+    #gv loci partially covered by tv (beginning and ending)
+    #gv loci partially covered by spanning tv (beginning and ending)
+    #gv loci partially in TAG (beginning and ending)
+    #gv loci partially in TAG for spanning tv (beginning and ending)
+    #gv alternate bases not bases in variant
+
+    #Check successes
+    #gv loci in spanning tile where TAG would normally be
+    #SNP gv success on tv
+    def test_success_snp_tile_variant(self):
+        tile, tilevar = make_tile_position_and_variant(0,0,250)
+        TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+        tilevar2, genome_var, gvt = make_snp_genome_and_tile_variant(tilevar, 1, 0)
+    #Insertion gv sucess
+    #Deletion gv success
+    #Substitution gv success
 ################################## TEST GenomeStatistic model ###################################
-#add one with too large a path_name
-@skip("Remodeling")
 class TestGenomeStatisticModel(TestCase):
     @skipIf(GENOME-1 in SUPPORTED_STATISTICS_TYPE_INTS, "Testing if error is raised with an unsupported statistics type, but %i is a valid Statistics type" % (GENOME-1))
     def test_negative_statistics_int(self):
@@ -1842,19 +2389,40 @@ class TestGenomeStatisticModel(TestCase):
             GenomeStatistic(statistics_type=PATH+1, num_of_positions=0, num_of_tiles=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertTrue('statistics_type' in cm.exception.message_dict)
-    def test_too_small_path_name(self):
+    def test_too_small_path_name_for_genome_or_chrom_statistic(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, path_name=-2, num_of_positions=0, num_of_tiles=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertTrue('path_name' in cm.exception.message_dict)
-    def test_too_big_path_name(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=CHR_1, path_name=-2, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('path_name' in cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=CHR_OTHER, path_name=-2, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('path_name' in cm.exception.message_dict)
+    def test_too_big_path_name_for_genome_or_chrom_statistic(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME, path_name=0, num_of_positions=0, num_of_tiles=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertTrue('path_name' in cm.exception.message_dict)
-    def test_neg_one_path_name_on_path_statistic(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=CHR_1, path_name=0, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('path_name' in cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=CHR_OTHER, path_name=0, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('path_name' in cm.exception.message_dict)
+    def test_neg_one_path_name_for_path_statistic(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=PATH, path_name=-1, num_of_positions=0, num_of_tiles=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertTrue('path_name' in cm.exception.message_dict)
+    def test_too_big_path_name_for_path_statistic(self):
+        with self.assertRaises(ValidationError) as cm:
+            GenomeStatistic(statistics_type=PATH, path_name=constants.CHR_PATH_LENGTHS[-1], num_of_positions=0, num_of_tiles=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertTrue('path_name' in cm.exception.message_dict)
     def test_negative_num_positions(self):
@@ -1894,8 +2462,10 @@ class TestGenomeStatisticModel(TestCase):
             GenomeStatistic(statistics_type=PATH, path_name=1, num_of_positions=1, num_of_tiles=2).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertTrue('__all__' in cm.exception.message_dict)
+    def test_successful_save(self):
+        GenomeStatistic(statistics_type=PATH, path_name=constants.CHR_PATH_LENGTHS[-1]-1, num_of_positions=0, num_of_tiles=0).save()
 ################################## TEST generate_statistics ###################################
-@skip("Remodeling")
+
 class TestGenerateStatistics(TestCase):
     def setUp(self):
         make_tiles(BASE_LIBRARY_STRUCTURE)
@@ -1936,22 +2506,22 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(whole_genome_or_chrom_stats.path_name, -1)
 
         tile_int, foo = basic_fns.get_min_position_and_tile_variant_from_chromosome_int(CHR_2)
-        path, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
+        version, path, step = basic_fns.get_position_ints_from_position_int(tile_int)
         check_vals = {0:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':3}, #Path 0
                       1:{'num_pos':1, 'num_tiles':5, 'max_num_spanned':1}, #Path 1
                       path:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}} #Path 63
         for i in range(constants.CHR_PATH_LENGTHS[-1]):
-            whole_genome_or_chrom_stats = GenomeStatistic.objects.filter(statistics_type=PATH).filter(path_name=i).all()
-            self.assertEqual(len(whole_genome_or_chrom_stats), 1)
-            whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
+            path_stats = GenomeStatistic.objects.filter(statistics_type=PATH).filter(path_name=i).all()
+            self.assertEqual(len(path_stats), 1)
+            path_stats = path_stats.first()
             if i in check_vals:
-                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, check_vals[i]['num_pos'])
-                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, check_vals[i]['num_tiles'])
-                self.assertEqual(whole_genome_or_chrom_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
+                self.assertEqual(path_stats.num_of_positions, check_vals[i]['num_pos'])
+                self.assertEqual(path_stats.num_of_tiles, check_vals[i]['num_tiles'])
+                self.assertEqual(path_stats.max_num_positions_spanned, check_vals[i]['max_num_spanned'])
             else:
-                self.assertEqual(whole_genome_or_chrom_stats.num_of_positions, 0)
-                self.assertEqual(whole_genome_or_chrom_stats.num_of_tiles, 0)
-                self.assertIsNone(whole_genome_or_chrom_stats.max_num_positions_spanned)
+                self.assertEqual(path_stats.num_of_positions, 0)
+                self.assertEqual(path_stats.num_of_tiles, 0)
+                self.assertIsNone(path_stats.max_num_positions_spanned)
     def test_initialize_failure_after_initializing_once(self):
         gen_stats.initialize(silent=True)
         self.assertRaises(ExistingStatisticsError, gen_stats.initialize)
@@ -1977,7 +2547,7 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(whole_genome_or_chrom_stats.path_name, -1)
 
         tile_int, foo = basic_fns.get_min_position_and_tile_variant_from_chromosome_int(CHR_2)
-        path, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
+        version, path, step = basic_fns.get_position_ints_from_position_int(tile_int)
         check_vals = {0:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':3}, #Path 0
                       1:{'num_pos':1, 'num_tiles':5, 'max_num_spanned':1}, #Path 1
                       path:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}} #Path 63
@@ -2020,7 +2590,8 @@ class TestGenerateStatistics(TestCase):
         """
         gen_stats.initialize(silent=True)
         #initialization#
-        new_start_tag = Tile.objects.get(tile_position_int=int('001000000', 16)).end_tag
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        new_start_tag = Tile.objects.get(tile_position_int=int('1'+s, 16)).end_tag
         locus = TileLocusAnnotation.objects.filter(assembly_int=ASSEMBLY_19).filter(chromosome_int=CHR_1).order_by('start_int').last().end_int
         locus -= TAG_LENGTH
         chr1_path1_new_tiles = [
@@ -2031,7 +2602,7 @@ class TestGenerateStatistics(TestCase):
         ]
         tile_objects = []
         for i, position in enumerate(chr1_path1_new_tiles):
-            pos_int = int('00100'+hex(i+1).lstrip('0x').zfill(4), 16)
+            pos_int = int('1'+hex(i+1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_STEP), 16)
             t, ignore, new_start_tag, ignore = mk_tile(
                 pos_int,
                 locus,
@@ -2080,9 +2651,9 @@ class TestGenerateStatistics(TestCase):
             self.assertEqual(genome_piece.path_name, -1)
 
         tile_int, foo = basic_fns.get_min_position_and_tile_variant_from_chromosome_int(CHR_2)
-        path_on_2, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
+        version, path_on_2, step = basic_fns.get_position_ints_from_position_int(tile_int)
         tile_int, foo = basic_fns.get_min_position_and_tile_variant_from_chromosome_int(CHR_3)
-        path_on_3, version, step = basic_fns.get_position_ints_from_position_int(tile_int)
+        version, path_on_3, step = basic_fns.get_position_ints_from_position_int(tile_int)
         check_vals = {0:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':3},
                       1:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':4},
                       path_on_2:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2},
