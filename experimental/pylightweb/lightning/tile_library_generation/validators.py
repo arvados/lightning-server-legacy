@@ -76,6 +76,8 @@ def validate_tile_variant(tile_position_int, tile_variant_int, variant_value, se
         VALIDATION_ERRORS['variant_value_mismatch'] = "tile variant value and input variant value must be equal"
     if seq_length != len(sequence):
         VALIDATION_ERRORS['length_mismatch'] = "length must be the length of the sequence"
+    if sequence.upper() != sequence:
+        VALIDATION_ERRORS['sequence'] = "Sequence must be entirely uppercase"
     digestor = hashlib.new('md5', sequence)
     if digestor.hexdigest() != seq_md5sum:
         VALIDATION_ERRORS['md5sum_mismatch'] = "md5sum is not actually md5sum of sequence"
@@ -109,6 +111,11 @@ def validate_reference_bases(reference_seq, start, end, reference_bases):
     if reference_seq[start:end].upper() != reference_bases.strip('-').upper():
         raise TileLibraryValidationError(
             {'reference_bases':"Reference bases (%s) do not match bases in reference tile variant (%s)" % (reference_bases, reference_seq[start:end])}
+        )
+def validate_reference_versus_alternate_bases(ref_bases, alt_bases):
+    if ref_bases.upper() == alt_bases.upper():
+        raise TileLibraryValidationError(
+            {'reference_bases-alternate_bases':"Reference bases (%s) are the same as alternate bases (%s)" % (ref_bases, alt_bases)}
         )
 
 def validate_same_chromosome(locus_chrom_int, variant_chrom_int, locus_chrom_name, variant_chrom_name):

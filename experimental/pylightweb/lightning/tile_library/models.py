@@ -265,6 +265,7 @@ class TileVariant(models.Model):
     class Meta:
         #Ensures ordering by tilename
         ordering = ['tile_variant_int']
+        unique_together = ('tile','md5sum')
 class GenomeVariant(models.Model):
     """
         Implements a Genome Variant object (SNP, SUB, or INDEL) that can be associated with multiple TileVariants.
@@ -362,6 +363,7 @@ class GenomeVariant(models.Model):
                 reference_seq += reference_tile_variant_sequence[TAG_LENGTH:]
         try:
             validation_fns.validate_reference_bases(reference_seq, start-zero, end-zero, self.reference_bases)
+            validation_fns.validate_reference_versus_alternate_bases(self.reference_bases, self.alternate_bases)
             super(GenomeVariant, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
             raise ValidationError(e.value)
@@ -379,7 +381,7 @@ class GenomeVariant(models.Model):
     class Meta:
         #Ensures ordering by tilename
         ordering = ['chromosome_int', 'alternate_chromosome_name', 'locus_start_int']
-        unique_together = ('assembly_int', 'chromosome_int', 'alternate_chromosome_name', 'locus_start_int', 'alternate_bases')
+        unique_together = ('assembly_int', 'chromosome_int', 'alternate_chromosome_name', 'locus_start_int', 'locus_end_int', 'alternate_bases')
 
 class GenomeVariantTranslation(models.Model):
     """
