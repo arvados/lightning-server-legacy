@@ -16,7 +16,7 @@
 import hashlib
 
 from tile_library.constants import NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, NUM_HEX_INDEXES_FOR_VARIANT_VALUE,\
-    ASSEMBLY_19, CHR_1, CHR_2, TAG_LENGTH, CHR_PATH_LENGTHS
+    ASSEMBLY_19, CHR_1, CHR_2, CHR_OTHER, TAG_LENGTH, CHR_PATH_LENGTHS
 from tile_library.models import Tile, TileVariant, GenomeVariant, GenomeVariantTranslation, TileLocusAnnotation
 import tile_library.basic_functions as basic_fns
 
@@ -60,6 +60,30 @@ ref_loci[CHR_PATH_LENGTHS[CHR_1]] = [
     {'chr':CHR_2, 'start':26, 'end':76},
     {'chr':CHR_2, 'start':52, 'end':102},
     {'chr':CHR_2, 'start':78, 'end':130}
+]
+
+alt_ref_tilevar_sequences = [[] for i in range(CHR_PATH_LENGTHS[CHR_OTHER])]
+alt_ref_tilevar_sequences[-1] = [
+    "ACGGCAGTAGTTTTGCCGCTCGGTcgTCAGAATGTTTGGAGGGCGGTACG".upper(),
+    "TCAGAATGTTTGGAGGGCGGTACGgcTAGAGATATCACCCTCTGCTACTC".upper(),
+    "TAGAGATATCACCCTCTGCTACTCaaCGCACCGGAACTTGTGTTTGTGTG".upper(),
+    "CGCACCGGAACTTGTGTTTGTGTGtgtgGTCGCCCACTACGCACGTTATATG".upper(),
+    "CTACCGTTTAGGCGGATATCGCGTctTTCCTTAAACTCATCTCCTGGGGG".upper(),
+    "TTCCTTAAACTCATCTCCTGGGGGgaCGTCGTGGTTTTGAGCCAGTTATG".upper(),
+    "CGTCGTGGTTTTGAGCCAGTTATGggGTTCGGCTGACGGGCCGACACATG".upper(),
+    "GTTCGGCTGACGGGCCGACACATGgccaAGTGCCCTTCTGGCCGACGGATTT".upper()
+]
+
+alt_loci = [[]for i in range(CHR_PATH_LENGTHS[CHR_OTHER])]
+alt_loci[-1] = [
+    {'name':'foo', 'start':0, 'end':50},
+    {'name':'foo', 'start':26, 'end':76},
+    {'name':'foo', 'start':52, 'end':102},
+    {'name':'foo', 'start':78, 'end':130},
+    {'name':'bar', 'start':0, 'end':50},
+    {'name':'bar', 'start':26, 'end':76},
+    {'name':'bar', 'start':52, 'end':102},
+    {'name':'bar', 'start':78, 'end':130}
 ]
 
 def make_tile_variant(tile_var_int, sequence, num_pos_spanned):
@@ -111,6 +135,27 @@ def make_reference():
                 alternate_chromosome_name="",
                 start_int=ref_loci[path_int][step_int]['start'],
                 end_int=ref_loci[path_int][step_int]['end'],
+                tile_position=tile,
+                tile_variant_value=int(vv,16)
+            ).save()
+
+def make_alternate_reference():
+    v = '0'*NUM_HEX_INDEXES_FOR_VERSION
+    for path_int, sequence_list in enumerate(alt_ref_tilevar_sequences):
+        p = hex(path_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        for step_int, seq in enumerate(sequence_list):
+            s = hex(step_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_STEP)
+            vv = '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+            tile = Tile(tile_position_int=int(v+p+s,16), start_tag=seq[:TAG_LENGTH], end_tag=seq[-TAG_LENGTH:])
+            tile.save()
+            #print len(seq), ref_loci[path_int][step_int]['end']-ref_loci[path_int][step_int]['start']
+            make_tile_variant(int(v+p+s+vv,16), seq, 1)
+            TileLocusAnnotation(
+                assembly_int=ASSEMBLY_19,
+                chromosome_int=CHR_OTHER,
+                alternate_chromosome_name=alt_loci[path_int][step_int]['name'],
+                start_int=alt_loci[path_int][step_int]['start'],
+                end_int=alt_loci[path_int][step_int]['end'],
                 tile_position=tile,
                 tile_variant_value=int(vv,16)
             ).save()

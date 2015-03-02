@@ -16,7 +16,8 @@ import tile_library_generation.validators as validation_fns
 import tile_library.human_readable_functions as human_readable_fns
 from errors import TileLibraryValidationError, MissingLocusError
 from tile_library.constants import TAG_LENGTH, SUPPORTED_ASSEMBLY_CHOICES, \
-    CHR_CHOICES, STATISTICS_TYPE_CHOICES, PATH, CHR_PATH_LENGTHS
+    CHR_CHOICES, STATISTICS_TYPE_CHOICES, PATH, CHR_PATH_LENGTHS, \
+    NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP
 
 def validate_json(text):
     try:
@@ -51,6 +52,22 @@ def validate_num_spanning_tiles(num_spanning):
         validation_fns.validate_num_spanning_tiles(num_spanning)
     except TileLibraryValidationError as e:
         raise ValidationError(e.value)
+
+def get_tile_n_positions_forward(curr_tile_int, n):
+    version, path, step = basic_fns.get_position_strings_from_position_int(curr_tile_int)
+    next_path = hex(int(path,16)+1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+    next_step = hex(n-1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_STEP)
+    if n <= 0:
+        raise Exception("asked to get current tile")
+    try:
+        return Tile.objects.get(tile_position_int=curr_tile_int+n)
+    except Tile.DoesNotExist:
+        pass
+    try:
+        return Tile.objects.get(tile_position_int=int(version+next_path+next_step,16))
+    except Tile.DoesNotExist:
+        raise ValidationError({'spanning_tile_error_missing_tile': 'Unable to find tile %s or %s' % (string.join([version,path,step], sep='.'), string.join([version,next_path,next_step], sep='.'))})
+
 class Tile(models.Model):
     """
     Implements a Tile object - the meta-data associated with a tile position.
@@ -187,7 +204,7 @@ class TileVariant(models.Model):
             self.full_clean()
             end_tile = None
             if self.num_positions_spanned > 1:
-                end_tile = Tile.objects.get(tile_position_int=self.tile_id+self.num_positions_spanned-1)
+                end_tile = get_tile_n_positions_forward(int(self.tile_id), int(self.num_positions_spanned)-1)
                 #Tiles need to be on same path and version (this also ensures they are on the same chromosome from TileLocusAnnotation checking)
                 validation_fns.validate_spanning_tile(int(self.tile.tile_position_int), int(end_tile.tile_position_int), int(self.num_positions_spanned))
             start_tag = self.start_tag
@@ -204,8 +221,7 @@ class TileVariant(models.Model):
             super(TileVariant, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
             raise ValidationError(e.value)
-        except Tile.DoesNotExist as e:
-            raise ValidationError({'spanning_tile_error_missing_tile': 'tile with pk=%i does not exist' % (self.tile_id+self.num_positions_spanned-1)})
+
     def get_string(self):
         """Displays hex indexing for tile variant"""
         return basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_int))
@@ -339,13 +355,14 @@ class GenomeVariant(models.Model):
         self.full_clean()
         assembly = int(self.assembly_int)
         chrom = int(self.chromosome_int)
+        chrom_name = self.alternate_chromosome_name
         start = int(self.locus_start_int)
         end = int(self.locus_end_int)
         if end < start:
             raise ValidationError(
                 {'locus_start_int-locus_end_int':'locus_end_int (%i) is smaller than locus_start_int (%i)' % (end, start)}
             )
-        loci = TileLocusAnnotation.objects.filter(assembly_int=assembly).filter(chromosome_int=chrom).filter(start_int__lt=end).filter(end_int__gt=start).order_by('start_int')
+        loci = TileLocusAnnotation.objects.filter(assembly_int=assembly).filter(chromosome_int=chrom).filter(alternate_chromosome_name=chrom_name).filter(start_int__lt=end).filter(end_int__gt=start).order_by('start_int')
         if loci.count() == 0:
             raise ValidationError(
                 {'missing_locus':'Unable to find any loci in assembly %i, chromosome %i, with a begin_int less than %i and an end in greater than %i' % (assembly, chrom, end, start)}
