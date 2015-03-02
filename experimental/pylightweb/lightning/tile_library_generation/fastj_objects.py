@@ -1,3 +1,7 @@
+"""
+Notes for later: maybe collections.namedtuple is better suited for this?
+"""
+
 from tile_library.models import TAG_LENGTH
 import tile_library.basic_functions as basic_fns
 
