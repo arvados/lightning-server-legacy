@@ -1,3 +1,8 @@
+"""
+settings
+override_settings seems to be a good idea for constants
+"""
+
 import random
 import hashlib
 import string

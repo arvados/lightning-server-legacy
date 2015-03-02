@@ -295,6 +295,8 @@ def make_two_genome_variants_for_one_tile_variant_alter_translation_indexes(vv=1
     gv = make_genome_variant(gv_id+1, 26, 26, "-", "TTT")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=27).save()
 
+vv_min = '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+
 def make_entire_library():
     make_reference()
     tv, basic_snp, trans = make_basic_snp_genome_variant()
@@ -315,3 +317,13 @@ def make_entire_library():
     tv = make_tile_variant(12, seq, 2)
     GenomeVariantTranslation(tile_variant=tv, genome_variant=basic_del, start=24, end=24).save()
     GenomeVariantTranslation(tile_variant=tv, genome_variant=spanning_ins, start=24, end=27).save()
+
+    seq = "TAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTG"
+    tv = make_tile_variant(int('2'+vv_min,16)+1, seq, 1)
+    gv = make_genome_variant(11, 76, 78, "AA", "-")
+    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=24).save()
+
+    seq = "TAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG"
+    tv = make_tile_variant(int('2'+vv_min,16)+2, seq, 2)
+    gv = make_genome_variant(12, 101, 102, 'G', 'T')
+    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=49, end=50).save()
