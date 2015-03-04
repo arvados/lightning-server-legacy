@@ -7,16 +7,12 @@ import re
 import tile_library.human_readable_functions as human_readable_fns
 from tile_library.constants import NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_VERSION, \
     NUM_HEX_INDEXES_FOR_STEP, NUM_HEX_INDEXES_FOR_VARIANT_VALUE, \
-    NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE, CHR_PATH_LENGTHS, CHR_CHOICES, \
+    LANTERN_NAME_FORMAT_STRING, CHR_PATH_LENGTHS, CHR_CHOICES, \
     CHR_NONEXISTANT
 
-
-cgf_format_string = '^([0-9a-f]{%i}\.[0-9a-f]{%i}\.[0-9a-f]{%i})\.[0-9a-f]{%i}(?:\+([0-9a-f]+)$|$)' % (
-    NUM_HEX_INDEXES_FOR_PATH,
-    NUM_HEX_INDEXES_FOR_VERSION,
-    NUM_HEX_INDEXES_FOR_STEP,
-    NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
-)
+hex_version_and_path_length = NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH
+hex_tile_length = NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP
+hex_tile_variant_length = hex_tile_length + NUM_HEX_INDEXES_FOR_VARIANT_VALUE
 
 def get_position_strings_from_position_int(position_int):
     """
@@ -29,12 +25,12 @@ def get_position_strings_from_position_int(position_int):
     if position_int < 0:
         raise ValueError("Requires positive argument")
     str_tile_name = hex(position_int).lstrip('0x').rstrip('L')
-    if len(str_tile_name) > NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP:
+    if len(str_tile_name) > hex_tile_length:
         raise ValueError("Requires Tile integer. Given integer too large.")
-    str_tile_name = str_tile_name.zfill(NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP)
+    str_tile_name = str_tile_name.zfill(hex_tile_length)
     version = str_tile_name[:NUM_HEX_INDEXES_FOR_VERSION]
-    path = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION:NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH]
-    step = str_tile_name[NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_VERSION:]
+    path = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION:hex_version_and_path_length]
+    step = str_tile_name[hex_version_and_path_length:]
     return version, path, step
 def get_position_string_from_position_int(position_int):
     """
