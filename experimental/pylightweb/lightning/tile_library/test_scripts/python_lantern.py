@@ -1,5 +1,5 @@
-from wsgiref.simple_server import make_server
 from cgi import parse_qs, escape
+import json
 
 LANTERN_PORT = 8080
 
@@ -30,21 +30,14 @@ population = {
     ]
 }
 
-httpd = SocketServer.TCPServer(("localhost",PORT), LanternHandler)
-
-httpd.serve_forever()
-
-httpd.shutdown()
-
 def lantern_application(environ, start_response):
-    try:
-        request_body_size = int(environ.get('CONTENT_LENGTH', 0))
-    except (ValueError):
-        request_body_size = 0
-    request_body = environ['wsgi.input'].read(request_body_size)
-    d = parse_qs(request_body)
-    request_type = d.get('Type')
-    if request_type == 'system-info':
-        sample_ids = population.keys()
-    elif request_type == 'sample-position-variant':
-        position_range = d.get('Position')
+    response_body = json.dumps({'SampleId':population.keys()})
+    status = '200 OK'
+    response_headers =  [('Content-type', 'text/plain')]
+    start_response(status, response_headers)
+    return response_body
+#httpd = make_server('', LANTERN_PORT, lantern_application)
+#from wsgiref.simple_server import make_server
+#httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application)
+#httpd.serve_forever()
+#httpd.shutdown()
