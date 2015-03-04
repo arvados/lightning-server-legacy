@@ -12,7 +12,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from api.serializers import TileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
+from api.serializers import TileVariantSerializer, RoughTileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, TAG_LENGTH
 import tile_library.query_functions as query_fns
 import tile_library.basic_functions as basic_fns
@@ -207,6 +207,10 @@ class TileVariantQuery(APIView):
                 tile_variant_list.append(self.get_tile_variant_info(tile_variant))
             serializer = TileVariantSerializer(tile_variant_list, many=True)
         return Response(serializer.data)
+
+class TileVariantDetail(generics.RetrieveAPIView):
+    queryset = TileVariant.objects.all()
+    serializer_class = RoughTileVariantSerializer
 
 class TileLocusAnnotationList(APIView):
     """
