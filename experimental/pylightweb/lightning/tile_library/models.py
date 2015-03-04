@@ -10,6 +10,7 @@ import string
 from django.db import models
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
 
 import tile_library.basic_functions as basic_fns
 import tile_library_generation.validators as validation_fns
@@ -17,7 +18,8 @@ import tile_library.human_readable_functions as human_readable_fns
 from errors import TileLibraryValidationError, MissingLocusError
 from tile_library.constants import TAG_LENGTH, SUPPORTED_ASSEMBLY_CHOICES, \
     CHR_CHOICES, STATISTICS_TYPE_CHOICES, PATH, CHR_PATH_LENGTHS, \
-    NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP
+    NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, \
+    LANTERN_NAME_FORMAT_STRING
 
 def validate_json(text):
     try:
@@ -287,74 +289,45 @@ class TileVariant(models.Model):
         #Ensures ordering by tilename
         ordering = ['tile_variant_int']
         unique_together = ('tile','md5sum')
-
 class LanternTranslator(models.Model):
     """
     Implements the translator between the lantern server and available tile libraries
 
-    
     Values in database:
-        tile_position (bigint): The position the variant falls on: int(version.path.step, 16)
-        md5sum (charfield(32)): The md5sum of the uppercase sequence, only allowing AGTCN
-        lantern_name(Charfield())
-        tile_variant_int (bigint; primary key): integer of the 12 digit hexidecimal identifier for the TileVariant.
-            The first 9 digits are the same as the hexidecimal identifier of the parent Tile
-            xxx.xx.xxxx.xxx. Last three digits indicate the TileVariant value.
-        tile (bigint; foreignkey): The parent Tile
-        num_positions_spanned (smallint; positive): The number of positions spanned by this TileVariant
-        variant_value (int; positive): The variant value (int(last 3 digits of tile_variant_int in hex form))
-        length (int; positive): Length of the TileVariant in bases
-        md5sum (charfield(40)): The m5sum of the TileVariant sequence (including upper and lowercases)
-        created(datetimefield): The time the TileVariant was created
-        last_modified(datetimefield): The last time the TileVariant was modified
-        sequence (textfield): The sequence of the TileVariant
-        start_tag (textfield): the start tag of the TileVariant iff the start tag varies from tile.start_tag
-        end_tag (textfield): the end tag of the TileVariant iff the end tag varies from tile.end_tag
+        lantern_name (textfield): The string matching LANTERN_NAME_FORMAT_STRING.
+        tile_library_host (textfield): The host containing the tile_library
+        tile_variant_int (bigint): The primary key of the tile in tile_library_access_point
+        created(datetimefield): The time the translation was created
+        last_modified(datetimefield): The last time the translation was modified
 
     Functions:
-        get_string(): returns string: human readable tile variant name
-        is_reference(assembly_int): returns boolean: True if the variant is the reference variant for that assembly.
-            Depends on variant_value
+        get_string(): returns string
     """
-    tile_variant_int = models.BigIntegerField(primary_key=True, editable=False, db_index=True, validators=[validate_tile_variant_int])
-    tile = models.ForeignKey(Tile, related_name='tile_variants', db_index=True)
-    num_positions_spanned = models.PositiveSmallIntegerField(validators=[validate_num_spanning_tiles])
-    variant_value = models.PositiveIntegerField(db_index=True)
-    length = models.PositiveIntegerField(db_index=True)
-    md5sum = models.CharField(max_length=40)
+    lantern_name = models.TextField(unique=True, validators=[RegexValidator(regex=LANTERN_NAME_FORMAT_STRING, message="Not a valid lantern name format (specified in tile_library.constants.LANTERN_NAME_FORMAT_STRING)")])
+    tile_library_host = models.TextField(blank=True, default="")
+    tile_variant_int = models.BigIntegerField(db_index=True, validators=[validate_tile_variant_int])
     created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
-    sequence = models.TextField()
-    start_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_variant_tag])
-    end_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_variant_tag])
     def save(self, *args, **kwargs):
+        self.full_clean()
         try:
-            self.full_clean()
-            end_tile = None
-            if self.num_positions_spanned > 1:
-                end_tile = get_tile_n_positions_forward(int(self.tile_id), int(self.num_positions_spanned)-1)
-                #Tiles need to be on same path and version (this also ensures they are on the same chromosome from TileLocusAnnotation checking)
-                validation_fns.validate_spanning_tile(int(self.tile.tile_position_int), int(end_tile.tile_position_int), int(self.num_positions_spanned))
-            start_tag = self.start_tag
-            if start_tag == '':
-                start_tag = self.tile.start_tag
-            end_tag = self.end_tag
-            if end_tag == '':
-                end_tag = self.tile.end_tag
-                if end_tile != None:
-                    end_tag = end_tile.end_tag
-            validation_fns.validate_tile_variant(
-                int(self.tile_id), int(self.tile_variant_int), int(self.variant_value), self.sequence, int(self.length), self.md5sum, start_tag, end_tag
-            )
-            super(TileVariant, self).save(*args, **kwargs)
+            validation_fns.validate_lantern_translation(self.lantern_name, self.tile_variant_int)
+            if self.tile_library_host == "":
+                if not TileVariant.objects.filter(tile_variant_int=self.tile_variant_int).exists():
+                    raise ValidationError({'tile_variant_int-tile_library_host':'A TileVariant with a tile_variant_int of %i does not exist in this database' % (self.tile_variant_int)})
+            else:
+                validation_fns.validate_lantern_translation_outside_database(self.tile_library_host, reverse('api:tile_variant_query_by_int', args=[self.tile_variant_int]))
+            super(LanternTranslator, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
             raise ValidationError(e.value)
-
     def get_string(self):
-        """Displays hex indexing for tile variant"""
-        return basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_int))
-    get_string.short_description='Variant Name'
-
+        tile_variant_string = basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_int))
+        return "Variant %s (%i) is referred to by lantern as %s" % (tile_variant_string, self.tile_variant_int, self.lantern_name)
+    get_string.short_description='Lantern Translation'
+    class Meta:
+        #Ensures ordering by tilename
+        ordering = ['lantern_name']
+        unique_together = ('tile_variant_int','tile_library_host')
 class GenomeVariant(models.Model):
     """
         Implements a Genome Variant object (SNP, SUB, or INDEL) that can be associated with multiple TileVariants.
@@ -472,7 +445,6 @@ class GenomeVariant(models.Model):
         #Ensures ordering by tilename
         ordering = ['chromosome_int', 'alternate_chromosome_name', 'locus_start_int']
         unique_together = ('assembly_int', 'chromosome_int', 'alternate_chromosome_name', 'locus_start_int', 'locus_end_int', 'alternate_bases')
-
 class GenomeVariantTranslation(models.Model):
     """
         Implements the Many-to-Many relation between GenomeVariant and TileVariant as well the translation between them
@@ -510,7 +482,6 @@ class GenomeVariantTranslation(models.Model):
         return "Tile Variant %s to Genome Variant %s (id: %i)" % (self.tile_variant.__unicode__(), self.genome_variant.__unicode__(), self.genome_variant.id)
     class Meta:
         unique_together = ("tile_variant", "genome_variant")
-
 class GenomeStatistic(models.Model):
     """
         Provides some basic statistics capabilites and a running counter of the maximum

@@ -59,13 +59,13 @@ def get_tile_variant_strings_from_tile_variant_int(tile_variant_int):
     if tile_variant_int < 0:
         raise ValueError("Requires positive argument.")
     str_tile_name = hex(tile_variant_int).lstrip('0x').rstrip('L')
-    if len(str_tile_name) >NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP+NUM_HEX_INDEXES_FOR_VARIANT_VALUE:
+    if len(str_tile_name) > hex_tile_variant_length:
         raise ValueError("Requires valid TileVariant integer. Given integer too large.")
-    str_tile_name = str_tile_name.zfill(NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP+NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+    str_tile_name = str_tile_name.zfill(hex_tile_variant_length)
     version = str_tile_name[:NUM_HEX_INDEXES_FOR_VERSION]
-    path = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION:NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH]
-    step = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH:NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP]
-    var = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP:]
+    path = str_tile_name[NUM_HEX_INDEXES_FOR_VERSION:hex_version_and_path_length]
+    step = str_tile_name[hex_version_and_path_length:hex_tile_length]
+    var = str_tile_name[hex_tile_length:]
     return version, path, step, var
 def get_tile_variant_string_from_tile_variant_int(tile_variant_int):
     """
@@ -114,7 +114,7 @@ def get_position_from_cgf_string(cgf_str):
     """
     if type(cgf_str) != str and type(cgf_str) != unicode:
         raise TypeError("Requires %s to be type string or unicode" % (cgf_str))
-    matching = re.match(cgf_format_string, cgf_str)
+    matching = re.match(LANTERN_NAME_FORMAT_STRING, cgf_str)
     if matching == None:
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
     path, version, step = matching.group(1).split('.')
@@ -128,7 +128,7 @@ def get_number_of_tiles_spanned_from_cgf_string(cgf_str):
     """
     if type(cgf_str) != str and type(cgf_str) != unicode:
         raise TypeError("Requires %s to be type string or unicode" % (cgf_str))
-    matching = re.match(cgf_format_string, cgf_str)
+    matching = re.match(LANTERN_NAME_FORMAT_STRING, cgf_str)
     if matching == None:
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
     if matching.group(2) == None:

@@ -1,9 +1,12 @@
 import hashlib
 import json
+import requests
+import re
 
 import tile_library.basic_functions as basic_fns
 from tile_library.constants import CHR_PATH_LENGTHS, CHR_OTHER, TAG_LENGTH, \
-    NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+    NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, \
+    NUM_HEX_INDEXES_FOR_VARIANT_VALUE, LANTERN_NAME_FORMAT_STRING
 from errors import TileLibraryValidationError
 
 position_length = NUM_HEX_INDEXES_FOR_VERSION + NUM_HEX_INDEXES_FOR_PATH + NUM_HEX_INDEXES_FOR_STEP
@@ -103,6 +106,34 @@ def validate_locus(chromosome_int, tile_position_int, TAG_LENGTH, tile_sequence_
         VALIDATION_ERRORS['short_locus'] = "the distance between begin_int and end_int must be greater than twice the TAG_LENGTH"
     if len(VALIDATION_ERRORS) > 0:
         raise TileLibraryValidationError(VALIDATION_ERRORS)
+
+def validate_lantern_translation(lantern_name, tile_variant_int):
+    VALIDATION_ERRORS = {}
+    #If these throw an error, I want it to propogate.
+    #Check that lantern_name doesn't have spanning tile notation
+    matching = re.match(LANTERN_NAME_FORMAT_STRING, lantern_name)
+    if matching.group(2) != None:
+        VALIDATION_ERRORS['lantern_name'] = "lantern_name cannot have spanning tile notation"
+    tile_position_int = basic_fns.get_position_from_cgf_string(lantern_name)
+    validate_tile_variant_int(tile_variant_int)
+    tile_path_version, tile_path, tile_step = basic_fns.get_position_ints_from_position_int(tile_position_int)
+    variant_path_version, variant_path, variant_step, variant_val = basic_fns.get_tile_variant_ints_from_tile_variant_int(tile_variant_int)
+    if tile_path_version != variant_path_version:
+        VALIDATION_ERRORS['version_mismatch'] = "tile variant path version and tile position path version must be equal"
+    if tile_path != variant_path:
+        VALIDATION_ERRORS['path_mismatch'] = "tile variant path and tile position path must be equal"
+    if tile_step != variant_step:
+        VALIDATION_ERRORS['step_mismatch'] = "tile variant step and tile position step must be equal"
+    if len(VALIDATION_ERRORS) > 0:
+        raise TileLibraryValidationError(VALIDATION_ERRORS)
+
+def validate_lantern_translation_outside_database(tile_library_host, tile_library_path):
+    try:
+        r = requests.get("http://%s%s" % (tile_library_host, tile_library_path), timeout=1)
+    except Exception as e:
+        raise TileLibraryValidationError({'tile_library_host':str(e)})
+    if r.status_code != requests.codes.ok:
+        raise TileLibraryValidationError({'tile_library_int-tile_library_host':r.text})
 
 def validate_reference_bases(reference_seq, start, end, reference_bases):
     """

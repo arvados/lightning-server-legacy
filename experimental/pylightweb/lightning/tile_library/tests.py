@@ -19,7 +19,7 @@ from errors import MissingStatisticsError, InvalidGenomeError, ExistingStatistic
 from tile_library.constants import TAG_LENGTH, CHR_1, CHR_2, CHR_3, CHR_Y, CHR_M, CHR_OTHER, CHR_NONEXISTANT, ASSEMBLY_18, ASSEMBLY_19, \
     NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, NUM_HEX_INDEXES_FOR_VARIANT_VALUE, \
     NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE, GENOME, PATH
-from tile_library.models import Tile, TileLocusAnnotation, TileVariant, GenomeVariant, GenomeVariantTranslation, GenomeStatistic
+from tile_library.models import Tile, TileLocusAnnotation, TileVariant, LanternTranslator, GenomeVariant, GenomeVariantTranslation, GenomeStatistic
 import tile_library.test_scripts.complicated_library as build_library
 import tile_library.basic_functions as basic_fns
 import tile_library.generate_stats as gen_stats
@@ -1135,7 +1135,7 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('tile_variant_int', cm.exception.message_dict)
     def test_nonexistant_tile_position(self):
-        seq = mk_genome_seq(250, uppercase=False)
+        seq = mk_genome_seq(250)
         digestor = hashlib.new('md5', seq)
         with self.assertRaises(ValidationError) as cm:
             TileVariant(
@@ -1805,6 +1805,163 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(tile.get_base_group_between_positions(0,5), 'AGTCN')
         self.assertEqual(tile.get_base_group_between_positions(1,5), 'GTCN')
         self.assertEqual(tile.get_base_group_between_positions(1,4), 'GTC')
+################################## TEST LanternTranslator model ###################################
+class TestLanternTranslatorModel(TestCase):
+    def setUp(self):
+        self.v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        self.p='0'*NUM_HEX_INDEXES_FOR_PATH
+        self.s='0'*NUM_HEX_INDEXES_FOR_STEP
+        self.vv = '0'*(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+        self.min_name = string.join([self.p,self.v,self.s,self.vv], sep='.')
+        tile, tilevar = make_tile_position_and_variant(0, 0, 250)
+        self.tile = tile
+    def test_failure_wrong_type_lantern_name(self):
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=0, tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+    def test_failure_lantern_name_does_not_follow_specified_lantern_format(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE-1)
+        vv2 = 'x'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([p,v,s],sep='.'), tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([p,v,s,vv],sep='.'), tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([p,v,s,vv2],sep='.'), tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([v,p,s,vv+'0'],sep='.'), tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([p,v,s,vv+'0'],sep='.')+'+', tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([p,v,s,vv+'0'],sep='.')+'+x', tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+    def test_failure_lantern_name_has_spanning_notation(self):
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name+'+0', tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name+'+fff', tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+    def test_failure_non_int_tile_variant_int(self):
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name, tile_variant_int='fail').save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_int', cm.exception.message_dict)
+    def test_failure_negative_tile_variant_int(self):
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name, tile_variant_int=-1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_int', cm.exception.message_dict)
+    def test_failure_too_big_tile_variant_int(self):
+        tile_var_int = 'f'*(NUM_HEX_INDEXES_FOR_VERSION + NUM_HEX_INDEXES_FOR_PATH + NUM_HEX_INDEXES_FOR_STEP+NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name, tile_variant_int=int(tile_var_int,16)+1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_int', cm.exception.message_dict)
+    #test lantern_name and tile_variant_int on different versions, paths, and steps
+    def test_failure_mismatching_versions(self):
+        v = '1'*(NUM_HEX_INDEXES_FOR_VERSION)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([self.p,v,self.s,self.vv], sep='.'), tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('version_mismatch', cm.exception.message_dict)
+    def test_failure_mismatching_paths(self):
+        p = '1'*(NUM_HEX_INDEXES_FOR_PATH)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([p,self.v,self.s,self.vv], sep='.'), tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('path_mismatch', cm.exception.message_dict)
+    def test_failure_mismatching_steps(self):
+        s = '1'*(NUM_HEX_INDEXES_FOR_STEP)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([self.p,self.v,s,self.vv], sep='.'), tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('step_mismatch', cm.exception.message_dict)
+    #test missing TileVariant in local db
+    def test_failure_missing_tilevariant_in_local_db(self):
+        p = '1'*(NUM_HEX_INDEXES_FOR_PATH)
+        library_vv = '0'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=string.join([p,self.v,self.s,self.vv], sep='.'), tile_variant_int=int(p+self.s+library_vv, 16)).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_variant_int-tile_library_host', cm.exception.message_dict)
+    #test successes
+    def test_success_min(self):
+        LanternTranslator(lantern_name=self.min_name, tile_variant_int=0).save()
+    def test_success_max(self):
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p = hex(constants.CHR_PATH_LENGTHS[-1]-1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        lantern_vv = 'f'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        library_vv = 'f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+        max_lantern_name = string.join([p,v,s,lantern_vv],sep='.')
+        max_library_tile_var_int = int(v+p+s+library_vv,16)
+        make_tile_position_and_variant(int(v+p+s,16), max_library_tile_var_int, 250)
+        LanternTranslator(lantern_name=max_lantern_name, tile_variant_int=max_library_tile_var_int).save()
+    #test uniqueness
+    def test_failure_duplicate_lantern_names(self):
+        LanternTranslator(lantern_name=self.min_name, tile_variant_int=0).save()
+        make_tile_variant(self.tile, 1, 250)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name, tile_variant_int=1).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('lantern_name', cm.exception.message_dict)
+    def test_failure_duplicate_tile_variant_ints_in_same_database(self):
+        LanternTranslator(lantern_name=self.min_name, tile_variant_int=0).save()
+        vv = '1'*(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+        new_name = string.join([self.p,self.v,self.s,vv], sep='.')
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=new_name, tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('__all__', cm.exception.message_dict)
+class TestLanternTranslatorModelOtherDB(LiveServerTestCase):
+    def setUp(self):
+        self.v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        self.p='0'*NUM_HEX_INDEXES_FOR_PATH
+        self.s='0'*NUM_HEX_INDEXES_FOR_STEP
+        self.vv = '0'*(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+        self.min_name = string.join([self.p,self.v,self.s,self.vv], sep='.')
+        tile, tilevar = make_tile_position_and_variant(0, 0, 250)
+        self.tile = tile
+    #test tile_library_host not equal to "", request logic!
+    def test_failure_wrong_port(self):
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name, tile_library_host='localhost:8000', tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_library_host', cm.exception.message_dict)
+    def test_failure_non_existant_server(self):
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name, tile_library_host='fail', tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_library_host', cm.exception.message_dict)
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name, tile_library_host=self.live_server_url, tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_library_host', cm.exception.message_dict)
+    def test_failure_bad_response(self):
+        with self.assertRaises(ValidationError) as cm:
+            LanternTranslator(lantern_name=self.min_name, tile_library_host='lightning-dev3.curoverse.com/brca', tile_variant_int=0).save()
+        self.assertEqual(len(cm.exception.message_dict), 1)
+        self.assertIn('tile_library_int-tile_library_host', cm.exception.message_dict)
+    def test_success(self):
+        LanternTranslator(lantern_name=self.min_name, tile_library_host=self.live_server_url.strip().lstrip('http://'), tile_variant_int=0).save()
 ################################## TEST GenomeVariant model ###################################
 class TestGenomeVariantModel(TestCase):
     def setUp(self):
