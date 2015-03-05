@@ -2,99 +2,23 @@ package main
 
 import "fmt"
 import "os"
-import "strings"
-import _ "errors"
 import "crypto/md5"
 
-import "../tile"
-import "../bioenv"
+import "log"
 
+import "github.com/abeconnelly/autoio"
+import "github.com/abeconnelly/sloppyjson"
 import "github.com/codegangsta/cli"
 
 
-var VERSION_STR string = "0.1, AGPLv3.0"
+var VERSION_STR string = "0.2.0, AGPLv3.0"
 
 var g_verboseFlag bool
+var g_tagLength int
 
 func init() {
 }
 
-func check_meta_tags( tileSet *tile.TileSet ) (err error) {
-
-  for _,tcc := range tileSet.TileCopyCollectionMap {
-    for copyNum,j := range tcc.MetaJson {
-
-      if len( j.StartTag ) != len( j.StartSeq ) {
-        return fmt.Errorf("%s %d: len(StartTag) (%d) != len(StartSeq) (%d)",
-          j.TileID, copyNum, len(j.StartTag), len(j.StartSeq) )
-      }
-
-      if len( j.EndTag ) != len( j.EndSeq ) {
-        return fmt.Errorf("%s %d: len(EndTag) (%d) != len(EndSeq) (%d)",
-          j.TileID, copyNum, len(j.EndTag), len(j.EndSeq) )
-      }
-
-      if strings.ToLower( j.StartTag ) != strings.ToLower( j.StartSeq ) {
-        return fmt.Errorf("%s %d: StartTag (%s) != StartSeq (%s)",
-          j.TileID, copyNum, j.StartTag, j.StartSeq )
-      }
-
-      if strings.ToLower( j.EndTag ) != strings.ToLower( j.EndSeq ) {
-        return fmt.Errorf("%s %d: EndTag (%s) != EndSeq (%s)",
-          j.TileID, copyNum, j.EndTag, j.EndSeq )
-      }
-
-    }
-  }
-
-  return nil
-
-}
-
-func check_copy_num_consistency( tileSet *tile.TileSet ) (err error) {
-
-  for _,tcc := range tileSet.TileCopyCollectionMap {
-    copyMap := make( map[int]int )
-
-    for copyNum,_ := range tcc.Meta {
-      copyMap[copyNum] = 1
-    }
-
-    for copyNum,_ := range tcc.MetaJson {
-      _,ok := copyMap[copyNum]
-      if !ok { return fmt.Errorf("MetaJson has an invalid variant (variant number %d)", copyNum) }
-      copyMap[copyNum]++
-    }
-
-    for copyNum,_ := range tcc.Body {
-      _,ok := copyMap[copyNum]
-      if !ok { return fmt.Errorf("Body has an invalid variant (variant number %d)", copyNum) }
-      copyMap[copyNum]++
-    }
-
-    for copyNum,v := range copyMap {
-      if v != 3 { return fmt.Errorf("Variant %d only has %d occurences", copyNum, v ) }
-    }
-
-  }
-
-  return nil
-}
-
-func check_length( tileSet *tile.TileSet ) (err error) {
-
-  for _,tcc := range tileSet.TileCopyCollectionMap {
-    for copyNum,j := range tcc.MetaJson {
-      if len( tcc.Body[copyNum] ) != j.N {
-        return fmt.Errorf("Body for tileId %s (%s) does not match reported length of %d (variant %d, calculated length %d)\n%s",
-          j.TileID, string(j.Md5Sum[:]), j.N, copyNum, len(tcc.Body[copyNum]), tcc.Body[copyNum] )
-      }
-    }
-  }
-
-  return nil
-
-}
 
 func md5Ascii( b [16]byte ) (s []byte) {
   for i:=0; i<len(b); i++ {
@@ -104,31 +28,66 @@ func md5Ascii( b [16]byte ) (s []byte) {
   return s
 }
 
-func check_md5sum( tileSet *tile.TileSet ) (err error) {
+func tile_check( sj *sloppyjson.SloppyJSON, seq []byte ) error {
 
-  for _,tcc := range tileSet.TileCopyCollectionMap {
-    for copyNum,j := range tcc.MetaJson {
-
-      //seq := strings.ToUpper(j.StartSeq) + strings.ToLower(tcc.Body[copyNum]) + strings.ToUpper(j.EndSeq)
-      seq := tcc.Body[copyNum]
-      b := md5.Sum( []byte( seq ) )
-
-      md5sumString := string(md5Ascii( b ))
-
-      if md5sumString != j.Md5Sum {
-        return fmt.Errorf("Body for tileId %s does not match reported md5sum %s (variant %d, calculated md5sum %s)\n%s",
-          j.TileID, string(j.Md5Sum[:]), copyNum, md5sumString, seq)
-      }
-    }
+  // Check nocall count
+  //
+  nocall := 0
+  for i:=0; i<len(seq); i++ {
+    if seq[i] == 'n' || seq[i] == 'N' { nocall++ }
+  }
+  if nocall != int( sj.O["nocallCount"].P + 0.5 ) {
+    return fmt.Errorf( "ERROR: nocall mismmatch (%d != %g)", nocall, sj.O["nocallCount"].P )
   }
 
-  return nil
+  // Check length
+  //
+  n := len(seq)
+  if n != int( sj.O["n"].P + 0.5 ) {
+    return fmt.Errorf( "ERROR: length mismmatch (%d != %g)", n, sj.O["n"].P )
+  }
 
+  // Check begin/end of tile
+  //
+  if sj.O["startTile"].Y == "true" && len( sj.O["startTag"].S ) != 0 {
+    return fmt.Errorf( "ERROR: startTile but len(startTag) != 0 (len(startTag) %d)", len( sj.O["startTag"].S ) )
+  } else if len( sj.O["startTag"].S ) != g_tagLength {
+
+    fmt.Printf(">>>>> %v %v %v\n", sj.O["startTag"].S, sj.O["startSeq"].S, "???" )
+
+    return fmt.Errorf( "ERROR: len(startTag) != %d (len(startTag) %d)", g_tagLength, len( sj.O["startTag"].S ) )
+  }
+  if sj.O["endTile"].Y == "true" && len( sj.O["endTag"].S ) != 0 {
+    return fmt.Errorf( "ERROR: endTile but len(endTag) != 0 (len(endTag) %d)", len( sj.O["endTag"].S ) )
+  } else if len( sj.O["endTag"].S ) != g_tagLength {
+    return fmt.Errorf( "ERROR: len(endTag) != %d (len(endTag) %d)", g_tagLength, len( sj.O["endTag"].S ) )
+  }
+
+  // Check begin/end sequence tag
+  m := len( sj.O["startSeq"].S )
+  if string(seq[0:m]) != sj.O["startSeq"].S {
+    return fmt.Errorf( "ERROR: startSeq != seq[%d:%d] ('%s' != '%s')", 0, m, string(seq[0:m]), sj.O["startSeq"].S )
+  }
+
+  m = len( sj.O["endSeq"].S )
+  if string(seq[n-m:n]) != sj.O["endSeq"].S {
+    return fmt.Errorf( "ERROR: endSeq != seq[%d:%d] ('%s' != '%s')", n-m, n, string(seq[n-m:n]), sj.O["endSeq"].S )
+  }
+
+  b := md5.Sum( []byte(seq) )
+  m5str := string( md5Ascii(b) )
+
+  if m5str != sj.O["md5sum"].S {
+    return fmt.Errorf( "ERROR: md5sums do not match ('%s' != '%s')", m5str, sj.O["md5sum"].S )
+  }
+
+
+  return nil
 }
 
 func _main( c *cli.Context ) {
   g_verboseFlag = c.Bool("Verbose")
-  tagLength := c.Int("tag-length")
+  g_tagLength = c.Int("tag-length")
 
   if len( c.String("input-fastj")) == 0 {
     fmt.Fprintf( os.Stderr, "Provide input FastJ file\n" )
@@ -137,44 +96,53 @@ func _main( c *cli.Context ) {
   }
 
   if g_verboseFlag {
-    fmt.Printf("tagLength: %d\n", tagLength)
+    fmt.Printf("g_tagLength: %d\n", g_tagLength)
   }
 
-  scanner,err := bioenv.OpenScanner( c.String("input-fastj") )
+  scanner,err := autoio.OpenReadScanner( c.String("input-fastj") )
   if err != nil {
     fmt.Fprintf( os.Stderr, "%v", err )
     os.Exit(1)
   }
   defer scanner.Close()
 
-  tileSet := tile.NewTileSet( tagLength )
-  err = tileSet.FastjScanner( scanner.Scanner )
-  if err != nil {
-    fmt.Fprintf( os.Stderr, "%v\n", err )
-    os.Exit(1)
+  var e error
+  var sj *sloppyjson.SloppyJSON
+  var seq []byte
+
+  first_pass := true
+  line_no:=0
+
+  for scanner.ReadScan() {
+    line_no++
+
+    l := scanner.ReadText()
+    if len(l)==0 { continue }
+    if l[0]=='>' {
+
+      if !first_pass {
+        e = tile_check( sj, seq )
+        if e != nil { log.Fatal( fmt.Sprintf("%v (line_no %d)", e, line_no) ) }
+      }
+      first_pass=false
+
+      seq = seq[0:0]
+
+      sj,e = sloppyjson.Loads( l[1:] ) ; _ = sj
+      if e!=nil { log.Fatal(e) }
+
+      continue
+    }
+
+    seq = append(seq, []byte(l)... )
   }
 
-  if err := check_copy_num_consistency( tileSet ) ; err != nil {
-    fmt.Fprintf( os.Stderr, "%v\n", err )
-    os.Exit(1)
+  if !first_pass {
+    e = tile_check( sj, seq )
+    if e != nil { log.Fatal(e) }
   }
 
-  if err := check_length( tileSet ) ; err != nil {
-    fmt.Fprintf( os.Stderr, "%v\n", err )
-    os.Exit(1)
-  }
-
-  if err := check_md5sum( tileSet ) ; err != nil {
-    fmt.Fprintf( os.Stderr, "%v\n", err )
-    os.Exit(1)
-  }
-
-  if err := check_meta_tags( tileSet ) ; err != nil {
-    fmt.Fprintf( os.Stderr, "%v\n", err )
-    os.Exit(1)
-  }
-
-  fmt.Printf(">> ok\n")
+  fmt.Printf("ok\n");
 
 }
 
