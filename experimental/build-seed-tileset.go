@@ -103,19 +103,9 @@ func printFastjElement( writerFastj *bufio.Writer,
 
 
 
-
   //-------------------------
 
-
-  /*
-  tileseq = append( tileseq, strings.ToUpper( string( fa_seq[ tileStart: tileStart + tagLength] ) )... )
-  tileseq = append( tileseq, strings.ToLower( string( fa_seq[ tileStart + tagLength: tileEnd - tagLength ]) )... )
-  tileseq = append( tileseq, strings.ToUpper( string( fa_seq[ tileEnd - tagLength: tileEnd ] ) )... )
-  */
-
-  tileseq = append( tileseq, strings.ToUpper( string( fa_seq[ tileStart - g_start : tileStart + tagLength - g_start ] ) )... )
-  tileseq = append( tileseq, strings.ToLower( string( fa_seq[ tileStart + tagLength - g_start : tileEnd - tagLength - g_start ]) )... )
-  tileseq = append( tileseq, strings.ToUpper( string( fa_seq[ tileEnd - tagLength - g_start : tileEnd - g_start ] ) )... )
+  tileseq = append( tileseq, strings.ToLower( string( fa_seq[ tileStart - g_start : tileEnd - g_start ] ) )... )
 
   md5sum = md5.Sum( tileseq )
 
@@ -138,14 +128,14 @@ func printFastjElement( writerFastj *bufio.Writer,
 
   _ = offsetBeg
 
-  str = fmt.Sprintf("\"locus\":[{ \"build\" : \"%s ", buildInfo)
+  str = fmt.Sprintf( "\"locus\":[{ \"build\" : \"%s ", buildInfo )
   writerFastj.WriteString( str )
 
 
-  str = fmt.Sprintf("%d ", tileStart )
+  str = fmt.Sprintf( "%d ", tileStart )
   writerFastj.WriteString( str )
 
-  str = fmt.Sprintf("%d", tileEnd )
+  str = fmt.Sprintf( "%d", tileEnd )
   writerFastj.WriteString( str )
 
   str = fmt.Sprintf( "\"}], " )
@@ -156,10 +146,25 @@ func printFastjElement( writerFastj *bufio.Writer,
   writerFastj.WriteString( str )
 
 
-  str = fmt.Sprintf("\"copy\":1, ")
-  writerFastj.WriteString( str )
+  //----
+  nocallCount:=0
+  for i:=tileStart-g_start; i<(tileEnd-g_start); i++ {
+    if fa_seq[i]=='n' || fa_seq[i]=='N' { nocallCount++; }
+  }
+  writerFastj.WriteString( fmt.Sprintf("\"nocallCount\":%d,", nocallCount) )
 
-  str = fmt.Sprintf("\"startTag\":\"" )
+  tf := "false"
+  if leftEndStopFlag { tf = "true" }
+  writerFastj.WriteString( fmt.Sprintf("\"startTile\":%s,", tf) )
+  tf = "false"
+  if rightEndStopFlag { tf = "true" }
+  writerFastj.WriteString( fmt.Sprintf("\"endTile\":%s,", tf) )
+
+  writerFastj.WriteString( "\"startSeq\":\"" + string( fa_seq[ tileStart - g_start : tileStart + tagLength - g_start ] ) + "\"," )
+  writerFastj.WriteString( "\"endSeq\":\"" + string( fa_seq[ tileEnd - offsetEnd - g_start : tileEnd - g_start ] ) + "\"," )
+  //----
+
+  str = fmt.Sprintf( "\"startTag\":\"" )
   writerFastj.WriteString( str )
 
   if leftEndStopFlag {
@@ -180,8 +185,16 @@ func printFastjElement( writerFastj *bufio.Writer,
     writerFastj.WriteString( string( fa_seq[ tileEnd - offsetEnd - g_start : tileEnd - g_start ] ) )
   }
 
-  str = fmt.Sprintf("\"");
+  str = fmt.Sprintf("\", ");
   writerFastj.WriteString( str )
+
+  //---
+  writerFastj.WriteString( "\"notes\":[]" )
+  //---
+
+
+  //str = fmt.Sprintf("\"");
+  //writerFastj.WriteString( str )
 
   str = fmt.Sprintf("}\n" )
   writerFastj.WriteString( str )
@@ -210,68 +223,6 @@ func printFastjElement( writerFastj *bufio.Writer,
   writerFastj.WriteString("\n")
 
 }
-
-
-func printFastJSONElement( writerFastj *bufio.Writer,
-                        fa_seq []byte,
-                        tileID string,
-                        tileStart int, tileEnd int,
-                        tagLength int,
-                        leftEndStopFlag bool , rightEndStopFlag bool ) {
-
-
-  str := fmt.Sprintf("  \"%s\": {\n    \"tileID\":\"%s\",\n", tileID, tileID)
-  writerFastj.WriteString( str )
-
-  offsetBeg, offsetEnd := tagLength, tagLength
-  if leftEndStopFlag { offsetBeg = 0; }
-  if rightEndStopFlag { offsetEnd = 0; }
-
-  str = fmt.Sprintf("    \"locus\" : [{ \"build\" : \"hg19 ")
-  writerFastj.WriteString( str )
-
-
-  str = fmt.Sprintf("%d ", tileStart )
-  writerFastj.WriteString( str )
-
-  str = fmt.Sprintf("%d", tileEnd )
-  writerFastj.WriteString( str )
-
-  str = fmt.Sprintf( "\" }],\n" )
-  writerFastj.WriteString( str )
-
-
-  str = fmt.Sprintf("    \"n\":\"%d\",\n", tileEnd - tileStart )
-  writerFastj.WriteString( str )
-
-
-  str = fmt.Sprintf("    \"copy\":\"1\",\n")
-  writerFastj.WriteString( str )
-
-
-  str = fmt.Sprintf("    \"tile\":\"" )
-  writerFastj.WriteString( str )
-
-  if leftEndStopFlag {
-    //for i:=0; i<tagLength; i++ { writerFastj.WriteString( "." ) }
-  } else {
-    writerFastj.WriteString( string( fa_seq[ tileStart - g_start : tileStart + tagLength - g_start ] ) )
-  }
-
-  midTile := fa_seq[ tileStart + offsetBeg - g_start : tileEnd - offsetEnd - g_start ]
-  writerFastj.Write( midTile )
-
-  if rightEndStopFlag {
-    //for i:=0; i<tagLength; i++ { writerFastj.WriteString( "." ) }
-  } else {
-    writerFastj.WriteString( string( fa_seq[ tileEnd - offsetEnd - g_start : tileEnd - g_start ] ) )
-  }
-
-  str = fmt.Sprintf("\"\n  }" )
-  writerFastj.WriteString( str )
-
-}
-
 
 // fa_seq holds an ascii block of the chromosome as it appears in the fasta file,
 //   with header and newlines stripped out
@@ -318,8 +269,6 @@ func WriteFastjFromBedGraph( fa_seq []byte, inpBedGraphFilename string, outFastj
 
   for benvReader.Scanner.Scan() {
     l := benvReader.Scanner.Text()
-
-    //fmt.Printf(">>> %v\n", l )
 
     if re_comment.MatchString( l )   { continue }
     if re_blankline.MatchString( l ) { continue }
