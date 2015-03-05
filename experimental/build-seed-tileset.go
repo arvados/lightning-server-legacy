@@ -1,21 +1,18 @@
-/* STILL A WORK IN PROGRESS
-   Load ucsc.cytomap.hg19.txt into memory
-   Load each chromosome in use (fasta file) into memory
-   scan the bedGraph file for tag positions
+/*
 
-   doing some preliminary benchmarks to make sure this will
-   complete in a reasonable amount of time.
+  Create a seed FastJ file from a FASTA reference and BedGraph file.
 
-   2014-04-25
-   Got through chromosome 1, started chromosome 2 but was killed.
-   Last time that happened it was due to memoery issues.
-   Also, last fastj sequence is not created/written (with corresponding
-   '.'*24 tag at the end)
+  Example usage:
 
-   UPDATE:
-   This should be working, but I've restricted to a chromosome by chromosome
-   run.  That is, specify the chromosome on the command line and only one
-   one chromosome per invocation of the program.
+    build-seed-tileset --input seq.fa --bedgraph inp.bedgraph -start 0 -end 2300000 --path 0 --build 'hg19 chr1' --output 000.fj
+
+  'input' is assumed to start at the start position specifieed.
+  'bedgraph' is used to determine the start of the 24mer tag chosen.
+  'start' is the start of the path.
+  'end' is the end of the path.
+  'path' is the path name for this tile set.
+  'build' is the annotaiton to put in the 'locus' portion of the FastJ header
+
 */
 
 package main
@@ -37,7 +34,7 @@ import "./aux"
 import "github.com/abeconnelly/autoio"
 import "github.com/codegangsta/cli"
 
-var VERSION_STR string = "0.0.1"
+var VERSION_STR string = "0.1.0"
 
 var gProfileFlag bool
 var gProfileFile string = "build-seed-tileset.pprof"
@@ -51,7 +48,6 @@ var g_fastaFn string
 var g_pathNum int
 var g_bedGraphFn string
 var g_outFastjFn string
-var g_cytomapFilename string
 
 var g_start int
 var g_end int
@@ -162,6 +158,7 @@ func printFastjElement( writerFastj *bufio.Writer,
 
   writerFastj.WriteString( "\"startSeq\":\"" + string( fa_seq[ tileStart - g_start : tileStart + tagLength - g_start ] ) + "\"," )
   writerFastj.WriteString( "\"endSeq\":\"" + string( fa_seq[ tileEnd - offsetEnd - g_start : tileEnd - g_start ] ) + "\"," )
+  writerFastj.WriteString( "\"seedTileLength\":1," )
   //----
 
   str = fmt.Sprintf( "\"startTag\":\"" )
@@ -482,19 +479,9 @@ func main() {
       Usage: "END",
     },
 
-    cli.IntFlag{
-      Name: "library-version",
-      Usage: "LIBRARY-VERSION",
-    },
-
     cli.StringFlag{
       Name: "bedgraph, g",
       Usage: "BEDGRAPH",
-    },
-
-    cli.StringFlag{
-      Name: "cytoband, C",
-      Usage: "CYTOBAND",
     },
 
     cli.StringFlag{
