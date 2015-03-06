@@ -1,166 +1,103 @@
+import json
+import pprint
+
 from django.test import TestCase
 
-# To set up:
-#   database similar to brca-lightning:
-#       Assumptions that don't need to be preserved for testing:
-#           len(tile_variant) >= 200 + TAG_LENGTH*2
-#           TAG_LENGTH == 24
-#
-#       Assumptions that need to be preserved:
-#           Each tile must overlap by exactly TAG_LENGTH bases
-#           If a SNP or INDEL occurs on the tag, the tile should span
-#           Spanning tiles are given the position they start on
-#
-#       TAG_LENGTH = 4 and TAG_LENGTH = 5 (tests should be run on both to ensure no assumptions
-#           about TAG_LENGTH were made)
-#       (making min tile length 12 and 15, for simplicity)
-#       TileLocusAnnotations must be 0 indexed, [start, end)
-#
+from wsgiref.simple_server import make_server
+import multiprocessing
 
-# Check queries work with different path versions as well >.<
+from django.core.urlresolvers import reverse
 
-# Query Between Loci
-#   Order of checking: assembly, chromosome, low_int too low, high_int too high
+from errors import MissingStatisticsError, InvalidGenomeError, ExistingStatisticsError, MissingLocusError
+from tile_library.constants import TAG_LENGTH, CHR_1, CHR_2, CHR_3, CHR_Y, CHR_M, \
+    CHR_OTHER, CHR_NONEXISTANT, ASSEMBLY_18, ASSEMBLY_19, GENOME, PATH
+import tile_library.test_scripts.complicated_library as build_library
+import tile_library.test_scripts.python_lantern as python_lantern
 
-#   If assembly cannot be cast as integer, raise Exception
-#       (It would be nice if it responded with accepted assembly integers)
-#   If assembly is an integer, but not loaded into the database, raise Exception
-#       (It would be nice if it responded with loaded assembly integers)
-#   If
+population = {
+    'person1':[
+        "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG"
+    ],
+    'person2':[
+        "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG" # Weird set of variants here make the two strands identical...
+    ],
+    'person3':[
+        "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG"
+    ],
+    'person4':[
+        "ACGGCAGTAGTTTTGCCGCTCGGTAAACGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG"
+    ],
+    'person5':[
+        "ACGGCAGTAGTTTTGCCGCTCGGTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG"
+    ],
+    'person6':[
+        "ACGGCAGTAGTTTTGCCGCTCGGTCGTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG"
+    ]
+}
 
-# Query Around Loci
-#   Currently unable to test behavior at the end of a chromosome, since TileVariants are still truncated...
+httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application)
+httpd.quiet = True
+server_process = multiprocessing.Process(target=httpd.serve_forever)
+def setUpModule():
+    global server_process
+    print "Setting up module..."
+    print "Starting python-lantern on port %i..." % (python_lantern.LANTERN_PORT)
+    server_process.start()
+def tearDownModule():
+    global server_process
+    print "\nClosing python-lantern..."
+    server_process.terminate()
+    server_process.join()
+    del(server_process)
 
 
-###COPIED FROM tile_library
-def ignore_make_tiles(assembly_default=19):
-    """
-    creates the following structure:
-            i,  min,     avg,  max
-        Path
-            0,  448,  448.67,  450 {'vars':3, 'lengths':[448,448,450]}, #1
-            1,  301,  301.00,  301 {'vars':2, 'lengths':[301,301]}, #2
-            2,  200,  257.67,  300 {'vars':3, 'lengths':[273,200,300]}, #3
-            3,  149,  149.00,  149 {'vars':1, 'lengths':[149]}, #4
-            4,  425,  425.00,  425 {'vars':1, 'lengths':[425]}, #5
-            5,  500,  549.75,  600 {'vars':4, 'lengths':[549,500,600,550]}, #6
-        Path 1:
-            6,  198,  199.00,  200 {'vars':4, 'lengths':[199,198,200,199]}, #7
-            7,  249,  249.00,  249 {'vars':2, 'lengths':[249,249]}, #8
-            8,  199,  199.00,  199 {'vars':1, 'lengths':[199]}, #9
-            9, 1200, 1200.00, 1200 {'vars':1, 'lengths':[1200]}, #10
-           10,  264,  264.50,  265 {'vars':2, 'lengths':[264,265]}, #11
-           11,  249,  250.50,  252 {'vars':6, 'lengths':[251,250,250,251,252,249]}, #12
-           12,  275,  275.50,  276 {'vars':2, 'lengths':[275,276]}, #13
-           13,  277,  277.00,  277 {'vars':2, 'lengths':[277,277]}, #14
-           14,  267,  267.00,  267 {'vars':1, 'lengths':[267]}, #15
-           15,  258,  258.00,  258 {'vars':1, 'lengths':[258]}, #16
-           16,  248,  248.00,  248 {'vars':3, 'lengths':[248,248,248]}, #17
-           17,  250,  250.00,  250 {'vars':1, 'lengths':[250]}, #18
+class TestBetweenLoci(TestCase):
+    def setUp(self):
+        build_library.make_entire_library()
+        build_library.make_lantern_translators()
+    def test_query_in_only_first_tile(self):
+        response = self.client.get(reverse('api:pop_between_loci'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'lower_base':24, 'upper_base':25})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["C", "T"],
+            'person2':["", "T"],
+            'person3':["T", ""],
+            'person4':["AAAC", "C"],
+            'person5':["C", "C"],
+            'person6':["C", "C"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_only_second_tile(self):
+        response = self.client.get(reverse('api:pop_between_loci'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'lower_base':51, 'upper_base':52})
+        content = json.loads(response.content)
+        print response.content
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["", "C"],
+            'person2':["C", "C"],
+            'person3':["C", "C"],
+            'person4':["C", "C"],
+            'person5':["C", "C"],
+            'person6':["C", ""]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
 
-    loci = [(0, 448),    #0 -> 448
-            (448-24, 725),#1 -> 301
-            (725-24, 974),#2 -> 273
-            (974-24, 1099),#3 -> 149
-            (1099-24,1500),#4 -> 425
-            (1500-24,2025),#5 -> 549
-            (2025-24,2200),#6 -> 199
-            (2200-24,2425),#7 -> 249
-            (2425-24,2600),#8 -> 199
-            ]
-    """
-    tile_vars = [
-            {'vars':3, 'lengths':[448,448,450]}, #1
-            {'vars':2, 'lengths':[301,301]}, #2
-            {'vars':3, 'lengths':[273,200,300]}, #3
-            {'vars':1, 'lengths':[149]}, #4
-            {'vars':1, 'lengths':[425]}, #5
-            {'vars':4, 'lengths':[549,500,600,550]}, #6
-            {'vars':4, 'lengths':[199,198,200,199]}, #7
-            {'vars':2, 'lengths':[249,249]}, #8
-            {'vars':1, 'lengths':[199]}, #9
-            {'vars':1, 'lengths':[1200]}, #10
-            {'vars':2, 'lengths':[264,265]}, #11
-            {'vars':6, 'lengths':[251,250,250,251,252,249]}, #12
-            {'vars':2, 'lengths':[275,276]}, #13
-            {'vars':2, 'lengths':[277,277]}, #14
-            {'vars':1, 'lengths':[267]}, #15
-            {'vars':1, 'lengths':[258]}, #16
-            {'vars':3, 'lengths':[248,248,248]}, #17
-            {'vars':1, 'lengths':[250]}, #18
-        ]
-    locus = 0
-    for j in range(18):
-        if j == 0:
-            t, foo, new_start_tag, annotation = mk_tile(
-                j,
-                locus,
-                tile_vars[j]['lengths'][0]+locus,
-                tile_vars[j]['vars'],
-                tile_vars[j]['lengths'],
-                assembly=assembly_default
-            )
-        else:
-            t, foo, new_start_tag, annotation = mk_tile(
-                j,
-                locus,
-                tile_vars[j]['lengths'][0]+locus,
-                tile_vars[j]['vars'],
-                tile_vars[j]['lengths'],
-                start_tag=new_start_tag,
-                assembly=assembly_default
-            )
-        #print j, locus, locus+tile_vars[j]['lengths'][0]
-        locus += tile_vars[j]['lengths'][0] - 24
 
-    locus = 0
-    t, foo, new_start_tag, annotation = mk_tile(
-        1000,
-        locus,
-        tile_vars[0]['lengths'][0]+locus,
-        1,
-        [tile_vars[0]['lengths'][0]],
-        assembly=assembly_default,
-        chrom=2
-    )
-    locus += tile_vars[0]['lengths'][0] - 24
-    for i in range(1, 5):
-        t, foo, new_start_tag, annotation = mk_tile(
-            i+1000,
-            locus,
-            tile_vars[i]['lengths'][0]+locus,
-            1,
-            [tile_vars[i]['lengths'][0]],
-            start_tag=new_start_tag,
-            assembly=assembly_default,
-            chrom=2
-        )
-        locus += tile_vars[i]['lengths'][0] - 24
 #################################### TEST path_statistics_views ###################################
 ##class TestViewPathStatistics(TestCase):
-##    fixtures = ['test_view_paths.json']
-##    """
-##        test_view_paths has the following structure:
-##            i,  min,     avg,  max
-##            0,  250,  250.67,  252 {'vars':3, 'lengths':[250,252,250]}, #1
-##            1,  248,  248.00,  248 {'vars':2, 'lengths':[248,248]}, #2
-##            2,  200,  250.00,  300 {'vars':3, 'lengths':[200,250,300]}, #3
-##            3,  250,  250.00,  250 {'vars':1, 'lengths':[250]}, #4
-##            4,  199,  199.00,  199 {'vars':1, 'lengths':[199]}, #5
-##            5,  150,  205.00,  250 {'vars':4, 'lengths':[150,250,200,220]}, #6
-##            6,  250,  250.25,  251 {'vars':4, 'lengths':[250,250,250,251]}, #7
-##            7, 1200, 1200.00, 1200 {'vars':1, 'lengths':[1200]}, #8
-##            8,  300,  300.33,  301 {'vars':3, 'lengths':[300,300,301]}, #9
-##            9,  264,  264.50,  265 {'vars':2, 'lengths':[264,265]}, #10
-##           10,  249,  250.50,  252 {'vars':6, 'lengths':[251,250,250,251,252,249]}, #11
-##           11,  275,  275.50,  276 {'vars':2, 'lengths':[275,276]}, #12
-##           12,  277,  277.00,  277 {'vars':2, 'lengths':[277,277]}, #13
-##           13,  267,  267.00,  267 {'vars':1, 'lengths':[267]}, #14
-##           14,  258,  258.00,  258 {'vars':1, 'lengths':[258]}, #15
-##           15,  248,  248.00,  248 {'vars':3, 'lengths':[248,248,248]}, #16
-##           16,  250,  250.00,  250 {'vars':1, 'lengths':[250]}, #17
-##        Most view tests will be on path 0 (the first path)
-##        """
 ##    def test_wrong_numbers_return_404(self):
 ##        response = self.client.get(reverse('tile_library:path_statistics', args=(0,0)))
 ##        self.assertEqual(response.status_code, 404)
@@ -1222,3 +1159,35 @@ def ignore_make_tiles(assembly_default=19):
 ##                    curr = int(row.find_elements_by_tag_name('td')[1].text.strip())
 ##                    self.assertLessEqual(prev, curr)
 ##                    prev = curr
+
+
+# To set up:
+#   database similar to brca-lightning:
+#       Assumptions that don't need to be preserved for testing:
+#           len(tile_variant) >= 200 + TAG_LENGTH*2
+#           TAG_LENGTH == 24
+#
+#       Assumptions that need to be preserved:
+#           Each tile must overlap by exactly TAG_LENGTH bases
+#           If a SNP or INDEL occurs on the tag, the tile should span
+#           Spanning tiles are given the position they start on
+#
+#       TAG_LENGTH = 4 and TAG_LENGTH = 5 (tests should be run on both to ensure no assumptions
+#           about TAG_LENGTH were made)
+#       (making min tile length 12 and 15, for simplicity)
+#       TileLocusAnnotations must be 0 indexed, [start, end)
+#
+
+# Check queries work with different path versions as well >.<
+
+# Query Between Loci
+#   Order of checking: assembly, chromosome, low_int too low, high_int too high
+
+#   If assembly cannot be cast as integer, raise Exception
+#       (It would be nice if it responded with accepted assembly integers)
+#   If assembly is an integer, but not loaded into the database, raise Exception
+#       (It would be nice if it responded with loaded assembly integers)
+#   If
+
+# Query Around Loci
+#   Currently unable to test behavior at the end of a chromosome, since TileVariants are still truncated...

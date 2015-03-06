@@ -200,8 +200,8 @@ class TileVariant(models.Model):
     last_modified = models.DateTimeField(auto_now=True)
     sequence = models.TextField(validators=[
         RegexValidator(
-            regex='[ACGTN]+',
-            message="Not a valid sequence, must be uppercase, and can only include A,C,G,T, or N."
+            regex='[acgtn]+',
+            message="Not a valid sequence, must be lowercase, and can only include a,c,g,t, or n."
         )
     ])
     start_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_variant_tag])
@@ -283,6 +283,66 @@ class TileVariant(models.Model):
         if lower_position_int > upper_position_int:
             raise ValueError("Expects lower position_int to be less than or equal to upper position int. " + info_str)
         return self.sequence[lower_position_int:upper_position_int]
+    def get_conversion_list_between_genome_variant_loci_and_tile_loci(self, start_locus_int, end_locus_int):
+        reference_to_tile_variant = [(0, 0, 0, 0), (end_locus_int-start_locus_int, self.length, end_locus_int-start_locus_int, self.length)]
+        genome_variant_positions = self.translations_to_genome_variant.all()
+        for translation in genome_variant_positions:
+            # we only need to add if the variant is an INDEL, but I'm adding all of them here since we iterate over all of them
+            reference_to_tile_variant.append((translation.genome_variant.locus_start_int, translation.start, translation.genome_variant.locus_end_int, translation.end))
+        reference_to_tile_variant.sort()
+        return reference_to_tile_variant
+    def get_bases_between_loci_known_locus(self, queried_low_int, queried_high_int, start_locus_int, end_locus_int):
+        def get_start(low_int, reference_to_tile_variant):
+            prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[0]
+            for i, (locus_start, variant_start, locus_end, variant_end) in enumerate(reference_to_tile_variant):
+                if low_int >= locus_start:
+                    if i > 0:
+                        prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[i-1]
+                    break
+            if low_int < prev_locus_start:
+                return prev_variant_start
+            if low_int < prev_locus_end:
+                return prev_variant_end + (low_int-prev_locus_end)
+            return prev_variant_start + (low_int-prev_locus_start)
+        def get_end(high_int, reference_to_tile_variant):
+            prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[0]
+            for i, (locus_start, variant_start, locus_end, variant_end) in enumerate(reference_to_tile_variant):
+                if high_int <= locus_start:
+                    prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[i-1]
+                    break
+            if high_int > locus_start:
+                #Extends past the tile variant
+                return variant_end
+            if high_int < prev_locus_end:
+                #In the previous genome variant
+                ref_seq_length = prev_locus_end - prev_locus_start
+                var_seq_length = prev_variant_end - prev_variant_start
+                if ref_seq_length == 0 or var_seq_length == 0:
+                    return prev_variant_end
+                return prev_variant_start + (high_int-prev_locus_start)
+            #In-between two genome-variants
+            return prev_variant_end + (high_int-prev_locus_end)
+        assert queried_low_int <= end_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (self.get_string(), queried_low_int, queried_high_int, start_locus_int, end_locus_int)
+        assert queried_high_int >= start_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (self.get_string(), queried_low_int, queried_high_int, start_locus_int, end_locus_int)
+        #If we are asked to retrieve the entire tile, our job is easy:
+        if end_locus_int <= queried_high_int and start_locus_int >= queried_low_int:
+            return tile_variant.sequence.upper()
+        reference_to_tile_variant = self.get_conversion_list_between_genome_variant_loci_and_tile_loci(start_locus_int, end_locus_int)
+        low_int = max(queried_low_int - start_locus_int, 0)
+        high_int = queried_high_int - start_locus_int
+
+        lower_base_index = get_start(low_int, reference_to_tile_variant)
+        higher_base_index = get_end(high_int, reference_to_tile_variant)
+        return self.get_base_group_between_positions(lower_base_index, higher_base_index).upper()
+    def get_bases_between_loci(self, queried_low_int, queried_high_int, assembly):
+        start_locus_int, end_locus_int = self.get_locus(assembly)
+        return self.get_bases_between_loci_known_locus(queried_low_int, queried_high_int, start_locus_int, end_locus_int)
+    def get_tile_variant_lantern_name(self):
+        try:
+            lantern_name = LanternTranslator.objects.filter(tile_variant_int=int(self.tile_variant_int)).get(tile_library_host='').lantern_name
+            return lantern_name
+        except LanternTranslator.DoesNotExist: #if there is no translation, we will never get it returned by lantern
+            return ""
     def __unicode__(self):
         return self.get_string()
     class Meta:
@@ -328,6 +388,15 @@ class LanternTranslator(models.Model):
         #Ensures ordering by tilename
         ordering = ['lantern_name']
         unique_together = ('tile_variant_int','tile_library_host')
+    class DegradedVariantError(Exception):
+        """
+            Variant was accessible when translation was saved, but something went wrong accessing it again
+        """
+        def __init__(self, value):
+            self.value = value
+        def __str__(self):
+            return repr(self.value)
+
 class GenomeVariant(models.Model):
     """
         Implements a Genome Variant object (SNP, SUB, or INDEL) that can be associated with multiple TileVariants.

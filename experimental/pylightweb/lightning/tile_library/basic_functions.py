@@ -119,6 +119,18 @@ def get_position_from_cgf_string(cgf_str):
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
     path, version, step = matching.group(1).split('.')
     return int(version+path+step, 16)
+def get_non_spanning_cgf_string(cgf_str):
+    """
+        Returns cgf-string without the trailing '+'
+        Expects cgf-formatted string
+        Raises TypeError and ValueError
+    """
+    if type(cgf_str) != str and type(cgf_str) != unicode:
+        raise TypeError("Requires %s to be type string or unicode" % (cgf_str))
+    matching = re.match(LANTERN_NAME_FORMAT_STRING, cgf_str)
+    if matching == None:
+        raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
+    return matching.group(1)
 def get_number_of_tiles_spanned_from_cgf_string(cgf_str):
     """
         Returns integer corresponding to the number of positions spanned by a tilevariant encoded

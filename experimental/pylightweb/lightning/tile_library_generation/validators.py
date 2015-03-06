@@ -79,8 +79,8 @@ def validate_tile_variant(tile_position_int, tile_variant_int, variant_value, se
         VALIDATION_ERRORS['variant_value_mismatch'] = "tile variant value and input variant value must be equal"
     if seq_length != len(sequence):
         VALIDATION_ERRORS['length_mismatch'] = "length must be the length of the sequence"
-    if sequence.upper() != sequence:
-        VALIDATION_ERRORS['sequence'] = "Sequence must be entirely uppercase"
+    if sequence.lower() != sequence:
+        VALIDATION_ERRORS['sequence'] = "Sequence must be entirely lowercase"
     digestor = hashlib.new('md5', sequence)
     if digestor.hexdigest() != seq_md5sum:
         VALIDATION_ERRORS['md5sum_mismatch'] = "md5sum is not actually md5sum of sequence"
@@ -181,7 +181,18 @@ def validate_alternate_bases(tile_var_seq, alternate_bases, through_start, throu
     """
         check the genome variant alternate bases are the bases in the variant
     """
+    VALIDATION_ERRORS = {}
+    if through_start < 0:
+        VALIDATION_ERRORS['start'] = "start is less than 0"
+    if through_start > len(tile_var_seq):
+        VALIDATION_ERRORS['start'] = "start is larger than the length of the tile_variant_sequence"
+    if through_end < 0:
+        VALIDATION_ERRORS['end'] = "end is less than 0"
+    if through_end > len(tile_var_seq):
+        VALIDATION_ERRORS['end'] = "end is larger than the length of the tile_variant_sequence"
+    if through_end < through_start:
+        VALIDATION_ERRORS['start-end'] = "end is larger than start"
     if tile_var_seq[through_start:through_end].upper() != alternate_bases.strip('-').upper():
-        raise TileLibraryValidationError(
-            {'genome_variant.alternate_bases':"Alternate bases (%s) do not match bases in tile variant (%s)" % (alternate_bases, tile_var_seq[through_start:through_end])}
-        )
+        VALIDATION_ERRORS['genome_variant.alternate_bases'] = "Alternate bases (%s) do not match bases in tile variant (%s)" % (alternate_bases, tile_var_seq[through_start:through_end])
+    if len(VALIDATION_ERRORS) > 0:
+        raise TileLibraryValidationError(VALIDATION_ERRORS)

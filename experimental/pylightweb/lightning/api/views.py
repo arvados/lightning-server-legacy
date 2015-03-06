@@ -15,8 +15,9 @@ from rest_framework.response import Response
 from api.serializers import TileVariantSerializer, RoughTileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, TAG_LENGTH
 import tile_library.query_functions as query_fns
+import tile_library.lantern_query_functions as lantern_query_fns
 import tile_library.basic_functions as basic_fns
-from errors import MissingStatisticsError
+from errors import MissingStatisticsError, LocusOutOfRangeException
 
 def documentation(request):
     """
@@ -243,27 +244,29 @@ class PopulationVariantQueryBetweenLoci(APIView):
             cgf_string : bases of interest. Includes tags!
         Each entry in the list corresponds to a position
         """
-        locuses = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
-            begin_int__lt=high_int).filter(end_int__gt=low_int).order_by('begin_int')
+        locuses = TileLocusAnnotation.objects.filter(assembly_int=assembly).filter(chromosome_int=chromosome).filter(
+            start_int__lt=high_int).filter(end_int__gt=low_int).order_by('start_int')
         num_locuses = locuses.count()
+
         #Return useful info if cannot complete query
         response_text = "Expect at least one locus to match the query"
         if num_locuses == 0:
-            base_query = TileLocusAnnotation.objects.filter(assembly=assembly)
+            base_query = TileLocusAnnotation.objects.filter(assembly_int=assembly)
             if base_query.count() == 0:
                 response_text = "Specified locus is not in this server. Try a different assembly"
             else:
-                base_query = base_query.filter(chromosome=chromosome)
+                base_query = base_query.filter(chromosome_int=chromosome)
                 if base_query.count() == 0:
                     response_text = "Specified locus is not in this server. Try a different chromosome"
                 else:
-                    smallest_int = base_query.order_by('begin_int').first().begin_int
-                    largest_int = base_query.order_by('begin_int').reverse().first().end_int - 1
+                    smallest_int = base_query.order_by('start_int').first().begin_int
+                    largest_int = base_query.order_by('start_int').reverse().first().end_int - 1
                     response_text = "That locus is not loaded in this server. Try a number in the range %i to %i." % (smallest_int, largest_int)
             raise LocusOutOfRangeException(response_text)
         #Get framing tile position ints
-        first_tile_position_int = int(locuses.first().tile_id)
-        last_tile_position_int = max(int(locuses.last().tile_id), first_tile_position_int) # unsure if this max is required
+        first_tile_position_int = int(locuses.first().tile_position_id)
+        last_tile_position_int = max(int(locuses.last().tile_position_id), first_tile_position_int) # unsure if this max is required
+
         # but the max prevents choosing a last tile position that's smaller than the first tile position
 
         #Get maximum number of spanning tiles
@@ -283,7 +286,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
     def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator):
         sequence = ""
         for cgf_string in positions_queried:
-            num_positions_spanned = basic_fns.get_number_of_tiles_spanned(cgf_string) - 1
+            num_positions_spanned = basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string) - 1
             non_spanning_cgf_string = cgf_string.split('+')[0]
             tile_position_int = basic_fns.get_position_from_cgf_string(cgf_string)
             tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
@@ -299,6 +302,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], \
                     "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, query_fns.print_friendly_cgf_translator(cgf_translator))
                 if len(sequence) > 0:
+                    print sequence
                     curr_ending_tag = sequence[-TAG_LENGTH:]
                     new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
                     if len(curr_ending_tag) >= len(new_starting_tag):
@@ -315,19 +319,18 @@ class PopulationVariantQueryBetweenLoci(APIView):
         return sequence
 
     def get_population_sequences(self, first_tile_position_int, last_tile_position_int, max_num_spanning_variants, cgf_translator):
-        humans = query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
+        humans = lantern_query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
         human_sequence_dict = {}
         for human in humans:
             short_name = human.strip('" ').split('/')[-1]
-            human_sequence_dict[human] = ['', '']
-            human_sequence_dict[human][0] = self.get_bases_for_human(short_name, humans[human][0], first_tile_position_int, last_tile_position_int, cgf_translator)
-            human_sequence_dict[human][1] = self.get_bases_for_human(short_name, humans[human][1], first_tile_position_int, last_tile_position_int, cgf_translator)
+            human_sequence_dict[human] = []
+            for positions_in_one_phase in humans[human]:
+                human_sequence_dict[human].append(self.get_bases_for_human(short_name, positions_in_one_phase, first_tile_position_int, last_tile_position_int, cgf_translator))
         humans_with_sequences = []
         for human in human_sequence_dict:
             humans_with_sequences.append(
                 {'human_name':human.strip('" ').split('/')[-1],
-                 'phase_A_sequence':human_sequence_dict[human][0],
-                 'phase_B_sequence':human_sequence_dict[human][1],
+                 'sequence':human_sequence_dict[human],
                  'phased':False}
             )
         return humans_with_sequences
@@ -373,14 +376,14 @@ class PopulationVariantQueryAroundLocus(APIView):
         Each entry in the list corresponds to a position
         """
         ######### Get center position #########
-        center_locus = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
-            begin_int__lte=target_base_int).filter(end_int__gt=target_base_int)
+        center_locus = TileLocusAnnotation.objects.filter(assembly_int=assembly).filter(chromosome_int=chromosome).filter(
+            start_int__lte=target_base_int).filter(end_int__gt=target_base_int)
         if not center_locus.exists():
-            base_query = TileLocusAnnotation.objects.filter(assembly=assembly)
+            base_query = TileLocusAnnotation.objects.filter(assembly_int=assembly)
             if base_query.count() == 0:
                 response_text = "Specified locus is not in this server. Try a different assembly"
             else:
-                base_query = base_query.filter(chromosome=chromosome)
+                base_query = base_query.filter(chromosome_int=chromosome)
                 if base_query.count() == 0:
                     response_text = "Specified locus is not in this server. Try a different chromosome"
                 else:
@@ -394,8 +397,8 @@ class PopulationVariantQueryAroundLocus(APIView):
         ######### Get locuses #########
         rough_low_int = target_base_int - number_bases_around
         rough_high_int = target_base_int + number_bases_around + 1 #non_inclusive!
-        locuses = TileLocusAnnotation.objects.filter(assembly=assembly).filter(chromosome=chromosome).filter(
-            begin_int__lt=rough_high_int).filter(end_int__gt=rough_low_int).order_by('begin_int')
+        locuses = TileLocusAnnotation.objects.filter(assembly_int=assembly).filter(chromosome_int=chromosome).filter(
+            start_int__lt=rough_high_int).filter(end_int__gt=rough_low_int).order_by('start_int')
 
         #Get framing tile position ints
         first_tile_position_int =  int(locuses.first().tile_id)
