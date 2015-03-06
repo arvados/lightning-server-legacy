@@ -7,7 +7,7 @@
      gff2fj [global options] command [command options] [arguments...]
 
   VERSION:
-     0.1, AGPLv3.0
+     0.2.0, AGPLv3.0
 
   AUTHOR:
     Curoverse Inc. - <info@curoverse.com>
@@ -218,7 +218,7 @@ import "../bioenv"
 import "runtime/pprof"
 
 
-var VERSION_STR string = "0.1, AGPLv3.0"
+var VERSION_STR string = "0.2.0, AGPLv3.0"
 
 var gBioEnvWriter bioenv.BioEnvHandle
 var gOutputWriter *bufio.Writer
@@ -248,6 +248,9 @@ var g_verboseFlag bool
 
 var g_referenceTileSet *tile.TileSet
 
+//var g_start int
+//var g_end int
+
 
 var gProfileFlag bool
 var gProfileFile string
@@ -257,7 +260,7 @@ type TileHeader struct {
   TileID string `json:"tileID"`
   Locus []map[ string ]string `json:"locus"`
   N int `json:"n"`
-  CopyNum int `json:"copy"`
+  //CopyNum int `json:"copy"`
   StartTag string `json:"startTag"`
   EndTag string `json:"endTag"`
   Notes []string `json:"notes,omitempty"`
@@ -319,6 +322,8 @@ func (gss *GffScanState) PrintState() {
 
 func (gss *GffScanState) generateTileStartPositions(referenceTileSet *tile.TileSet, buildVersion string) {
 
+  gss.endPos = -1
+
   // Sort starting position of each of the tile.
   // hg(\d+) co-ordinates stored as 0ref in tile set.
   //
@@ -340,11 +345,14 @@ func (gss *GffScanState) generateTileStartPositions(referenceTileSet *tile.TileS
 
     // Put in final endpoint
     //
-    if len(a[0][4]) > 0 {
-      gss.startPos = append( gss.startPos, e )
+    if gss.endPos < e {
       gss.endPos = e
     }
 
+  }
+
+  if gss.endPos >= 0 {
+    gss.startPos = append( gss.startPos, gss.endPos )
   }
 
   sort.Ints( gss.startPos )
@@ -360,10 +368,10 @@ func (gss *GffScanState) generateTileStartPositions(referenceTileSet *tile.TileS
   gss.refLenVirtual = 0
 
   gss.gffLeftTagSeqVirtual = gss.gffLeftTagSeqVirtual[0:0]
-  gss.gffLeftTagSeqVirtual = append( gss.gffLeftTagSeqVirtual, []byte("........................")... )
+  gss.gffLeftTagSeqVirtual = append( gss.gffLeftTagSeqVirtual, []byte("")... )
 
   gss.gffLeftTagSeqActual = gss.gffLeftTagSeqActual[0:0]
-  gss.gffLeftTagSeqActual = append( gss.gffLeftTagSeqActual, []byte("........................")... )
+  gss.gffLeftTagSeqActual = append( gss.gffLeftTagSeqActual, []byte("")... )
 
 }
 
@@ -432,6 +440,7 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   NormalizeTileSeq( gss.gffCurSeq, len(gss.gffLeftTagSeqActual), len(gss.gffRightTagSeq) )
 
   f := strings.SplitN( baseTileId, ".", -1 )
+
   newTileId := fmt.Sprintf("%s.%s.%04s.%03x", f[0], f[1], f[2], gss.VariantId )
 
   gOutputWriter.WriteString("> { ")
@@ -474,6 +483,15 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   gOutputWriter.WriteString( fmt.Sprintf(", \"locus\":[{\"build\":\"%s\"}]", header.Locus[0]["build"] ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"n\":%d", len(gss.gffCurSeq) ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"seedTileLength\":%d", gss.seedTileLength ) )
+
+  gOutputWriter.WriteString( ",\"startTile\":" )
+  if len(gss.gffLeftTagSeqActual)==0  { gOutputWriter.WriteString( "true" )
+  } else                              { gOutputWriter.WriteString( "false" ) }
+
+  gOutputWriter.WriteString( ",\"endTile\":" )
+  if len(gss.gffRightTagSeq)==0 { gOutputWriter.WriteString( "true" )
+  } else                        { gOutputWriter.WriteString( "false" ) }
+
   gOutputWriter.WriteString( fmt.Sprintf(", \"startSeq\":\"%s\"", gss.gffLeftTagSeqActual) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"endSeq\":\"%s\""  , gss.gffRightTagSeq) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"startTag\":\"%s\"", refTcc.StartTag ) )
@@ -575,10 +593,8 @@ func (gss *GffScanState) AdvanceState() {
     gss.gffLeftTagSeqVirtual = gss.gffLeftTagSeqVirtual[0:0]
     gss.gffLeftTagSeqVirtual = append( gss.gffLeftTagSeqVirtual, gss.gffRightTagSeq... )
 
-    //gss.gffCurSeq = append( gss.gffCurSeq, gss.gffLeftTagSeqActual... )
     gss.gffCurSeq = append( gss.gffCurSeq, gss.gffLeftTagSeqVirtual... )
     gss.refLenVirtual += gss.TagLen
-    //gss.refLenActual += gss.TagLen
 
     gss.notes = append( gss.notes, "VariantOnTag" )
 
@@ -726,32 +742,13 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
     if gss.refStartVirtual == gss.startPos[ gss.startPosIndex-1 ] {
 
       refLenRemain := (gss.nextTagStart + gss.TagLen) - (gss.refStartVirtual + gss.refLenVirtual)
-      //dGapLen := gapLen
-      //if dGapLen > refLenRemain { dGapLen = refLenRemain }
 
       var fa []byte
 
       // Update the current sequence, placing 'no-calls' as appropriate.
       //
       if gPlaceNoCallInSeq {
-
         fa = append_with_ref_and_nocall( fa, chromFa, gapEndPos, gss.refStartVirtual + gss.refLenVirtual, gss.nextTagStart + gss.TagLen )
-
-        /*
-        spos := gss.refStartVirtual + gss.refLenVirtual
-        epos := gss.nextTagStart + gss.TagLen
-        dpos := epos - spos
-
-        if gapEndPos < spos {
-          fa = append( fa, chromFa[ spos : spos + dpos ] )
-        } else if gapEndPos < (spos+dpos) {
-          fa = fill_no_call( fa, gapEndPos - spos )
-          fa = append( fa, chromFa[ gapEndPos : spos + dpos ] )
-        } else {
-          fa = fill_no_call( fa, dpos )
-        }
-        */
-
       } else {
         fa = chromFa[ gss.refStartVirtual + gss.refLenVirtual : gss.nextTagStart + gss.TagLen ]
       }
@@ -765,24 +762,7 @@ func (gss *GffScanState) processREF( finalTileSet *tile.TileSet,
         gss.gffRightTagSeq = gss.gffRightTagSeq[0:0]
 
         if gPlaceNoCallInSeq {
-
           gss.gffRightTagSeq = append_with_ref_and_nocall( gss.gffRightTagSeq, chromFa, gapEndPos, gss.nextTagStart, gss.nextTagStart + gss.TagLen )
-
-          /*
-          spos := gss.nextTagStart
-          epos := gss.nextTagStart + gss.TagLen
-          dpos := gss.TagLen
-
-          if gapEndPos < spos {
-            gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ spos : spos + dpos ] )
-          } else if gapEndPos < (spos+dpos) {
-            gss.gffRightTagSeq = fill_no_call( gss.gffRightTagSeq, gapEndPos - spos )
-            gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gapEndPos : spos + dpos ] )
-          } else {
-            gss.gffRightTagSeq = fill_no_call( gss.gffRightTagSeq, dpos )
-          }
-          */
-
         } else {
           gss.gffRightTagSeq = append( gss.gffRightTagSeq, chromFa[ gss.nextTagStart : gss.nextTagStart + gss.TagLen ]... )
         }
