@@ -378,29 +378,10 @@ func (gss *GffScanState) generateTileStartPositions(referenceTileSet *tile.TileS
 
 
 
-func NormalizeTileSeq( tileSeq []byte, leftlen int, rightlen int  ) {
+func NormalizeTileSeq( tileSeq []byte, leftlen int, rightlen int ) {
 
   n := len(tileSeq)
-  if n < 48 { return }
-
-  for i:=0; i<leftlen; i++ {
-    if (tileSeq[i] == 'a') || (tileSeq[i] == 'c') ||
-       (tileSeq[i] == 't') || (tileSeq[i] == 'g') ||
-       (tileSeq[i] == 'n') {
-      tileSeq[i] -= 32
-    }
-  }
-
-  for i:=0; i<rightlen; i++ {
-    p := n-i-1
-    if (tileSeq[p] == 'a') || (tileSeq[p] == 'c') ||
-       (tileSeq[p] == 't') || (tileSeq[p] == 'g') ||
-       (tileSeq[p] == 'n') {
-      tileSeq[p] -= 32
-    }
-  }
-
-  for i:=leftlen; i<(n-rightlen); i++ {
+  for i:=0 ; i<n ; i++ {
     if (tileSeq[i] == 'A') || (tileSeq[i] == 'C') ||
        (tileSeq[i] == 'T') || (tileSeq[i] == 'G') ||
        (tileSeq[i] == 'N') {
@@ -484,18 +465,23 @@ func (gss *GffScanState) AddTile( finalTileSet *tile.TileSet, referenceTileSet *
   gOutputWriter.WriteString( fmt.Sprintf(", \"n\":%d", len(gss.gffCurSeq) ) )
   gOutputWriter.WriteString( fmt.Sprintf(", \"seedTileLength\":%d", gss.seedTileLength ) )
 
+  start_tag := refTcc.StartTag
   gOutputWriter.WriteString( ",\"startTile\":" )
-  if len(gss.gffLeftTagSeqActual)==0  { gOutputWriter.WriteString( "true" )
+  if len(gss.gffLeftTagSeqActual)==0  { gOutputWriter.WriteString( "true" ) ; start_tag = ""
   } else                              { gOutputWriter.WriteString( "false" ) }
 
+  end_tag := refTcc.EndTag
   gOutputWriter.WriteString( ",\"endTile\":" )
-  if len(gss.gffRightTagSeq)==0 { gOutputWriter.WriteString( "true" )
+  if len(gss.gffRightTagSeq)==0 { gOutputWriter.WriteString( "true" ) ; end_tag = ""
   } else                        { gOutputWriter.WriteString( "false" ) }
 
-  gOutputWriter.WriteString( fmt.Sprintf(", \"startSeq\":\"%s\"", gss.gffLeftTagSeqActual) )
-  gOutputWriter.WriteString( fmt.Sprintf(", \"endSeq\":\"%s\""  , gss.gffRightTagSeq) )
-  gOutputWriter.WriteString( fmt.Sprintf(", \"startTag\":\"%s\"", refTcc.StartTag ) )
-  gOutputWriter.WriteString( fmt.Sprintf(", \"endTag\":\"%s\""  , refTcc.EndTag ) )
+  // Actual tag sequences are taken from the FASTA reference, so they might be in some have
+  // some upper case characters.  Normalize to all lower case.
+  //
+  gOutputWriter.WriteString( fmt.Sprintf(", \"startSeq\":\"%s\"", strings.ToLower(string(gss.gffLeftTagSeqActual)) ) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"endSeq\":\"%s\""  , strings.ToLower(string(gss.gffRightTagSeq)) ) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"startTag\":\"%s\"", start_tag ) )
+  gOutputWriter.WriteString( fmt.Sprintf(", \"endTag\":\"%s\""  , end_tag ) )
 
   if gPlaceNoCallInSeq {
     gOutputWriter.WriteString( fmt.Sprintf(", \"nocallCount\":%d"  , nocallCount ) )
