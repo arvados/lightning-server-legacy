@@ -49,16 +49,21 @@ func tile_check( sj *sloppyjson.SloppyJSON, seq []byte ) error {
 
   // Check begin/end of tile
   //
-  if sj.O["startTile"].Y == "true" && len( sj.O["startTag"].S ) != 0 {
-    return fmt.Errorf( "ERROR: startTile but len(startTag) != 0 (len(startTag) %d)", len( sj.O["startTag"].S ) )
+  if (sj.O["startTile"].Y == "true") {
+    if len( sj.O["startTag"].S ) != 0 {
+      return fmt.Errorf( "ERROR: startTile but len(startTag) != 0 (len(startTag) %d)", len( sj.O["startTag"].S ) )
+    }
   } else if len( sj.O["startTag"].S ) != g_tagLength {
 
-    fmt.Printf(">>>>> %v %v %v\n", sj.O["startTag"].S, sj.O["startSeq"].S, "???" )
+    fmt.Printf(">>>>> %v %v %v %v --> %v\n", sj.O["startTile"].Y, sj.O["startTag"].S, sj.O["startSeq"].S, "???", sj.O["startTile"].Y == "true"  )
 
-    return fmt.Errorf( "ERROR: len(startTag) != %d (len(startTag) %d)", g_tagLength, len( sj.O["startTag"].S ) )
+    return fmt.Errorf( "ERROR: len(startTag) != %d (len(startTag)=%d (startTile %s))", g_tagLength, len(sj.O["startTag"].S), sj.O["startTile"].Y )
   }
-  if sj.O["endTile"].Y == "true" && len( sj.O["endTag"].S ) != 0 {
-    return fmt.Errorf( "ERROR: endTile but len(endTag) != 0 (len(endTag) %d)", len( sj.O["endTag"].S ) )
+
+  if sj.O["endTile"].Y == "true" {
+    if len( sj.O["endTag"].S ) != 0 {
+      return fmt.Errorf( "ERROR: endTile but len(endTag) != 0 (len(endTag) %d)", len( sj.O["endTag"].S ) )
+    }
   } else if len( sj.O["endTag"].S ) != g_tagLength {
     return fmt.Errorf( "ERROR: len(endTag) != %d (len(endTag) %d)", g_tagLength, len( sj.O["endTag"].S ) )
   }
