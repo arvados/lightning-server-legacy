@@ -114,6 +114,28 @@ def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, qu
         return lantern_name, bases
     return lantern_name, ""
 
+def get_simple_cgf_translator(locuses, low_int, high_int, assembly):
+    num_locuses = locuses.count()
+    simple_cgf_translator = {}
+    for i, locus in enumerate(locuses):
+        tile_position_int = int(locus.tile_position_id)
+        start_locus_int = int(locus.start_int)
+        end_locus_int = int(locus.end_int)
+        low_variant_int = fns.convert_position_int_to_tile_variant_int(tile_position_int)
+        high_variant_int = fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
+        tile_variants = TileVariant.objects.filter(tile_variant_int__range=(low_variant_int, high_variant_int)).all()
+        for var in tile_variants:
+            if var.num_positions_spanned != 1:
+                upper_tile_position_int = tile_position_int + var.num_positions_spanned - 1
+                upper_locus = TileLocusAnnotation.objects.filter(assembly_int=assembly).get(tile_position_id=upper_tile_position_int)
+                large_end_locus_int = int(upper_locus.end_int)
+                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, large_end_locus_int)
+            else:
+                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, end_locus_int)
+            assert cgf_str not in simple_cgf_translator, "Repeat cgf_string (%s) in cgf_translator" % (cgf_str)
+            simple_cgf_translator[cgf_str] = bases
+    return simple_cgf_translator
+
 def get_cgf_translator(locuses, low_int, high_int, assembly):
     num_locuses = locuses.count()
     cgf_translator = [{} for i in range(num_locuses)]

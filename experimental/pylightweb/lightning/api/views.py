@@ -17,7 +17,7 @@ from tile_library.models import Tile, TileVariant, TileLocusAnnotation, TAG_LENG
 import tile_library.query_functions as query_fns
 import tile_library.lantern_query_functions as lantern_query_fns
 import tile_library.basic_functions as basic_fns
-from errors import MissingStatisticsError, LocusOutOfRangeException
+from errors import MissingStatisticsError, LocusOutOfRangeException, UnexpectedLanternBehaviorError, CGFTranslatorError
 
 def documentation(request):
     """
@@ -272,50 +272,59 @@ class PopulationVariantQueryBetweenLoci(APIView):
         #Get maximum number of spanning tiles
         max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
 
-        #Create cgf_translator for each position
-        cgf_translator_by_position = query_fns.get_cgf_translator(locuses, low_int, high_int, assembly)
+        #Create cgf_translator (Dictionary keyed by cgf names where the values are the necessary bases)
+        simple_cgf_translator = query_fns.get_simple_cgf_translator(locuses, low_int, high_int, assembly)
 
         #Add spanning tiles to cgf_translator
         spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(first_tile_position_int)
         for var in spanning_tile_variants:
             cgf_str, bases = query_fns.get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(var, low_int, high_int, assembly)
-            assert cgf_str not in cgf_translator_by_position[0], "Repeat spanning cgf_string: %s" % (cgf_str)
-            cgf_translator_by_position[0][cgf_str] = bases
-        return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator_by_position
+            assert cgf_str not in simple_cgf_translator, "Repeat spanning cgf_string: %s" % (cgf_str)
+            simple_cgf_translator[cgf_str] = bases
+        return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, simple_cgf_translator
 
     def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator):
         sequence = ""
-        for cgf_string in positions_queried:
+        for human_tile_index, cgf_string in enumerate(positions_queried):
+            #starting_sequence = sequence
             num_positions_spanned = basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string) - 1
             non_spanning_cgf_string = cgf_string.split('+')[0]
             tile_position_int = basic_fns.get_position_from_cgf_string(cgf_string)
             tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
-            assert last_tile_position_int >= tile_position_int, \
-                "CGF string went over expected max position (CGF string: %s, Max position: %s)" % (tile_position_str,
-                    basic_fns.get_position_string_from_position_int(last_tile_position_int))
-            assert len(cgf_translator) > tile_position_int-first_tile_position_int, \
-                "Translator doesn't include enough positions (Translator length: %i, Number of needed positions: %i)" % (len(cgf_translator),
-                    tile_position_int-first_tile_position_int)
-            if tile_position_int+num_positions_spanned >= first_tile_position_int and tile_position_int <= last_tile_position_int:
-                if tile_position_int - first_tile_position_int < 0:
-                    tile_position_int = first_tile_position_int
-                assert non_spanning_cgf_string in cgf_translator[tile_position_int - first_tile_position_int], \
-                    "Translator doesn't include %s in position %i. %s" % (non_spanning_cgf_string, tile_position_int - first_tile_position_int, query_fns.print_friendly_cgf_translator(cgf_translator))
+            if last_tile_position_int < tile_position_int:
+                raise UnexpectedLanternBehaviorError(
+                    "Lantern query went over expected max position (Lantern response: %s, Max position: %s)" % (tile_position_str,
+                        basic_fns.get_position_string_from_position_int(last_tile_position_int))
+                )
+            if first_tile_position_int <= tile_position_int+num_positions_spanned and tile_position_int <= last_tile_position_int:
+                if non_spanning_cgf_string not in cgf_translator:
+                    raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
+                num_to_skip = 0
                 if len(sequence) > 0:
-                    print sequence
-                    curr_ending_tag = sequence[-TAG_LENGTH:]
-                    new_starting_tag = cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][:TAG_LENGTH]
-                    if len(curr_ending_tag) >= len(new_starting_tag):
-                        assert curr_ending_tag.endswith(new_starting_tag), \
-                            "Tags do not match for human %s at position %s. Sequence length: %i, Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
-                                tile_position_str, len(sequence), curr_ending_tag, new_starting_tag, str(positions_queried))
-                    else:
-                        assert new_starting_tag.startswith(curr_ending_tag), \
-                            "Tags do not match for human %s at position %s. Sequence length: %i, Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
-                                tile_position_str, len(sequence), curr_ending_tag, new_starting_tag, str(positions_queried))
-                    sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string][TAG_LENGTH:]
-                else:
-                    sequence += cgf_translator[tile_position_int - first_tile_position_int][non_spanning_cgf_string]
+                    version, path, step = basic_fns.get_position_ints_from_position_int(tile_position_int)
+                    assert human_tile_index > 0, "How did we get a sequence of non-zero length without going down the query?"
+                    prev_tile_position_int = basic_fns.get_position_from_cgf_string(positions_queried[human_tile_index-1])
+                    prev_version, prev_path, prev_step = basic_fns.get_position_ints_from_position_int(prev_tile_position_int)
+                    if prev_version == version and prev_path == path:
+                        #We are in the same path and version, so check TAGs
+                        curr_ending_tag = sequence[-TAG_LENGTH:]
+                        new_starting_tag = cgf_translator[non_spanning_cgf_string][:TAG_LENGTH]
+                        if len(curr_ending_tag) >= len(new_starting_tag):
+                            if not curr_ending_tag.endswith(new_starting_tag):
+                                raise UnexpectedLanternBehaviorError(
+                                    "Tags do not match for human %s at position %s. Sequence length: %i, Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
+                                        tile_position_str, len(sequence), curr_ending_tag, new_starting_tag, str(positions_queried))
+                                )
+                            num_to_skip = TAG_LENGTH
+                        else:
+                            if not new_starting_tag.startswith(curr_ending_tag):
+                                raise UnexpectedLanternBehaviorError(
+                                    "Tags do not match for human %s at position %s. Sequence length: %i, Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
+                                        tile_position_str, len(sequence), curr_ending_tag, new_starting_tag, str(positions_queried))
+                                )
+                            num_to_skip = len(curr_ending_tag)
+                sequence += cgf_translator[non_spanning_cgf_string][num_to_skip:]
+            #print "Human: %s, CGF: %s, start_sequence: %s, curr_sequence: %s" % (human_name, cgf_string, starting_sequence, sequence)
         return sequence
 
     def get_population_sequences(self, first_tile_position_int, last_tile_position_int, max_num_spanning_variants, cgf_translator):
@@ -338,6 +347,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
     def get(self, request, format=None):
         query_serializer = PopulationRangeQuerySerializer(data=request.query_params)
         if query_serializer.is_valid():
+            cgf_translator = None
             try:
                 lower_base = int(query_serializer.data['lower_base'])
                 upper_base = int(query_serializer.data['upper_base'])
@@ -352,10 +362,12 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator)
             except LocusOutOfRangeException as e:
                 return Response(str(e), status=status.HTTP_404_NOT_FOUND)
-            except AssertionError as e:
-                return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            except Exception as e:
-                return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            #except AssertionError as e:
+            #    return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            #except Exception as e:
+            #    print cgf_translator
+                #return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            #    raise e
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
@@ -534,7 +546,7 @@ class PopulationVariantQueryAroundLocus(APIView):
         forward_sequence = sequence
         reverse_sequence = sequence
         #Go forward
-#        curr_cgf_translator_index = cgf_translator_middle_index
+        #curr_cgf_translator_index = cgf_translator_middle_index
         for i, cgf_string in enumerate(sequence_of_tile_variants[middle_index:]):
             if i == 0:
                 string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, forward strand, position %s " % (len(cgf_translator), cgf_string)
@@ -567,7 +579,7 @@ class PopulationVariantQueryAroundLocus(APIView):
         #go backward
         backward_tile_variant_seq = sequence_of_tile_variants[:middle_index+1]
         backward_tile_variant_seq.reverse()
-#        curr_cgf_translator_index = cgf_translator_middle_index
+        #curr_cgf_translator_index = cgf_translator_middle_index
         for i, cgf_string in enumerate(backward_tile_variant_seq):
             if i == 0:
                 string_to_print = "cgf_translator length: %i. Query: center_cgf_translator, reverse strand, position %s " % (len(cgf_translator), cgf_string)

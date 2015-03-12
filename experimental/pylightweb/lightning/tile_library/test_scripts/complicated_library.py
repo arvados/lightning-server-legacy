@@ -88,7 +88,7 @@ alt_loci[-1] = [
     {'name':'bar', 'start':78, 'end':130}
 ]
 
-def make_tile_variant(tile_var_int, sequence, num_pos_spanned):
+def make_tile_variant(tile_var_int, sequence, num_pos_spanned, start_tag="", end_tag=""):
     v, p, s, vv = basic_fns.get_tile_variant_strings_from_tile_variant_int(tile_var_int)
     tile = Tile.objects.get(tile_position_int=int(v+p+s,16))
     digestor = hashlib.new('md5', sequence)
@@ -99,7 +99,9 @@ def make_tile_variant(tile_var_int, sequence, num_pos_spanned):
         length=len(sequence),
         md5sum=digestor.hexdigest(),
         sequence=sequence,
-        num_positions_spanned=num_pos_spanned
+        num_positions_spanned=num_pos_spanned,
+        start_tag=start_tag.lower(),
+        end_tag=end_tag.lower()
     )
     tv.save()
     return tv
@@ -125,12 +127,26 @@ def make_reference():
     for path_int, sequence_list in enumerate(ref_tilevar_sequences):
         p = hex(path_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         for step_int, seq in enumerate(sequence_list):
+            path_start = False
+            path_end = False
+            start_tag = seq[:TAG_LENGTH]
+            end_tag = seq[-TAG_LENGTH:]
+            variant_start_tag = ""
+            variant_end_tag = ""
+            if step_int == 0:
+                path_start = True
+                variant_start_tag = start_tag
+                start_tag = ""
+            if step_int == len(sequence_list)-1:
+                path_end = True
+                variant_end_tag = end_tag
+                end_tag = ""
             s = hex(step_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_STEP)
             vv = '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
-            tile = Tile(tile_position_int=int(v+p+s,16), start_tag=seq[:TAG_LENGTH], end_tag=seq[-TAG_LENGTH:])
+            tile = Tile(tile_position_int=int(v+p+s,16), start_tag=start_tag, end_tag=end_tag, is_start_of_path=path_start, is_end_of_path=path_end)
             tile.save()
             #print len(seq), ref_loci[path_int][step_int]['end']-ref_loci[path_int][step_int]['start']
-            make_tile_variant(int(v+p+s+vv,16), seq, 1)
+            make_tile_variant(int(v+p+s+vv,16), seq, 1, start_tag=variant_start_tag, end_tag=variant_end_tag)
             TileLocusAnnotation(
                 assembly_int=ASSEMBLY_19,
                 chromosome_int=ref_loci[path_int][step_int]['chr'],
@@ -146,12 +162,26 @@ def make_alternate_reference():
     for path_int, sequence_list in enumerate(alt_ref_tilevar_sequences):
         p = hex(path_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         for step_int, seq in enumerate(sequence_list):
+            path_start = False
+            path_end = False
+            start_tag = seq[:TAG_LENGTH]
+            end_tag = seq[-TAG_LENGTH:]
+            variant_start_tag = ""
+            variant_end_tag = ""
+            if step_int == 0:
+                path_start = True
+                variant_start_tag = start_tag
+                start_tag = ""
+            if step_int == len(sequence_list)-1:
+                path_end = True
+                variant_end_tag = end_tag
+                end_tag = ""
             s = hex(step_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_STEP)
             vv = '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
-            tile = Tile(tile_position_int=int(v+p+s,16), start_tag=seq[:TAG_LENGTH], end_tag=seq[-TAG_LENGTH:])
+            tile = Tile(tile_position_int=int(v+p+s,16), start_tag=start_tag, end_tag=end_tag, is_start_of_path=path_start, is_end_of_path=path_end)
             tile.save()
             #print len(seq), ref_loci[path_int][step_int]['end']-ref_loci[path_int][step_int]['start']
-            make_tile_variant(int(v+p+s+vv,16), seq, 1)
+            make_tile_variant(int(v+p+s+vv,16), seq, 1, start_tag=variant_start_tag, end_tag=variant_end_tag)
             TileLocusAnnotation(
                 assembly_int=ASSEMBLY_19,
                 chromosome_int=CHR_OTHER,
@@ -166,7 +196,7 @@ def make_alternate_reference():
 #    24 C -> T (SNP)
 def make_basic_snp_genome_variant(vv=1, gv_id=1):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACG".lower()
-    tv = make_tile_variant(vv, seq, 1)
+    tv = make_tile_variant(vv, seq, 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 24, 25, 'C', 'T')
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=25)
     gvt.save()
@@ -176,7 +206,7 @@ def make_basic_snp_genome_variant(vv=1, gv_id=1):
 #    24 CG -> TTT (SUB)
 def make_basic_sub_genome_variant(vv=2, gv_id=2):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACG".lower()
-    tv = make_tile_variant(vv, seq, 1)
+    tv = make_tile_variant(vv, seq, 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 24, 26, "CG", "TTT")
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=27)
     gvt.save()
@@ -186,7 +216,7 @@ def make_basic_sub_genome_variant(vv=2, gv_id=2):
 #    24 CG -> - (DEL)
 def make_basic_del_genome_variant(vv=3, gv_id=3):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTTCAGAATGTTTGGAGGGCGGTACG".lower()
-    tv = make_tile_variant(vv, seq, 1)
+    tv = make_tile_variant(vv, seq, 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 24, 26, "CG", "-")
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=24)
     gvt.save()
@@ -196,7 +226,7 @@ def make_basic_del_genome_variant(vv=3, gv_id=3):
 #    24 - -> AAA (INS)
 def make_basic_ins_genome_variant(vv=4, gv_id=4):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTAAACGTCAGAATGTTTGGAGGGCGGTACG".lower()
-    tv = make_tile_variant(vv, seq, 1)
+    tv = make_tile_variant(vv, seq, 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 24, 24, '-', 'AAA')
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=27)
     gvt.save()
@@ -206,7 +236,7 @@ def make_basic_ins_genome_variant(vv=4, gv_id=4):
 #    26 T -> A (SNP)
 def make_spanning_2_snp_genome_variant(vv=5, gv_id=5):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower()
-    tv = make_tile_variant(vv, seq, 2)
+    tv = make_tile_variant(vv, seq, 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 26, 27, 'T', 'A')
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=26, end=27)
     gvt.save()
@@ -216,7 +246,7 @@ def make_spanning_2_snp_genome_variant(vv=5, gv_id=5):
 #    25 GT -> A (SUB)
 def make_spanning_2_sub_genome_variant(vv=6, gv_id=6):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower()
-    tv = make_tile_variant(vv, seq, 2)
+    tv = make_tile_variant(vv, seq, 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 25, 27, 'GT', 'A')
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=25, end=26)
     gvt.save()
@@ -226,7 +256,7 @@ def make_spanning_2_sub_genome_variant(vv=6, gv_id=6):
 #    26 T -> - (DEL)
 def make_spanning_2_del_genome_variant(vv=7, gv_id=7):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower()
-    tv = make_tile_variant(vv, seq, 2)
+    tv = make_tile_variant(vv, seq, 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 26, 27, 'T', '-')
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=26, end=26)
     gvt.save()
@@ -236,7 +266,7 @@ def make_spanning_2_del_genome_variant(vv=7, gv_id=7):
 #    26 - -> TTT (INS)
 def make_spanning_2_ins_genome_variant(vv=8, gv_id=8):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTCGTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower()
-    tv = make_tile_variant(vv, seq, 2)
+    tv = make_tile_variant(vv, seq, 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 26, 26, '-', 'TTT')
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=26, end=29)
     gvt.save()
@@ -246,7 +276,7 @@ def make_spanning_2_ins_genome_variant(vv=8, gv_id=8):
 #    49 GGCT -> - (DEL)
 def make_spanning_3_del_genome_variant(vv=9, gv_id=9):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTG".lower()
-    tv = make_tile_variant(vv, seq, 3)
+    tv = make_tile_variant(vv, seq, 3, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 49, 53, 'GGCT', '-')
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=49, end=49)
     gvt.save()
@@ -256,9 +286,29 @@ def make_spanning_3_del_genome_variant(vv=9, gv_id=9):
 #    49 GGCTAGAGATATCACCCTCTGCTACTCAAC -> - (DEL)
 def make_spanning_4_del_genome_variant(vv=10, gv_id=10):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG".lower()
-    tv = make_tile_variant(vv, seq, 4)
+    tv = make_tile_variant(vv, seq, 4, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT", end_tag="GTCGCCCACTACGCACGTTATATG")
     gv = make_genome_variant(gv_id, 49, 79, 'GGCTAGAGATATCACCCTCTGCTACTCAAC', '-')
     gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=49, end=49)
+    gvt.save()
+    return tv, gv, gvt
+
+#Genome Variant on Tile 0
+#    23 T -> - (DEL)
+def make_snp_genome_variant_on_start_tag_unable_to_span(vv=11, gv_id=11):
+    seq = "ACGGCAGTAGTTTTGCCGCTCGGCGTCAGAATGTTTGGAGGGCGGTACG".lower()
+    tv = make_tile_variant(vv, seq, 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGC")
+    gv = make_genome_variant(gv_id, 23, 24, 'T', '-')
+    gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=23, end=23)
+    gvt.save()
+    return tv, gv, gvt
+
+#Genome Variant on Tile 0
+#    106 G -> A (SNP)
+def make_snp_genome_variant_on_end_tag_unable_to_span(vv=1, gv_id=12):
+    seq = "CGCACCGGAACTTGTGTTTGTGTGTGTGATCGCCCACTACGCACGTTATATG".lower()
+    tv = make_tile_variant(int('3'+vv_min,16)+vv, seq, 1, end_tag="ATCGCCCACTACGCACGTTATATG")
+    gv = make_genome_variant(gv_id, 106, 107, 'G', 'A')
+    gvt = GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=28, end=29)
     gvt.save()
     return tv, gv, gvt
 
@@ -281,7 +331,7 @@ def make_broken_genome_variant():
 #    25 GT -> A (SUB)
 def make_two_genome_variants_for_one_tile_variant(vv=1, gv_id=1):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower()
-    tv = make_tile_variant(vv, seq, 2)
+    tv = make_tile_variant(vv, seq, 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 24, 25, "C", "T")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=25).save()
     gv2 = make_genome_variant(gv_id+1, 25, 27, "GT", "A")
@@ -291,7 +341,7 @@ def make_two_genome_variants_for_one_tile_variant(vv=1, gv_id=1):
 #    26 - -> TTT (INS)
 def make_two_genome_variants_for_one_tile_variant_alter_translation_indexes(vv=1, gv_id=1):
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower()
-    tv = make_tile_variant(vv, seq, 2)
+    tv = make_tile_variant(vv, seq, 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(gv_id, 24, 26, "CG", "-")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=24).save()
     gv = make_genome_variant(gv_id+1, 26, 26, "-", "TTT")
@@ -312,23 +362,27 @@ def make_entire_library():
     make_spanning_3_del_genome_variant()
     make_spanning_4_del_genome_variant()
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower()
-    tv = make_tile_variant(11, seq, 2)
+    tv = make_tile_variant(11, seq, 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=basic_snp, start=24, end=25).save()
     GenomeVariantTranslation(tile_variant=tv, genome_variant=spanning_sub, start=25, end=26).save()
     seq = "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower()
-    tv = make_tile_variant(12, seq, 2)
+    tv = make_tile_variant(12, seq, 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=basic_del, start=24, end=24).save()
     GenomeVariantTranslation(tile_variant=tv, genome_variant=spanning_ins, start=24, end=27).save()
 
+    make_snp_genome_variant_on_start_tag_unable_to_span(vv=13,gv_id=11)
+
     seq = "TAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTG".lower()
     tv = make_tile_variant(int('2'+vv_min,16)+1, seq, 1)
-    gv = make_genome_variant(11, 76, 78, "AA", "-")
+    gv = make_genome_variant(12, 76, 78, "AA", "-")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=24).save()
 
     seq = "TAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG".lower()
-    tv = make_tile_variant(int('2'+vv_min,16)+2, seq, 2)
-    gv = make_genome_variant(12, 101, 102, 'G', 'T')
+    tv = make_tile_variant(int('2'+vv_min,16)+2, seq, 2, end_tag="GTCGCCCACTACGCACGTTATATG")
+    gv = make_genome_variant(13, 101, 102, 'G', 'T')
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=49, end=50).save()
+
+    make_snp_genome_variant_on_end_tag_unable_to_span(vv=1, gv_id=14)
 
 def make_lantern_translators():
     def mk_name(step, variant_value, path=0, version=0):
@@ -355,8 +409,11 @@ def make_lantern_translators():
     LanternTranslator(lantern_name=mk_name(0,9), tile_variant_int=10).save()
     LanternTranslator(lantern_name=mk_name(0,10), tile_variant_int=11).save()
     LanternTranslator(lantern_name=mk_name(0,11), tile_variant_int=12).save()
+    LanternTranslator(lantern_name=mk_name(0,12), tile_variant_int=13).save()
     LanternTranslator(lantern_name=mk_name(1,0), tile_variant_int=mk_int(1,0)).save()
     LanternTranslator(lantern_name=mk_name(2,0), tile_variant_int=mk_int(2,2)).save()
     LanternTranslator(lantern_name=mk_name(2,1), tile_variant_int=mk_int(2,1)).save()
     LanternTranslator(lantern_name=mk_name(2,2), tile_variant_int=mk_int(2,0)).save()
     LanternTranslator(lantern_name=mk_name(3,0), tile_variant_int=mk_int(3,0)).save()
+    LanternTranslator(lantern_name=mk_name(3,1), tile_variant_int=mk_int(3,1)).save()
+    LanternTranslator(lantern_name=mk_name(0,0,path=1), tile_variant_int=mk_int(0,0,path=1)).save()

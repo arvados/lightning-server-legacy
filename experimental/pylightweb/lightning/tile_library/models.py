@@ -3,6 +3,19 @@ Tile Library Models
 
 Does not include information about the population - Use Lantern for that case
 
+TODO: Some type of 'entire-library' validation:
+    There exist paths for all paths in CHR_PATH_LENGTHS
+    For each path:
+        There is exactly one true: 'is_start_of_path'
+        There is exactly one true: 'is_end_of_path' and it is at the end of the path (no Tile positions come after it)
+        The path starts at tile position 0 and increments by one each time
+
+    For each tile position:
+        Each tile variant starts with a variant value of 0 and increments by one
+
+Things that are not checked:
+    when adding a reference sequence, it does not check that the sequence matches the correct sequence,
+    it just checks lengths
 """
 
 import string
@@ -44,17 +57,11 @@ def validate_tag(tag):
         validation_fns.validate_tag(tag)
     except TileLibraryValidationError as e:
         raise ValidationError(e.value)
-def validate_variant_tag(tag):
-    try:
-        validation_fns.validate_variant_tag(tag)
-    except TileLibraryValidationError as e:
-        raise ValidationError(e.value)
 def validate_num_spanning_tiles(num_spanning):
     try:
         validation_fns.validate_num_spanning_tiles(num_spanning)
     except TileLibraryValidationError as e:
         raise ValidationError(e.value)
-
 def get_tile_n_positions_forward(curr_tile_int, n):
     version, path, step = basic_fns.get_position_strings_from_position_int(curr_tile_int)
     next_path = hex(int(path,16)+1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
@@ -79,12 +86,16 @@ class Tile(models.Model):
         Theoretically, this will never be regenerated or modified. Modifications would
             result in a new path version and therefore a new Tile. All modifications happen
             to TileVariant's associated with a Tile.
+        Once a path has been generated, it cannot be edited, since is_start_of_path and is_end_of_path
+            are non-editable
 
     Values in database:
         tile_position_int (bigint, primary key): _integer_ of the 9 digit hexidecimal identifier for the tile position
             First 2 digits indicate the path version
             Next 3 digits of the hexidecimal identifier indicate the path
             Next 4 digits indicate the step
+        is_start_of_path (boolean): True if tile is the start of path
+        is_end_of_path (boolean): True if tile is at the end of path
         start_tag(charfield(24)): start Tag
         end_tag(charfield(24)): end Tag
         created(datetimefield): The day the tile was generated
@@ -94,11 +105,17 @@ class Tile(models.Model):
 
     """
     tile_position_int = models.BigIntegerField(primary_key=True, editable=False, db_index=True, validators=[validate_tile_position_int])
-    start_tag = models.CharField(max_length=TAG_LENGTH, validators=[validate_tag])
-    end_tag = models.CharField(max_length=TAG_LENGTH, validators=[validate_tag])
+    is_start_of_path = models.BooleanField(default=False, editable=False)
+    is_end_of_path = models.BooleanField(default=False, editable=False)
+    start_tag = models.CharField(blank=True, max_length=TAG_LENGTH, validators=[validate_tag])
+    end_tag = models.CharField(blank=True, max_length=TAG_LENGTH, validators=[validate_tag])
     created = models.DateTimeField(auto_now_add=True)
     def save(self, *args, **kwargs):
         self.full_clean()
+        try:
+            validation_fns.validate_tile_position(self.tile_position_int, self.is_start_of_path, self.is_end_of_path, self.start_tag, self.end_tag)
+        except TileLibraryValidationError as e:
+            raise ValidationError(e.value)
         super(Tile, self).save(*args, **kwargs)
     def get_string(self):
         """Displays hex indexing for tile """
@@ -204,26 +221,28 @@ class TileVariant(models.Model):
             message="Not a valid sequence, must be lowercase, and can only include a,c,g,t, or n."
         )
     ])
-    start_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_variant_tag])
-    end_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_variant_tag])
+    start_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_tag])
+    end_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_tag])
     def save(self, *args, **kwargs):
         try:
             self.full_clean()
-            end_tile = None
+            end_tile = self.tile
             if self.num_positions_spanned > 1:
                 end_tile = get_tile_n_positions_forward(int(self.tile_id), int(self.num_positions_spanned)-1)
                 #Tiles need to be on same path and version (this also ensures they are on the same chromosome from TileLocusAnnotation checking)
                 validation_fns.validate_spanning_tile(int(self.tile.tile_position_int), int(end_tile.tile_position_int), int(self.num_positions_spanned))
+
+            is_start_of_path = self.tile.is_start_of_path
+            is_end_of_path = end_tile.is_end_of_path
+
             start_tag = self.start_tag
             if start_tag == '':
                 start_tag = self.tile.start_tag
             end_tag = self.end_tag
             if end_tag == '':
-                end_tag = self.tile.end_tag
-                if end_tile != None:
-                    end_tag = end_tile.end_tag
+                end_tag = end_tile.end_tag
             validation_fns.validate_tile_variant(
-                int(self.tile_id), int(self.tile_variant_int), int(self.variant_value), self.sequence, int(self.length), self.md5sum, start_tag, end_tag
+                int(self.tile_id), int(self.tile_variant_int), int(self.variant_value), self.sequence, int(self.length), self.md5sum, start_tag, end_tag, is_start_of_path, is_end_of_path
             )
             super(TileVariant, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
@@ -247,9 +266,9 @@ class TileVariant(models.Model):
             raise ValueError("assembly_int must be of type int")
         if assembly_int not in [i for i,j in SUPPORTED_ASSEMBLY_CHOICES]:
             raise ValueError("%i not a supported assembly choice" % (assembly_int))
+        start_tile = int(self.tile_id)
+        end_tile = int(self.tile_id)+int(self.num_positions_spanned)-1
         try:
-            start_tile = self.tile_id
-            end_tile = self.tile_id+self.num_positions_spanned-1
             start_locus = TileLocusAnnotation.objects.filter(tile_position_id=start_tile).get(assembly_int=assembly_int)
             if start_tile == end_tile:
                 return start_locus.start_int, start_locus.end_int
@@ -259,6 +278,11 @@ class TileVariant(models.Model):
             start_str = basic_fns.get_position_string_from_position_int(start_tile)
             end_str = basic_fns.get_position_string_from_position_int(end_tile)
             raise MissingLocusError("A locus for assembly %i not found for tiles %s-%s" % (assembly_int, start_str, end_str))
+    def get_start_and_end_of_path_bools(self):
+        end_tile = self.tile
+        if self.num_positions_spanned > 1:
+            end_tile = get_tile_n_positions_forward(int(self.tile_id), int(self.num_positions_spanned)-1)
+        return self.tile.is_start_of_path, end_tile.is_end_of_path
     def get_base_at_position(self, position_int):
         position_int = int(position_int) # can raise value error: will be caught downstream
         if position_int >= self.length:
@@ -284,33 +308,50 @@ class TileVariant(models.Model):
             raise ValueError("Expects lower position_int to be less than or equal to upper position int. " + info_str)
         return self.sequence[lower_position_int:upper_position_int]
     def get_conversion_list_between_genome_variant_loci_and_tile_loci(self, start_locus_int, end_locus_int):
+        #print self.get_string()
         reference_to_tile_variant = [(0, 0, 0, 0), (end_locus_int-start_locus_int, self.length, end_locus_int-start_locus_int, self.length)]
         genome_variant_positions = self.translations_to_genome_variant.all()
         for translation in genome_variant_positions:
-            # we only need to add if the variant is an INDEL, but I'm adding all of them here since we iterate over all of them
-            reference_to_tile_variant.append((translation.genome_variant.locus_start_int, translation.start, translation.genome_variant.locus_end_int, translation.end))
+            #print translation
+            trans_locus_start = translation.genome_variant.locus_start_int - start_locus_int
+            trans_locus_end = translation.genome_variant.locus_end_int - start_locus_int
+            # we only need to add if the variant is an INDEL, but I'm adding all of them here since we iterate over all of them anyway
+            reference_to_tile_variant.append((trans_locus_start, translation.start, trans_locus_end, translation.end))
         reference_to_tile_variant.sort()
+        #print reference_to_tile_variant
         return reference_to_tile_variant
     def get_bases_between_loci_known_locus(self, queried_low_int, queried_high_int, start_locus_int, end_locus_int):
         def get_start(low_int, reference_to_tile_variant):
-            prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[0]
             for i, (locus_start, variant_start, locus_end, variant_end) in enumerate(reference_to_tile_variant):
-                if low_int >= locus_start:
-                    if i > 0:
-                        prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[i-1]
+                if low_int <= locus_start:
+                    index = max(i-1, 0)
+                    prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[index]
                     break
-            if low_int < prev_locus_start:
+            assert low_int <= locus_start, "Low int (%i) should never be larger than the highest tuple (%i, %i, %i, %i) in 'reference_to_tile_variant'" % (low_int, locus_start, variant_start, locus_end, variant_end)
+            if low_int <= prev_locus_start:
+                #print "Extends below the tile variant. Low int (%i), return val (%i), reference_to_tile_variant %s" % (low_int, prev_variant_start, str(reference_to_tile_variant))
+                #Extends below the tile variant
                 return prev_variant_start
-            if low_int < prev_locus_end:
-                return prev_variant_end + (low_int-prev_locus_end)
-            return prev_variant_start + (low_int-prev_locus_start)
+            if low_int <= prev_locus_end:
+                #In the previous genome variant
+                ref_seq_length = prev_locus_end - prev_locus_start
+                var_seq_length = prev_variant_end - prev_variant_start
+                if ref_seq_length == 0 or var_seq_length == 0:
+                    #print "In the previous genome variant, which is an INDEL. Low int (%i), return val (%i), reference_to_tile_variant %s" % (low_int, prev_variant_start, str(reference_to_tile_variant))
+                    return prev_variant_start
+                #print "In the previous genome variant, which is a SUB/SNP. Low int (%i), return val (%i), reference_to_tile_variant %s" % (low_int, prev_variant_start + (low_int-prev_locus_start), str(reference_to_tile_variant))
+                return prev_variant_start + (low_int-prev_locus_start)
+            #In-between two genome-variants
+            #print "In-between two genome variants. Low int (%i), return val (%i), reference_to_tile_variant %s" % (low_int, prev_variant_end + (low_int-prev_locus_end), str(reference_to_tile_variant))
+            return prev_variant_end + (low_int-prev_locus_end)
         def get_end(high_int, reference_to_tile_variant):
-            prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[0]
             for i, (locus_start, variant_start, locus_end, variant_end) in enumerate(reference_to_tile_variant):
                 if high_int <= locus_start:
+                    assert i > 0, "High int (%i) should never be smaller than the lowest tuple (%i, %i, %i, %i) in 'reference_to_tile_variant'" % (high_int, locus_start, variant_start, locus_end, variant_end)
                     prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[i-1]
                     break
             if high_int > locus_start:
+                #print "Extends above the tile variant. High int (%i), return val (%i), reference_to_tile_variant %s" % (high_int, variant_end, str(reference_to_tile_variant))
                 #Extends past the tile variant
                 return variant_end
             if high_int < prev_locus_end:
@@ -318,9 +359,12 @@ class TileVariant(models.Model):
                 ref_seq_length = prev_locus_end - prev_locus_start
                 var_seq_length = prev_variant_end - prev_variant_start
                 if ref_seq_length == 0 or var_seq_length == 0:
+                    #print "In the previous genome variant, which is an INDEL. High int (%i), return val (%i), reference_to_tile_variant %s" % (high_int, prev_variant_end, str(reference_to_tile_variant))
                     return prev_variant_end
+                #print "In the previous genome variant, which is an SNP/SUB. High int (%i), return val (%i), reference_to_tile_variant %s" % (high_int, prev_variant_start + (high_int-prev_locus_start), str(reference_to_tile_variant))
                 return prev_variant_start + (high_int-prev_locus_start)
             #In-between two genome-variants
+            #print "In-between two genome variants. High int (%i), return val (%i), reference_to_tile_variant %s" % (high_int, prev_variant_end + (high_int-prev_locus_end), str(reference_to_tile_variant))
             return prev_variant_end + (high_int-prev_locus_end)
         assert queried_low_int <= end_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (self.get_string(), queried_low_int, queried_high_int, start_locus_int, end_locus_int)
         assert queried_high_int >= start_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (self.get_string(), queried_low_int, queried_high_int, start_locus_int, end_locus_int)
@@ -535,10 +579,13 @@ class GenomeVariantTranslation(models.Model):
             gv = self.genome_variant
             tv = self.tile_variant
             start_int, end_int = tv.get_locus(gv.assembly_int)
+            is_start_of_path, is_end_of_path = tv.get_start_and_end_of_path_bools()
             for tile_position in range(int(tv.tile_id), int(tv.tile_id) + int(tv.num_positions_spanned)):
                 locus = TileLocusAnnotation.objects.filter(tile_position=tile_position).get(assembly_int=gv.assembly_int)
                 validation_fns.validate_same_chromosome(locus.chromosome_int, gv.chromosome_int, locus.alternate_chromosome_name, gv.alternate_chromosome_name)
-            validation_fns.validate_tile_variant_loci_encompass_genome_variant_loci(gv.locus_start_int, gv.locus_end_int, start_int, end_int)
+            validation_fns.validate_tile_variant_loci_encompass_genome_variant_loci(
+                gv.locus_start_int, gv.locus_end_int, start_int, end_int, is_start_of_path, is_end_of_path
+            )
             validation_fns.validate_alternate_bases(tv.sequence, gv.alternate_bases, self.start, self.end)
             super(GenomeVariantTranslation, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
