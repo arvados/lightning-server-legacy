@@ -279,14 +279,13 @@ class PopulationVariantQueryBetweenLoci(APIView):
         spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(first_tile_position_int)
         for var in spanning_tile_variants:
             cgf_str, bases = query_fns.get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(var, low_int, high_int, assembly)
-            assert cgf_str not in simple_cgf_translator, "Repeat spanning cgf_string: %s" % (cgf_str)
+            if cgf_str in simple_cgf_translator:
+                raise CGFTranslatorError("Repeat spanning cgf_string: %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
             simple_cgf_translator[cgf_str] = bases
         return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, simple_cgf_translator
-
     def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator):
         sequence = ""
         for human_tile_index, cgf_string in enumerate(positions_queried):
-            #starting_sequence = sequence
             num_positions_spanned = basic_fns.get_number_of_tiles_spanned_from_cgf_string(cgf_string) - 1
             non_spanning_cgf_string = cgf_string.split('+')[0]
             tile_position_int = basic_fns.get_position_from_cgf_string(cgf_string)
@@ -298,8 +297,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 )
             if first_tile_position_int <= tile_position_int+num_positions_spanned and tile_position_int <= last_tile_position_int:
                 if non_spanning_cgf_string not in cgf_translator:
-                    #raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
-                    raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, cgf_translator))
+                    raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
                 num_to_skip = 0
                 if len(sequence) > 0:
                     version, path, step = basic_fns.get_position_ints_from_position_int(tile_position_int)
@@ -325,9 +323,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
                                 )
                             num_to_skip = len(curr_ending_tag)
                 sequence += cgf_translator[non_spanning_cgf_string][num_to_skip:]
-            #print "Human: %s, CGF: %s, start_sequence: %s, curr_sequence: %s" % (human_name, cgf_string, starting_sequence, sequence)
         return sequence
-
     def get_population_sequences(self, first_tile_position_int, last_tile_position_int, max_num_spanning_variants, cgf_translator):
         humans = lantern_query_fns.get_population_sequences_over_position_range(first_tile_position_int-max_num_spanning_variants, last_tile_position_int)
         human_sequence_dict = {}
@@ -344,7 +340,6 @@ class PopulationVariantQueryBetweenLoci(APIView):
                  'phased':False}
             )
         return humans_with_sequences
-
     def get(self, request, format=None):
         query_serializer = PopulationRangeQuerySerializer(data=request.query_params)
         if query_serializer.is_valid():
@@ -363,12 +358,8 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator)
             except LocusOutOfRangeException as e:
                 return Response(str(e), status=status.HTTP_404_NOT_FOUND)
-            #except AssertionError as e:
-            #    return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            #except Exception as e:
-            #    print cgf_translator
-                #return Response(traceback.format_exc().replace('\\n', '\n').replace('\\"', '"').strip('"'), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            #    raise e
+            except (UnexpectedLanternBehaviorError, CGFTranslatorError) as e:
+                return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)

@@ -66,6 +66,28 @@ def tearDownModule():
     server_process.join()
     del(server_process)
 
+#### TODO: Change assemblies
+#### TODO: Change indexing
+
+#### TODO: Check failure behavior (would be nice if it responded with accepted/loaded values):
+####          assembly cannot be cast as an integer, raise Exception
+####          (assembly is not a valid choice for an assembly, raise Exception)
+####          assembly is not loaded into the database, raise Exception
+####
+####          chromosome cannot be cast as an integer, raise Exception
+####          (chromosome is not a valid choice for an chromosome, raise Exception)
+####          chromosome is not loaded into the database, raise Exception
+####
+####          low_int cannot be cast as an integer, raise Exception
+####          low_int is too low - not loaded in database, raise Exception
+####
+####          high_int cannot be cast as an integer, raise Exception
+####          high_int is too high - not loaded in database, raise Exception
+####
+####          low_int is higher than high_int, raise Exception
+####
+
+
 @skipIf(curr_debugging, "Prevent noise")
 class TestBetweenLoci(TestCase):
     def setUp(self):
