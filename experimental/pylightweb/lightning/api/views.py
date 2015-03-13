@@ -298,7 +298,8 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 )
             if first_tile_position_int <= tile_position_int+num_positions_spanned and tile_position_int <= last_tile_position_int:
                 if non_spanning_cgf_string not in cgf_translator:
-                    raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
+                    #raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
+                    raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, cgf_translator))
                 num_to_skip = 0
                 if len(sequence) > 0:
                     version, path, step = basic_fns.get_position_ints_from_position_int(tile_position_int)

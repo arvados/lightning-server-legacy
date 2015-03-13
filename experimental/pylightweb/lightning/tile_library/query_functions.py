@@ -26,7 +26,7 @@ def get_highest_position_int_in_path(path_int):
     tile = Tile.objects.filter(tile_position_int__range=(min_position, max_position-1)).last()
     if tile == None:
         raise EmptyPathError("No tiles are matched in path %s" % (hex(path_int).lstrip('0x').zfill(3)))
-    return int(tile.tilename)
+    return int(tile.tile_position_int)
 
 def get_max_num_tiles_spanned_at_position(tile_position_int):
     #Number to look back!

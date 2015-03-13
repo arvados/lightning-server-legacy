@@ -7,6 +7,7 @@ from django.db.models import Q
 
 from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant, Tile
 import tile_library.basic_functions as fns
+import tile_library.query_functions as query_fns
 from errors import EmptyPathError, MissingStatisticsError
 
 def get_population_names_and_check_lantern_version():
@@ -47,6 +48,9 @@ def make_sample_position_variant_query(position_query_string, human_subsection=[
         raise requests.ConnectionError, "Lantern not responding on port 8080"
 
 def get_population_sequences_over_position_range(first_position_int, last_position_int):
+    def convert_to_cgf(position_int):
+        v, p, s = fns.get_position_strings_from_position_int(position_int)
+        return string.join([p, v, s], '.')
     """
     Expects range to be inclusive
     Submits 'sample-position-variant' lantern query.
@@ -58,9 +62,9 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
     """
     human_names = get_population_names_and_check_lantern_version()
     human_names = sorted(human_names)
-    first_path, foo, bar = fns.get_position_ints_from_position_int(first_position_int)
-    last_path, foo, bar = fns.get_position_ints_from_position_int(last_position_int)
-    position_hex_string = fns.get_position_string_from_position_int(first_position_int)
+    version, first_path, step = fns.get_position_ints_from_position_int(first_position_int)
+    version, last_path, step = fns.get_position_ints_from_position_int(last_position_int)
+    position_hex_string = convert_to_cgf(first_position_int)
     last_position_hex_string = fns.get_position_string_from_position_int(last_position_int)
     assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string, last_position_hex_string)
     if first_path == last_path:
@@ -75,10 +79,10 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
         humans = {}
         for path in range(first_path, last_path+1):
             path_min_position_int, foo = fns.get_min_position_and_tile_variant_from_path_int(path)
-            path_max_position_int = get_highest_position_int_in_path(path)
+            path_max_position_int = query_fns.get_highest_position_int_in_path(path)
             tmp_first_position_int = max(first_position_int, path_min_position_int)
             tmp_last_position_int = min(last_position_int, path_max_position_int)
-            tmp_first_position_hex_string = fns.get_position_string_from_position_int(tmp_first_position_int)
+            tmp_first_position_hex_string = convert_to_cgf(tmp_first_position_int)
             length_to_retrieve = hex(tmp_last_position_int - tmp_first_position_int + 1).lstrip('0x')
             response = make_sample_position_variant_query(tmp_first_position_hex_string+"+"+length_to_retrieve)
             assert "success" == response['Type'], "Lantern-communication failure: " + response['Message']

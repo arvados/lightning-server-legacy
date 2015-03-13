@@ -370,7 +370,7 @@ class TileVariant(models.Model):
         assert queried_high_int >= start_locus_int, "Asked to get out-of-range information for %s. Query: [%i, %i) Locus: [%i, %i)" % (self.get_string(), queried_low_int, queried_high_int, start_locus_int, end_locus_int)
         #If we are asked to retrieve the entire tile, our job is easy:
         if end_locus_int <= queried_high_int and start_locus_int >= queried_low_int:
-            return tile_variant.sequence.upper()
+            return self.sequence.upper()
         reference_to_tile_variant = self.get_conversion_list_between_genome_variant_loci_and_tile_loci(start_locus_int, end_locus_int)
         low_int = max(queried_low_int - start_locus_int, 0)
         high_int = queried_high_int - start_locus_int

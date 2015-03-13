@@ -417,3 +417,4 @@ def make_lantern_translators():
     LanternTranslator(lantern_name=mk_name(3,0), tile_variant_int=mk_int(3,0)).save()
     LanternTranslator(lantern_name=mk_name(3,1), tile_variant_int=mk_int(3,1)).save()
     LanternTranslator(lantern_name=mk_name(0,0,path=1), tile_variant_int=mk_int(0,0,path=1)).save()
+    LanternTranslator(lantern_name=mk_name(0,0,path=CHR_PATH_LENGTHS[CHR_1]), tile_variant_int=mk_int(0,0,path=CHR_PATH_LENGTHS[CHR_1])).save()

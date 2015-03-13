@@ -2,74 +2,108 @@ import json
 import string
 
 import tile_library.basic_functions as basic_fns
+from tile_library.constants import CHR_PATH_LENGTHS, CHR_1, NUM_HEX_INDEXES_FOR_VARIANT_VALUE
 
 LANTERN_PORT = 8080
 
 population = {
     'person1':[
-        ['000.00.0000.0009+4',                                                           '001.00.0000.0000'],
-        ['000.00.0000.000a+2',                   '000.00.0002.0001', '000.00.0003.0000', '001.00.0000.0000']
+        ['000.00.0000.0009+4',                                                           '001.00.0000.0000', '03f.00.0000.0000'],
+        ['000.00.0000.000a+2',                   '000.00.0002.0001', '000.00.0003.0000', '001.00.0000.0000', '03f.00.0000.0000']
     ],
     'person2':[
-        ['000.00.0000.000b+2',                   '000.00.0002.0000+2',                   '001.00.0000.0000'],
-        ['000.00.0000.0000', '000.00.0001.0000', '000.00.0002.0000+2',                   '001.00.0000.0000']
+        ['000.00.0000.000b+2',                   '000.00.0002.0000+2',                   '001.00.0000.0000', '03f.00.0000.0000'],
+        ['000.00.0000.0000', '000.00.0001.0000', '000.00.0002.0000+2',                   '001.00.0000.0000', '03f.00.0000.0000']
     ],
     'person3':[
-        ['000.00.0000.0001', '000.00.0001.0000', '000.00.0002.0001', '000.00.0003.0000', '001.00.0000.0000'],
-        ['000.00.0000.0002', '000.00.0001.0000', '000.00.0002.0000+2',                   '001.00.0000.0000']
+        ['000.00.0000.0001', '000.00.0001.0000', '000.00.0002.0001', '000.00.0003.0000', '001.00.0000.0000', '03f.00.0000.0000'],
+        ['000.00.0000.0002', '000.00.0001.0000', '000.00.0002.0000+2',                   '001.00.0000.0000', '03f.00.0000.0000']
     ],
     'person4':[
-        ['000.00.0000.0003', '000.00.0001.0000', '000.00.0002.0002', '000.00.0003.0000', '001.00.0000.0000'],
-        ['000.00.0000.0004+2',                   '000.00.0002.0002', '000.00.0003.0000', '001.00.0000.0000']
+        ['000.00.0000.0003', '000.00.0001.0000', '000.00.0002.0002', '000.00.0003.0000', '001.00.0000.0000', '03f.00.0000.0000'],
+        ['000.00.0000.0004+2',                   '000.00.0002.0002', '000.00.0003.0000', '001.00.0000.0000', '03f.00.0000.0000']
     ],
     'person5':[
-        ['000.00.0000.0005+2',                   '000.00.0002.0000+2',                   '001.00.0000.0000'],
-        ['000.00.0000.0006+2',                   '000.00.0002.0001', '000.00.0003.0000', '001.00.0000.0000']
+        ['000.00.0000.0005+2',                   '000.00.0002.0000+2',                   '001.00.0000.0000', '03f.00.0000.0000'],
+        ['000.00.0000.0006+2',                   '000.00.0002.0001', '000.00.0003.0000', '001.00.0000.0000', '03f.00.0000.0000']
     ],
     'person6':[
-        ['000.00.0000.0007+2',                   '000.00.0002.0002', '000.00.0003.0000', '001.00.0000.0000'],
-        ['000.00.0000.0008+3',                                       '000.00.0003.0000', '001.00.0000.0000']
+        ['000.00.0000.0007+2',                   '000.00.0002.0002', '000.00.0003.0000', '001.00.0000.0000', '03f.00.0000.0000'],
+        ['000.00.0000.0008+3',                                       '000.00.0003.0000', '001.00.0000.0000', '03f.00.0000.0000']
     ],
     'person7':[
-        ['000.00.0000.000c', '000.00.0001.0000', '000.00.0002.0000+2',                   '001.00.0000.0000'],
-        ['000.00.0000.0000', '000.00.0001.0000', '000.00.0002.0001', '000.00.0003.0001', '001.00.0000.0000']
+        ['000.00.0000.000c', '000.00.0001.0000', '000.00.0002.0000+2',                   '001.00.0000.0000', '03f.00.0000.0000'],
+        ['000.00.0000.0000', '000.00.0001.0000', '000.00.0002.0001', '000.00.0003.0001', '001.00.0000.0000', '03f.00.0000.0000']
     ]
 }
 
-population_index = {
-    'person1':[
-        [[1, 1, 1, 1],[2]],
-        [[1, 1, 2, 3],[4]]
-    ],
-    'person2':[
-        [[1, 1, 2, 2],[3]],
-        [[1, 2, 3, 3],[4]]
-    ],
-    'person3':[
-        [[1, 2, 3, 4],[5]],
-        [[1, 2, 3, 3],[4]]
-    ],
-    'person4':[
-        [[1, 2, 3, 4],[5]],
-        [[1, 1, 2, 3],[4]]
-    ],
-    'person5':[
-        [[1, 1, 2, 2],[3]],
-        [[1, 1, 2, 3],[4]]
-    ],
-    'person6':[
-        [[1, 1, 2, 3],[4]],
-        [[1, 1, 1, 2],[3]]
-    ],
-    'person7':[
-        [[1, 2, 3, 3],[4]],
-        [[1, 2, 3, 4],[5]]
-    ]
-}
+population_index = {}
+for person in population:
+    phaseA = [[] for i in range(CHR_PATH_LENGTHS[CHR_1]+1)]
+    phaseB = [[] for i in range(CHR_PATH_LENGTHS[CHR_1]+1)]
+    population_index[person] = [phaseA, phaseB]
+
+population_index['person1'][0][0] = [1, 1, 1, 1]
+population_index['person1'][0][1] = [2]
+population_index['person1'][0][CHR_PATH_LENGTHS[CHR_1]] = [3]
+population_index['person1'][1][0] = [1, 1, 2, 3]
+population_index['person1'][1][1] = [4]
+population_index['person1'][1][CHR_PATH_LENGTHS[CHR_1]] = [5]
+
+population_index['person2'][0][0] = [1, 1, 2, 2]
+population_index['person2'][0][1] = [3]
+population_index['person2'][0][CHR_PATH_LENGTHS[CHR_1]] = [4]
+population_index['person2'][1][0] = [1, 2, 3, 3]
+population_index['person2'][1][1] = [4]
+population_index['person2'][1][CHR_PATH_LENGTHS[CHR_1]] = [5]
+
+population_index['person3'][0][0] = [1, 2, 3, 4]
+population_index['person3'][0][1] = [5]
+population_index['person3'][0][CHR_PATH_LENGTHS[CHR_1]] = [6]
+population_index['person3'][1][0] = [1, 2, 3, 3]
+population_index['person3'][1][1] = [4]
+population_index['person3'][1][CHR_PATH_LENGTHS[CHR_1]] = [5]
+
+population_index['person4'][0][0] = [1, 2, 3, 4]
+population_index['person4'][0][1] = [5]
+population_index['person4'][0][CHR_PATH_LENGTHS[CHR_1]] = [6]
+population_index['person4'][1][0] = [1, 1, 2, 3]
+population_index['person4'][1][1] = [4]
+population_index['person4'][1][CHR_PATH_LENGTHS[CHR_1]] = [5]
+
+population_index['person5'][0][0] = [1, 1, 2, 2]
+population_index['person5'][0][1] = [3]
+population_index['person5'][0][CHR_PATH_LENGTHS[CHR_1]] = [4]
+population_index['person5'][1][0] = [1, 1, 2, 3]
+population_index['person5'][1][1] = [4]
+population_index['person5'][1][CHR_PATH_LENGTHS[CHR_1]] = [5]
+
+population_index['person6'][0][0] = [1, 1, 2, 3]
+population_index['person6'][0][1] = [4]
+population_index['person6'][0][CHR_PATH_LENGTHS[CHR_1]] = [5]
+population_index['person6'][1][0] = [1, 1, 1, 2]
+population_index['person6'][1][1] = [3]
+population_index['person6'][1][CHR_PATH_LENGTHS[CHR_1]] = [4]
+
+population_index['person7'][0][0] = [1, 2, 3, 3]
+population_index['person7'][0][1] = [4]
+population_index['person7'][0][CHR_PATH_LENGTHS[CHR_1]] = [5]
+population_index['person7'][1][0] = [1, 2, 3, 4]
+population_index['person7'][1][1] = [5]
+population_index['person7'][1][CHR_PATH_LENGTHS[CHR_1]] = [6]
+
+#for person in sorted(population_index.keys()):
+#    print person
+#    for i, phase in enumerate(population_index[person]):
+#        print "\tPhase", i
+#        for j, path in enumerate(phase):
+#            if path != []:
+#                print "\t\tPath", j, path
 
 def sample_position_variant(sub_pop, position_list):
     result = {}
     for person in sub_pop:
+        #print person, position_list
         result[person] = [[] for phase in population[person]]
         for position in position_list:
             if '-' in position:
@@ -86,12 +120,14 @@ def sample_position_variant(sub_pop, position_list):
                 try:
                     start = population_index[person][phase][path][start_index] - 1
                 except IndexError:
-                    start = 5
+                    start = population_index[person][phase][path][-1]
                 try:
                     end = population_index[person][phase][path][end_index]
                 except IndexError:
-                    end = 5
+                    end = population_index[person][phase][path][-1]
+                #print "Position list: %s, %s, phase %i, path %i, start %i, end %i [%i:%i]" % (str(position_list),person, phase, path, start_index, end_index, start, end)
                 result[person][phase].extend(population[person][phase][start:end])
+    #print position_list, result
     return result
 
 def lantern_application(environ, start_response):

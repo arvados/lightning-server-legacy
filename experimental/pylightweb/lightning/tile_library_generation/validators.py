@@ -38,12 +38,42 @@ def validate_tile_variant_int(tile_variant_int):
         raise TileLibraryValidationError({'tile_variant_int':"tile variant int must be smaller than or equal to '%s.%s.%s.%s'" % (v,p,s,vv)})
 
 def validate_tag(tag):
-    if len(tag) != TAG_LENGTH:
-        raise TileLibraryValidationError("Tag length must be equal to the set TAG_LENGTH")
-
-def validate_variant_tag(tag):
+    if tag.lower() != tag:
+        raise TileLibraryValidationError("Tag must be lowercase")
     if len(tag) != TAG_LENGTH and len(tag) != 0:
         raise TileLibraryValidationError("Tag length must be equal to the set TAG_LENGTH or must be empty")
+
+def validate_tile_position(tile_position_int, is_start_of_path, is_end_of_path, start_tag, end_tag):
+    VALIDATION_ERRORS = {}
+    version, path, step = basic_fns.get_position_ints_from_position_int(tile_position_int)
+    if step == 0:
+        if not is_start_of_path:
+            VALIDATION_ERRORS['tile_position_int-is_start_of_path'] = "If step is 0, is_start_of_path should be True"
+    else:
+        if is_start_of_path:
+            VALIDATION_ERRORS['tile_position_int-is_start_of_path'] = "If step is not 0, is_start_of_path should be False"
+    try:
+        validate_tag(start_tag)
+    except TileLibraryValidationError as e:
+        VALIDATION_ERRORS['start_tag'] = e.value
+    try:
+        validate_tag(end_tag)
+    except TileLibraryValidationError as e:
+        VALIDATION_ERRORS['end_tag'] = e.value
+    if is_start_of_path:
+        if start_tag != '':
+            VALIDATION_ERRORS['start_tag-is_start_of_path'] = "If is_start_of_path, start_tag should be empty"
+    else:
+        if start_tag == '':
+            VALIDATION_ERRORS['start_tag-is_start_of_path'] = "If not is_start_of_path, start_tag should not be empty"
+    if is_end_of_path:
+        if end_tag != '':
+            VALIDATION_ERRORS['end_tag-is_end_of_path'] = "If is_end_of_path, end_tag should be empty"
+    else:
+        if end_tag == '':
+            VALIDATION_ERRORS['end_tag-is_end_of_path'] = "If not is_end_of_path, end_tag should not be empty"
+    if len(VALIDATION_ERRORS) > 0:
+        raise TileLibraryValidationError(VALIDATION_ERRORS)
 
 def validate_num_spanning_tiles(num_spanning):
     if num_spanning < 1:
@@ -62,7 +92,12 @@ def validate_spanning_tile(tile_position_one, tile_position_two, num_positions_s
     if abs(tile2_step - tile1_step) != num_positions_spanned-1:
         raise TileLibraryValidationError({'spanning_tile_error':'number of steps spanned (from tile position integers and reported) do not match'})
 
-def validate_tile_variant(tile_position_int, tile_variant_int, variant_value, sequence, seq_length, seq_md5sum, start_tag, end_tag):
+def validate_tile_variant(tile_position_int, tile_variant_int, variant_value, sequence, seq_length, seq_md5sum, start_tag, end_tag, is_start_of_path, is_end_of_path):
+    acceptable_seq_length = TAG_LENGTH*2
+    if is_start_of_path:
+        acceptable_seq_length -= TAG_LENGTH
+    if is_end_of_path:
+        acceptable_seq_length -= TAG_LENGTH
     VALIDATION_ERRORS = {}
     #If these throw an error, I want it to propogate.
     validate_tile_position_int(tile_position_int)
@@ -83,13 +118,13 @@ def validate_tile_variant(tile_position_int, tile_variant_int, variant_value, se
         VALIDATION_ERRORS['sequence'] = "Sequence must be entirely lowercase"
     digestor = hashlib.new('md5', sequence)
     if digestor.hexdigest() != seq_md5sum:
-        VALIDATION_ERRORS['md5sum_mismatch'] = "md5sum is not actually md5sum of sequence"
-    if len(sequence) < TAG_LENGTH*2:
+        VALIDATION_ERRORS['md5sum-sequence'] = "md5sum is not actually md5sum of sequence"
+    if len(sequence) < acceptable_seq_length:
         VALIDATION_ERRORS['sequence_malformed'] = "Sequence is not long enough - the tags overlap"
     if sequence[:TAG_LENGTH] != start_tag:
-        VALIDATION_ERRORS['start_tag_mismatch'] = "Sequence does not start with the given start tag"
+        VALIDATION_ERRORS['start_tag-sequence'] = "Sequence does not start with the given start tag"
     if sequence[-TAG_LENGTH:] != end_tag:
-        VALIDATION_ERRORS['end_tag_mismatch'] = "Sequence does not end with the given end tag"
+        VALIDATION_ERRORS['end_tag-sequence'] = "Sequence does not end with the given end tag"
     if len(VALIDATION_ERRORS) > 0:
         raise TileLibraryValidationError(VALIDATION_ERRORS)
 
@@ -161,19 +196,29 @@ def validate_same_chromosome(locus_chrom_int, variant_chrom_int, locus_chrom_nam
     if len(VALIDATION_ERRORS) > 0:
         raise TileLibraryValidationError(VALIDATION_ERRORS)
 
-def validate_tile_variant_loci_encompass_genome_variant_loci(genome_var_start_int, genome_var_end_int, tile_var_start_int, tile_var_end_int):
+def validate_tile_variant_loci_encompass_genome_variant_loci(genome_var_start_int, genome_var_end_int, tile_var_start_int, tile_var_end_int, tile_var_is_at_start, tile_var_is_at_end):
     """
         check genome variant loci are within tile variant loci
     """
     VALIDATION_ERRORS = {}
-    if genome_var_start_int < tile_var_start_int+TAG_LENGTH:
-        VALIDATION_ERRORS['genome_variant.start_int'] = "start_int is in the start tag or before the locus"
-    if genome_var_start_int > tile_var_end_int-TAG_LENGTH:
-        VALIDATION_ERRORS['genome_variant.start_int'] = "start_int is in the end tag or after the locus"
-    if genome_var_end_int < tile_var_start_int+TAG_LENGTH:
-        VALIDATION_ERRORS['genome_variant.end_int'] = "end int is in the start tag or before the locus"
-    if genome_var_end_int > tile_var_end_int-TAG_LENGTH:
-        VALIDATION_ERRORS['genome_variant.end_int'] = "end int is in the end tag or after the locus"
+    acceptable_start_position = tile_var_start_int+TAG_LENGTH
+    start_msg = "%s is in the start tag or before the locus"
+    if tile_var_is_at_start:
+        acceptable_start_position -= TAG_LENGTH
+        start_msg = "%s is before the locus"
+    acceptable_end_position = tile_var_end_int-TAG_LENGTH
+    end_msg = "%s is in the end tag or after the locus"
+    if tile_var_is_at_end:
+        acceptable_end_position += TAG_LENGTH
+        end_msg = "%s is after the locus"
+    if genome_var_start_int < acceptable_start_position:
+        VALIDATION_ERRORS['genome_variant.start_int'] = start_msg % "start_int"
+    if genome_var_start_int > acceptable_end_position:
+        VALIDATION_ERRORS['genome_variant.start_int'] = end_msg % "start_int"
+    if genome_var_end_int < acceptable_start_position:
+        VALIDATION_ERRORS['genome_variant.end_int'] = start_msg % "end_int"
+    if genome_var_end_int > acceptable_end_position:
+        VALIDATION_ERRORS['genome_variant.end_int'] = end_msg % "end_int"
     if len(VALIDATION_ERRORS) > 0:
         raise TileLibraryValidationError(VALIDATION_ERRORS)
 
