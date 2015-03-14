@@ -2,6 +2,7 @@ import string
 import traceback
 import sys
 import re
+import json
 
 from django.http import Http404
 from django.shortcuts import render
@@ -11,9 +12,11 @@ from rest_framework import permissions
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.utils.serializer_helpers import ReturnDict
 
 from api.serializers import TileVariantSerializer, RoughTileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
 from tile_library.models import Tile, TileVariant, TileLocusAnnotation, TAG_LENGTH
+import tile_library.human_readable_functions as human_readable
 import tile_library.query_functions as query_fns
 import tile_library.lantern_query_functions as lantern_query_fns
 import tile_library.basic_functions as basic_fns
@@ -237,6 +240,26 @@ class PopulationVariantQueryBetweenLoci(APIView):
     If the positions are 1-indexed, set "indexing" to 1.
     Requires lantern version 0.0.3
     """
+    def check_locus(self, assembly_int, chromosome_int, low_int, high_int, alt_chromosome_name):
+        response = {}
+        assembly_name = human_readable.get_readable_assembly_name(assembly_int)
+        chromosome_name = human_readable.get_readable_chr_name(chromosome_int, alt_chromosome_name)
+        base_query = TileLocusAnnotation.objects.filter(assembly_int=assembly_int)
+        if base_query.count() == 0:
+            response['assembly'] = ["Assembly %s (%i) not loaded into tile library" % (assembly_name, assembly_int)]
+        else:
+            base_query = base_query.filter(chromosome_int=chromosome_int)
+            if base_query.count() == 0:
+                response['chromosome'] = ["Chromosome %s (%i) not loaded into tile library" % (chromosome_name, chromosome_int)]
+            else:
+                smallest_int = base_query.order_by('start_int').first().start_int
+                largest_int = base_query.order_by('start_int').reverse().first().end_int - 1
+                if low_int < smallest_int:
+                    response['lower_base'] = ["%i is smaller than the smallest locus (%i) in the tile library at chromosome %s, assembly %s" % (low_int, smallest_int, chromosome_name, assembly_name)]
+                if high_int > largest_int:
+                    response['upper_base'] = ["%i is larger than the largest locus (%i) in the tile library at chromosome %s, assembly %s" % (low_int, smallest_int, chromosome_name, assembly_name)]
+        if len(response) > 0:
+            raise LocusOutOfRangeException(response)
     def get_variants_and_bases(self, assembly, chromosome, low_int, high_int):
         """
         Expects low_int and high_int to be 0-indexed. high_int is expected to be exclusive
@@ -244,30 +267,16 @@ class PopulationVariantQueryBetweenLoci(APIView):
             cgf_string : bases of interest. Includes tags!
         Each entry in the list corresponds to a position
         """
+
         locuses = TileLocusAnnotation.objects.filter(assembly_int=assembly).filter(chromosome_int=chromosome).filter(
             start_int__lt=high_int).filter(end_int__gt=low_int).order_by('start_int')
         num_locuses = locuses.count()
 
-        #Return useful info if cannot complete query
-        response_text = "Expect at least one locus to match the query"
         if num_locuses == 0:
-            base_query = TileLocusAnnotation.objects.filter(assembly_int=assembly)
-            if base_query.count() == 0:
-                response_text = "Specified locus is not in this server. Try a different assembly"
-            else:
-                base_query = base_query.filter(chromosome_int=chromosome)
-                if base_query.count() == 0:
-                    response_text = "Specified locus is not in this server. Try a different chromosome"
-                else:
-                    smallest_int = base_query.order_by('start_int').first().begin_int
-                    largest_int = base_query.order_by('start_int').reverse().first().end_int - 1
-                    response_text = "That locus is not loaded in this server. Try a number in the range %i to %i." % (smallest_int, largest_int)
-            raise LocusOutOfRangeException(response_text)
+            raise Exception("Should have caught this case in 'check_locus'")
         #Get framing tile position ints
         first_tile_position_int = int(locuses.first().tile_position_id)
-        last_tile_position_int = max(int(locuses.last().tile_position_id), first_tile_position_int) # unsure if this max is required
-
-        # but the max prevents choosing a last tile position that's smaller than the first tile position
+        last_tile_position_int = max(int(locuses.last().tile_position_id), first_tile_position_int)
 
         #Get maximum number of spanning tiles
         max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
@@ -279,9 +288,10 @@ class PopulationVariantQueryBetweenLoci(APIView):
         spanning_tile_variants = query_fns.get_tile_variants_spanning_into_position(first_tile_position_int)
         for var in spanning_tile_variants:
             cgf_str, bases = query_fns.get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(var, low_int, high_int, assembly)
-            if cgf_str in simple_cgf_translator:
-                raise CGFTranslatorError("Repeat spanning cgf_string: %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
-            simple_cgf_translator[cgf_str] = bases
+            if cgf_str != '':
+                if cgf_str in simple_cgf_translator:
+                    raise CGFTranslatorError("Repeat spanning cgf_string: %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
+                simple_cgf_translator[cgf_str] = bases
         return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, simple_cgf_translator
     def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator):
         sequence = ""
@@ -350,20 +360,35 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 if query_serializer.data['indexing'] == 1:
                     lower_base -= 1
                     upper_base -= 1
+                #Return useful info if cannot complete query
+                if upper_base <= lower_base:
+                    return Response(
+                        {'lower_base-upper_base': ["lower_base (%i) must be lower than upper_base (%i)" % (lower_base, upper_base)]},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                self.check_locus(
+                    int(query_serializer.data['assembly']),
+                    int(query_serializer.data['chromosome']),
+                    lower_base,
+                    upper_base,
+                    ''
+                )
                 first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator = self.get_variants_and_bases(
                     int(query_serializer.data['assembly']),
                     int(query_serializer.data['chromosome']),
                     lower_base,
-                    upper_base)
+                    upper_base
+                )
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator)
             except LocusOutOfRangeException as e:
-                return Response(str(e), status=status.HTTP_404_NOT_FOUND)
+                return Response(e.value, status=status.HTTP_404_NOT_FOUND)
             except (UnexpectedLanternBehaviorError, CGFTranslatorError) as e:
-                return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(e.value, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
             return Response(return_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response(query_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PopulationVariantQueryAroundLocus(APIView):

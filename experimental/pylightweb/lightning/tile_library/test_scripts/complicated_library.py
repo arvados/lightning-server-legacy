@@ -1,4 +1,15 @@
 """
+ASSEMBLY_37 (Want to change a bit more!)
+     0                         24    27                         50   52                         76   78                         102    106                        130
+     | ACGGCAGTAGTTTTGCCGCTCGGT | AAA | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
+
+    130                        154  156                        180  182                        206  208                        232    236                        260
+     | AGAGAGCTGGCAGATGCCTTATGG | AA | GTGACTGCTACCGTTTGTTGACAC | CA | ATGCACGAGATTTAACGAGCCTTT | GT | TAGTACATTGCCCTAGTACCGATC | GTTA | AACTAGGCGCTCATTAACTCGACA ||
+
+     0                         24   26                         50   52                         76   78                         102    106                        130
+     | CTACCGTTTAGGCGGATATCGCGT | CT | TTCCTTAAACTCATCTCCTGGGGG | GA | CGTCGTGGTTTTGAGCCAGTTATG | GG | GTTCGGCTGACGGGCCGACACATG | GCCA | AGTGCCCTTCTGGCCGACGGATTT ||
+
+ASSEMBLY_19
      0                         24   26                         50   52                         76   78                         102    106                        130
      | ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
 
@@ -12,13 +23,24 @@
         Any variant starting before 130 and ending at or after 130
 
     Note: Mixing-and-matching non-interacting genome variants is allowed
+
+ASSEMBLY_18
+    0                         24   26                         53   55                         79   81                         105    109                        133
+    | ACGGCAGTAGTTTTGCCGCTCGGT | TG AAATCAGAATGTTTGGAGGGCGGTACG  GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
+
+   133                        157  159                        183  185                        209  211                        235    239                        263
+    | AGAGAGCTGGCAGATGCCTTATGG | AA | GTGACTGCTACCGTTTGTTGACAC | CA | ATGCACGAGATTTAACGAGCCTTT | GT | TAGTACATTGCCCTAGTACCGATC | GTTA | AACTAGGCGCTCATTAACTCGACA ||
+
+    0                         24   26                         50   52                         76   78                         102    106                        130
+    | CTACCGTTTAGGCGGATATCGCGT | CT | TTCCTTAAACTCATCTCCTGGGGG | GA | CGTCGTGGTTTTGAGCCAGTTATG | GG | GTTCGGCTGACGGGCCGACACATG | GCCA | AGTGCCCTTCTGGCCGACGGATTT ||
+
 """
 import hashlib
 import string
 
 from tile_library.constants import NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, \
     NUM_HEX_INDEXES_FOR_STEP, NUM_HEX_INDEXES_FOR_VARIANT_VALUE,NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE, \
-    ASSEMBLY_19, CHR_1, CHR_2, CHR_OTHER, TAG_LENGTH, CHR_PATH_LENGTHS
+    ASSEMBLY_19, ASSEMBLY_18, CHR_1, CHR_2, CHR_OTHER, TAG_LENGTH, CHR_PATH_LENGTHS
 from tile_library.models import Tile, TileVariant, GenomeVariant, GenomeVariantTranslation, TileLocusAnnotation, LanternTranslator
 import tile_library.basic_functions as basic_fns
 
@@ -62,6 +84,26 @@ ref_loci[CHR_PATH_LENGTHS[CHR_1]] = [
     {'chr':CHR_2, 'start':26, 'end':76},
     {'chr':CHR_2, 'start':52, 'end':102},
     {'chr':CHR_2, 'start':78, 'end':130}
+]
+
+loci_18 = [[]for i in range(CHR_PATH_LENGTHS[CHR_1]+1)]
+loci_18[0] = [
+    {'chr':CHR_1, 'start':0, 'end':79, 'variant_value':14},
+    {},
+    {'chr':CHR_1, 'start':55, 'end':133, 'variant_value':2},
+    {}
+]
+loci_18[1] = [
+    {'chr':CHR_1, 'start':133, 'end':183, 'variant_value':0},
+    {'chr':CHR_1, 'start':159, 'end':209, 'variant_value':0},
+    {'chr':CHR_1, 'start':185, 'end':235, 'variant_value':0},
+    {'chr':CHR_1, 'start':211, 'end':263, 'variant_value':0}
+]
+loci_18[CHR_PATH_LENGTHS[CHR_1]] = [
+    {'chr':CHR_2, 'start':0, 'end':50, 'variant_value':0},
+    {'chr':CHR_2, 'start':26, 'end':76, 'variant_value':0},
+    {'chr':CHR_2, 'start':52, 'end':102, 'variant_value':0},
+    {'chr':CHR_2, 'start':78, 'end':130, 'variant_value':0}
 ]
 
 alt_ref_tilevar_sequences = [[] for i in range(CHR_PATH_LENGTHS[CHR_OTHER])]
@@ -122,7 +164,7 @@ def make_genome_variant(gv_int, start, end, ref_bases, alt_bases, assembly=ASSEM
     gv.save()
     return gv
 
-def make_reference():
+def make_reference(multiple_assemblies=False):
     v = '0'*NUM_HEX_INDEXES_FOR_VERSION
     for path_int, sequence_list in enumerate(ref_tilevar_sequences):
         p = hex(path_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
@@ -145,7 +187,6 @@ def make_reference():
             vv = '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
             tile = Tile(tile_position_int=int(v+p+s,16), start_tag=start_tag, end_tag=end_tag, is_start_of_path=path_start, is_end_of_path=path_end)
             tile.save()
-            #print len(seq), ref_loci[path_int][step_int]['end']-ref_loci[path_int][step_int]['start']
             make_tile_variant(int(v+p+s+vv,16), seq, 1, start_tag=variant_start_tag, end_tag=variant_end_tag)
             TileLocusAnnotation(
                 assembly_int=ASSEMBLY_19,
@@ -156,6 +197,26 @@ def make_reference():
                 tile_position=tile,
                 tile_variant_value=int(vv,16)
             ).save()
+
+    if multiple_assemblies:
+        v = '0'*NUM_HEX_INDEXES_FOR_VERSION
+        make_tile_variant(14, "ACGGCAGTAGTTTTGCCGCTCGGTTGAAATCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower(), 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
+        make_tile_variant(int('2'+vv_min,16)+2, "TAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG".lower(), 2, end_tag="GTCGCCCACTACGCACGTTATATG")
+        for path_int, sequence_list in enumerate(ref_tilevar_sequences):
+            p = hex(path_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+            for step_int, seq in enumerate(sequence_list):
+                s = hex(step_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_STEP)
+                if len(loci_18[path_int][step_int]) > 0:
+                    tile = Tile.objects.get(tile_position_int=int(v+p+s,16))
+                    TileLocusAnnotation(
+                        assembly_int=ASSEMBLY_18,
+                        chromosome_int=loci_18[path_int][step_int]['chr'],
+                        alternate_chromosome_name="",
+                        start_int=loci_18[path_int][step_int]['start'],
+                        end_int=loci_18[path_int][step_int]['end'],
+                        tile_position=tile,
+                        tile_variant_value=loci_18[path_int][step_int]['variant_value']
+                    ).save()
 
 def make_alternate_reference():
     v = '0'*NUM_HEX_INDEXES_FOR_VERSION
@@ -349,8 +410,8 @@ def make_two_genome_variants_for_one_tile_variant_alter_translation_indexes(vv=1
 
 vv_min = '0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
 
-def make_entire_library():
-    make_reference()
+def make_entire_library(multiple_assemblies=False):
+    make_reference(multiple_assemblies=multiple_assemblies)
     tv, basic_snp, trans = make_basic_snp_genome_variant()
     make_basic_sub_genome_variant()
     tv, basic_del, trans = make_basic_del_genome_variant()
@@ -376,9 +437,11 @@ def make_entire_library():
     tv = make_tile_variant(int('2'+vv_min,16)+1, seq, 1)
     gv = make_genome_variant(12, 76, 78, "AA", "-")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=24).save()
-
-    seq = "TAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG".lower()
-    tv = make_tile_variant(int('2'+vv_min,16)+2, seq, 2, end_tag="GTCGCCCACTACGCACGTTATATG")
+    if multiple_assemblies:
+        tv = TileVariant.objects.get(tile_variant_int=int('2'+vv_min,16)+2)
+    else:
+        seq = "TAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG".lower()
+        tv = make_tile_variant(int('2'+vv_min,16)+2, seq, 2, end_tag="GTCGCCCACTACGCACGTTATATG")
     gv = make_genome_variant(13, 101, 102, 'G', 'T')
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=49, end=50).save()
 

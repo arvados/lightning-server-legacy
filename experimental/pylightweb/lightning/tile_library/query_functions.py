@@ -131,9 +131,10 @@ def get_simple_cgf_translator(locuses, low_int, high_int, assembly):
                 cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, large_end_locus_int)
             else:
                 cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, end_locus_int)
-            if cgf_str in simple_cgf_translator:
-                raise CGFTranslatorError("Repeat cgf_string (%s) in cgf_translator" % (cgf_str))
-            simple_cgf_translator[cgf_str] = bases
+            if cgf_str != '':
+                if cgf_str in simple_cgf_translator:
+                    raise CGFTranslatorError("Repeat cgf_string (%s) in cgf_translator" % (cgf_str))
+                simple_cgf_translator[cgf_str] = bases
     return simple_cgf_translator
 
 def crosses_center_index(variant, i, center_index, max_num_spanned):
