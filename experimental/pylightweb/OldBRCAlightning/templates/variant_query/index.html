@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+{% load humanize %}
+
+{% block title %}Lightning: Population Sequence Query{% endblock %}
+
+{% block breadcrumbs %}
+	<li class="active"><a href="#">{{form_name}}</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+	<div class="page-header">
+		<h1>{{form_name}} form </h1>
+		<p> Note: This form is not intended to display hundreds of bases. We suggest using <a href="{% url 'api:documentation' %}">the api</a>
+			for queries spanning more than a hundred bases. </p>
+		<p> Took {{time1|floatformat:3}} seconds to get assembly choices. Took {{time2|floatformat:3}} seconds to get chromosome choices.</p>
+	</div>
+	<form role="form" method="get">
+		{{ form|bootstrap }}
+		<input type="submit" value="Submit" />
+	</form>
+	{% if response %}
+		<h1>Response:</h1>
+		<p>{{ response.text|linebreaks }} This query took {{response.time|floatformat:3}} seconds.</p>
+		{% if response.humans %}
+			<div class="table-responsive">
+				<table class="table table-striped" style="font-family:monospace;">
+					<thead>
+						<tr>
+							<th>Sample Name</th>
+							<th>Phase A call</th>
+							<th>Phase B call</th>
+							<th>Phase groups known?</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for human in response.humans %}
+							<tr>
+								<td>{{ human.human_name }}</td>
+								<td>{{ human.phase_A_sequence }}</td>
+								<td>{{ human.phase_B_sequence }}</td>
+								<td>{{ human.phased|yesno }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	{% endif %}
+</div>
+{% endblock %}

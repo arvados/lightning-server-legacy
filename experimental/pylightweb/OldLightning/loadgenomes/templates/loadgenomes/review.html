@@ -1,0 +1,7 @@
+{% if annotation %}
+	<h2> Annotation for Review: </h2>
+	{{ annotation }} 
+	<p> {{ annotation.annotationText }} </p>
+{% else %}
+	<h2> Error, could not find annotation</h2>
+{% endif %}

@@ -72,17 +72,14 @@ WSGI_APPLICATION = 'lightning.wsgi.application'
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 DBPW = "mypassword"
 
-ADDR = os.environ.get('POSTGRES_PORT_5432_TCP_ADDR')
-PORT = os.environ.get('POSTGRES_PORT_5432_TCP_PORT')
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'lightning',
-        'USER': 'lightning',
+        'USER': 'sguthrie',
         'PASSWORD': DBPW,
-        'HOST': ADDR, #'127.0.0.1',
-        'PORT': PORT, #'5432',
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
     }
 }
 

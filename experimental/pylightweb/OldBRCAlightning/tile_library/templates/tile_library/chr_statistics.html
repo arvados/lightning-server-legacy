@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load humanize %}
+
+{% block title %}Lightning: Tile Library Statistics for {{ chromosome_name }}{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'tile_library:statistics' %}">Library</a></li>
+	<li class="active"><a href="#">{{ chromosome_name }}</a></li>
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Tile Library Statistics: {{ chromosome_name }}</h1>
+	</div>
+	{% if chromosome_stats %}
+	<p>Note that current paths are chromosomal bands</p>
+	<div class="table-responsive">
+		<table id="StatTable"class="table table-striped">
+			<thead>
+				<tr>
+					<th>hg19 Cytomap Band</th>
+					<th>Path</th>
+					<th>Total positions</th>
+					<th>Average number of Genomic variants at one position</th>
+					<th>Maximum number of Genomic variants at one position</th>
+					<th>Average number of Tile variants at one position</th>
+					<th>Maximum number of Tile variants at one Position</th>
+					<th>Total Tile variants</th>
+					<th>Average number of positions spanned</th>
+					<th>Maximum number of positions spanned</th>
+					<th>Average number of Genomic variants per tile variant</th>
+					<th>Maximum number of Genomic variants per tile variant</th>
+					<th>Minimum tile length (in bases)</th>
+					<th>Average tile length (in bases)</th>
+					<th>Maximum tile length (in bases)</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td></td>
+					<td>{{ chromosome_name }}</td>
+					<td>{{ chromosome_stats.position_num|intcomma }}</td>
+					<td>{{ chromosome_stats.avg_annotations_per_position|floatformat|default:'-' }}</td>
+					<td>{{ chromosome_stats.max_annotations_per_position|default:'-'|intcomma }}</td>
+					<td>{{ chromosome_stats.avg_variant_val|floatformat|default:'-' }}</td>
+					<td>{{ chromosome_stats.max_variant_val|default:'-'|intcomma }}</td>
+					<td>{{ chromosome_stats.tile_num|intcomma }}</td>
+					<td>{{ chromosome_stats.avg_num_positions_spanned|floatformat|default:'-' }}</td>
+					<td>{{ chromosome_stats.max_num_positions_spanned|default:'-'|intcomma }}</td>
+					<td>{{ chromosome_stats.avg_annotations_per_tile|floatformat|default:'-' }}</td>
+					<td>{{ chromosome_stats.max_annotations_per_tile|default:'-'|intcomma }}</td>
+					<td>{{ chromosome_stats.min_length|default:'-'|intcomma }}</td>
+					<td>{{ chromosome_stats.avg_length|floatformat|default:'-' }}</td>
+					<td>{{ chromosome_stats.max_length|default:'-'|intcomma }}</td>
+
+				</tr>
+				{% for path_int, path_hex, path_cyto, path in paths %}
+				<tr>
+					<td>{{ path_cyto }}</td>
+					<td><a href="{% url 'tile_library:path_statistics' chromosome_int path_int %}">Path {{ path_hex|default:'0' }}</a></td>
+					<td>{{ path.position_num|intcomma }}</td>
+					<td>{{ path.avg_annotations_per_position|floatformat|default:'-' }}</td>
+					<td>{{ path.max_annotations_per_position|default:'-'|intcomma }}</td>
+					<td>{{ path.avg_variant_val|floatformat|default:'-' }}</td>
+					<td>{{ path.max_variant_val|default:'-'|intcomma }}</td>
+					<td>{{ path.tile_num|intcomma }}</td>
+					<td>{{ path.avg_num_positions_spanned|floatformat|default:'-' }}</td>
+					<td>{{ path.max_num_positions_spanned|default:'-'|intcomma }}</td>
+					<td>{{ path.avg_annotations_per_tile|floatformat|default:'-' }}</td>
+					<td>{{ path.max_annotations_per_tile|default:'-'|intcomma }}</td>
+					<td>{{ path.min_length|default:'-'|intcomma }}</td>
+					<td>{{ path.avg_length|floatformat|default:'-' }}</td>
+					<td>{{ path.max_length|default:'-'|intcomma }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	{% else %}
+	<div class="alert alert-danger" role="alert">
+		No statistics for this Tile Library are available. Use tile_library.generate_stats.initialize() to generate statistics for this tile library.
+	</div>
+	{% endif %}
+</div>
+{% endblock %}

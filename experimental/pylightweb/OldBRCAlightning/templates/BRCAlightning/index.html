@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+
+{% block title %}BRCA Lightning: Fast Interaction the Personal Genome Project Data (chr13 and 17){% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="text-center">Welcome to BRCA-Lightning!</h1>
+  </div>
+  <p class="lead text-center">This site is a work in progress and is open-source.
+    Please contact us <a href="https://arvados.org/projects/arvados/wiki/IRC_and_Mailing_lists">here</a> with questions,
+    unexpected behavior reports, and feature requests.
+  </p>
+  <hr>
+  <p>Our goals include enabling fast analysis of population genetic data as part of the GA4GH BRCA Challenge. We currently use whole genome sequenced (WGS) data
+    (covering chr13p11.1 to chr13q34 and all of chr17) obtained from the Personal Genome Project.
+  </p>
+  <p>The 174 WGS sequences available here have been converted losslessly to Compressed Genome Format (CGF),
+    a developmental format enabling simple lift-over, annotation, visualization, and fast queries and analysis of human genomes.
+  </p>
+  <hr>
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Retrieve Population Sequences</h3>
+    </div>
+    <div class="panel-body">
+      <p></p>
+      <div class="panel panel-primary">
+        <div class="panel-heading">Find k-bases around a specifed locus</div>
+        <div class="panel-body">
+          <form role="form" method="get">
+            {{ query_around_form|bootstrap }}
+            <input type="submit" value="Submit" />
+          </form>
+        </div>
+      </div>
+      <div class="panel panel-primary">
+        <div class="panel-heading">Find bases between a lower locus and upper locus</div>
+        <div class="panel-body">
+          <form role="form" method="get">
+            {{ query_between_form|bootstrap }}
+            <input type="submit" value="Submit" />
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

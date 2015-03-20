@@ -1,0 +1,22 @@
+{% if uncertain_list %}
+	<h1> Annotations to Review: </h1>
+	<ul>
+	{% for annotation in uncertain_list %}
+		<li><a href="{% url 'loadgenomes:review' annotation.id %}">{{ annotation }}</a></li>
+	{% endfor %}
+	</ul>
+{% else %}
+	<h2> No annotations are available for Review.</h2>
+{% endif %}
+
+{% if trusted_list %}
+	<h2> Trusted annotations: </h2>
+	<ul>
+	{% for annotation in trusted_list %}
+		<li><a href="{% url 'loadgenomes:detail' annotation.id %}">{{ annotation }}</a></li>
+	{% endfor %}
+	</ul>
+{% else %}
+	<h2> No trusted annotations are available.</h2>
+{% endif %}
+

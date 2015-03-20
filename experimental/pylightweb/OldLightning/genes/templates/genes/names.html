@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load gene_filters %}
+
+{% block title %}Lightning: UCSC Known Genes{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a href="{% url 'home:index' %}">Home</a></li>
+	<li class="active"><a href="#">Known Genes (UCSC)</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="page-header">
+		<h1>Known Genes from UCSC</h1>
+	</div>
+	<ul class="nav nav-pills">
+		{% if get_objects.reviewed == None and get_objects.phenotype == None %}
+			{% if get_objects.gene_filter == 'all' or get_objects.gene_filter == None %}
+				<li class="active"><a href="?{% url_replace_and_clear request.GET 'filter' 'all' 'reviewed' 'phenotype' %}">Show All</a></li>
+			{% else %}
+				<li><a href="?{% url_replace_and_clear request.GET 'filter' 'all' 'reviewed' 'phenotype' %}">Show All</a></li>
+			{% endif %}
+			<li><a href="?{% url_replace_and_clear request.GET 'reviewed' 'True' 'phenotype' %}">Show Only Genes with Gene Review Articles</a></li>
+		{% else %}
+			<li><a href="?{% url_replace_and_clear request.GET 'filter' 'all' 'reviewed' 'phenotype'%}">Show All</a></li>
+			<li class="active"><a href="?{% url_replace_and_clear request.GET 'reviewed' 'True' 'phenotype' %}">Show Only Genes with Gene Review Articles</a></li>
+		{% endif %}
+	</ul>
+	<ul class="nav nav-pills">
+		{% for letter in letters %}
+			{% if get_objects.gene_filter == letter %}
+				<li class="active"><a href="?{% url_replace request.GET 'filter' letter %}">{{letter}}</a></li>
+			{% else %}
+				<li><a href="?{% url_replace request.GET 'filter' letter %}">{{letter}}</a></li>
+			{% endif %}
+		{% endfor %}
+	</ul>
+	<div class="row">
+		<div class="col-lg-6">
+			<form role="search" method="get" action="?{% url_clear request.GET 'filter' 'phenotype' %}">
+				<div class="input-group">
+					<input type="search" name="filter" class="form-control" placeholder="Search Gene Names">
+					<span class="input-group-btn">
+						<button type="submit" class="btn btn-default">Search</button>
+					</span>
+				</div>		
+			</form>
+		</div>
+		<div class="col-lg-6">
+			<form role="search" method="get" action="?{% url_clear request.GET 'filter' 'phenotype' %}">
+				<div class="input-group">
+					<input type="search" name="phenotype" class="form-control" placeholder="Search Gene Review Article Titles">
+					<span class="input-group-btn">
+						<button type="submit" class="btn btn-default">Search</button>
+					</span>
+				</div>		
+			</form>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-lg-6">
+			{% if genes.paginator.num_pages < 25 %}
+			<a class="btn btn-default navbar-btn" href="{% url 'slippy:slippymap' %}?{% url_clear request.GET 'page' %}">Load Map With All Genes Below</a>
+			{% endif %}
+		</div>
+	</div>
+	<ul class="pagination">
+		{% if genes.has_previous %}
+		<li><a href="?{% url_replace request.GET 'page' genes.previous_page_number %}">&laquo;</a></li>
+		{% endif %}
+		<li class="active"><a href="#">Page {{ genes.number }} of {{ genes.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
+		{% if genes.has_next %}
+		<li><a href="?{% url_replace request.GET 'page' genes.next_page_number %}">&raquo;</a></li>
+		{% endif %}
+	</ul>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Gene</th>
+					<th>Description</th>
+					<th>Gene Review Article (if applicable)</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for gene_xref in genes %}
+				<tr>
+					<td><a href="{% url 'genes:specific' gene_xref.id %}">{{ gene_xref.gene_aliases }}</a></td>
+					<td>{{ gene_xref.description }}</td>
+					<td>{% for obj in gene_xref|get_gene_review_urls %}
+							<a href="{{obj.url}}">{{obj.phenotype}}</a><br>
+						{% endfor %}
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	<ul class="pagination">
+		{% if genes.has_previous %}
+		<li><a href="?{% url_replace request.GET 'page' genes.previous_page_number %}">&laquo;</a></li>
+		{% endif %}
+		<li class="active"><a href="#">Page {{ genes.number }} of {{ genes.paginator.num_pages }}<span class="sr-only">(current)</span></a></li>
+		{% if genes.has_next %}
+		<li><a href="?{% url_replace request.GET 'page' genes.next_page_number %}">&raquo;</a></li>
+		{% endif %}
+	</ul>
+</div>
+{% endblock %}

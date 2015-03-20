@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block title %}Lightning: Fast Interaction with Personal Genome Project Data{% endblock %}
+
+{% block breadcrumbs %}
+	<li class="active"><a href="#">Home</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+	<div class="page-header">
+		<h1>Welcome to Lightning!</h1>
+	</div>
+	<p class="lead">This site is a work in progress and is open-source</p>
+	<p>Our goals include enabling fast analysis of population genetic data. We currently use whole genome sequence data obtained from the Personal Genome Project. These sequences have been converted losslessly to Compressed Genome Format, a developmental format enabling simple lift-over, annotation, visualization, and fast analysis of human genomes. </p>
+	<ul>
+		<li>To view the Tile Library, visit the <a href="{% url 'tile_library:statistics' %}">Tile Library Statistics</a> tab. </li>
+		<li>To view the population of 154 humans, search for genes, and view genes with Gene Review articles, visit the <a href="{% url 'slippy:slippymap' %}">Genome Map</a> tab (an explanation of the process of visualization will be coming soon). </li>
+		<li>To view individual human data, visit the <a href="{% url 'humans:individuals' %}">Individuals</a> Tab.</li>
+		<li>To view the UCSC genes loaded into Lightning, visit the <a href="{% url 'genes:names' %}">Known Genes</a> Tab.</li>
+	</ul>
+	<p>Our team is working on implementing Beacon for the Personal Genome Project Data. Visit <a href="http://lightning-dev4.curoverse.com/beacon">Beacon</a> to experiment with our preliminary implementation.</p>
+
+	<p> Known Genes data downloaded from the UCSC Human Genome Browser (hg19). Thanks to Hiram Clawson, Brooke Rhead, Pauline Fujita, Ann Zweig, Katrina Learned, Donna Karolchik and Robert Kuhn.  </p>
+</div>
+{% endblock %}
+

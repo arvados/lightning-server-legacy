@@ -1,0 +1,53 @@
+{% extends "positions_view_base.html" %}
+{# Expects window_title, breadcrumb_title, page_title, positions, tile_url, chromosome_int, chromosome, and request to be defined #}
+{% load staticfiles %}
+{% load statistics_filters %}
+{% load humanize %}
+
+{% block title %} {{ window_title }}{% endblock %}
+
+{% block breadcrumb_name %}{{ breadcrumb_title }}{% endblock %}
+
+
+{% block page_header %}
+	<div class="page-header">
+		<h1>{{ page_title }}</h1>
+	</div>
+{% endblock %}
+
+{% block show_upper_pagination %}{% if not positions or positions|length == 0 %}hidden{% endif %}{% endblock %}
+{% block show_table %}{% if not positions or positions|length == 0 %}hidden{%endif%}{% endblock %}
+
+{% if positions %}
+	{% block tbody %}
+			{% for position in positions %}
+				<tr>
+					<td><a href={% url tile_url position.tilename %}>{{ position }}</a></td>
+					<td>{{ position|get_num_position_annotations|intcomma }}</td>
+					<td>{{ position.num_var|intcomma }}</td>
+					<td>{{ position.avg_pos_spanned|floatformat }}</td>
+					<td>{{ position.max_pos_spanned|intcomma }}</td>
+					<td>{{ position|get_avg_num_tile_annotations|floatformat }}</td>
+					<td>{{ position|get_max_num_tile_annotations|intcomma }}</td>
+					<td>{{ position|get_reference_length|intcomma }}</td>
+					{% if position.num_var == 1 %}
+					<td>-</td>
+					<td>-</td>
+					<td>-</td>
+					{% else %}
+					<td>{{ position.min_len|intcomma }}</td>
+					<td>{{ position.avg_len|floatformat }}</td>
+					<td>{{ position.max_len|intcomma }}</td>
+					{% endif %}
+				</tr>
+	
+			{% empty %}
+				<div class="alert alert-info" role="alert">
+					No tiles are in this path. 
+				</div>
+			{% endfor %}
+	{% endblock %}
+{% endif %}
+
+{% block show_lower_pagination %}{% if not positions or positions|length == 0 %}hidden{%endif%}{% endblock %}
+

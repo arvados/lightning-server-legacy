@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block title %}Lightning: Fast Interaction with Personal Genome Project Data{% endblock %}
+
+{% block breadcrumbs %}
+	<li class="active"><a href="#">Help</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+	<div class="page-header">
+		<h1>Welcome to Lightning Help</h1>
+	</div>
+	<p class="lead">This site is a work in progress and is open-source. If you think something is missing, let us know (contact information is in the footer)</p>
+	<p>Our goals include enabling fast analysis of population genetic data. We currently use whole genome sequence data obtained from the Personal Genome Project. These sequences have been converted losslessly to Compressed Genome Format, a developmental format enabling simple lift-over, annotation, visualization, and fast analysis of human genomes. </p>
+	<h3>Why do some pages take a long time to load or give me timeout errors?</h3>
+	<p>This is a prototype implementation of Lightning, so some queries take longer than expected. We are working on improving implementation. </p>
+
+	<h3>Information in the database <small>(What can be searched in the <a href="{% url 'slippy:slippymap' %}">Genome Map</a>?)</small></h3>
+	<p>We downloaded the UCSC Genome Browser tables knownGene and kgXref from assembly hg19, generated on February 2009. When you search for a gene, we query kgXref.geneSymbol (a human readable alias) for that string. The information from these tables can be found in the <a href="{% url 'genes:names' %}">Known Genes</a> tab. Genes with GeneReview articles were determined by matching the genesymbols from the <a href="ftp://ftp.ncbi.nih.gov/pub/GeneReviews/">NCBI GeneReview ftp site</a> with genesymbols in kgXref.geneSymbol. This matches all but 35 genes with GeneReview articles. The genes that are missing are ATXN8, USH1H, RPS17, POMGNT2, KCNJ18, MT-ATP6, MT-RNR1, MT-CO1, MT-CO2, MT-CO3, MT-ND1, MT-ND2, MT-ND3, MT-ND4, MT-ND5, MT-ND6, MT-TL2, MT-TL1, MT-ND4L, MT-CYB, MT-TY, MT-TT, MT-TW, MT-TV, MT-TQ, MT-TR, MT-TM, MT-TH, MT-TK, MT-TD, MT-TF, MT-TA, MT-TC, MT-TS2, and MT-TS1.  </p>
+
+	<h3>I can only find Chromosomes 1-22, X, Y, and Mitochondrial DNA. Where are the others?</h3>
+	<p>We haven't loaded those chromosomes or their associated genes into the database. </p>
+
+	<h3>0-indexed or 1-indexed?</h3>
+	<p>Everything is 0-indexed.</p>
+
+	<h3>What is a path, step, tile, start tag and end tag?</h3>
+	<p>These terms are most likely to be found in <a href="{% url 'tile_library:statistics' %}">Tile Library Statistics</a>, though they are fundamental to the concept of Lightning. To efficiently store a human genome, we split the sequence into paths, which are further split into steps. Currently, a path is synonymous to a cytogenetic band, though this is not necessary. Each step has a 24-base tag on each end. Each tag sequence is unique to the genome. Furthermore, the start tag of step 2 is the end tag of step 1. Thus, the steps connect to each other.</p>
+	<p>Each path and step as defined above points to a unique sequence in the genome. This sequence is termed a tile. When a mutation is introduced into this sequence, it is termed a tile variant. </p>
+	<p>A manuscript describing the process of generating paths, steps, and converting a genome into tiles is currently being written. </p>
+
+
+	<h3>Why are the numbers in hex?</h3>
+	<p>Writing in hex conserves space.</p>
+
+	<h3>Why can't I view a particular gene in Tile Library format?</h3>
+	<p>That gene name matching genes in multiple non-overlapping regions of the genome. Loading all of them into the Tile Library view format can crash your browser. We are working on an implementation so that you can view one at a time or nearby ones in the Tile Library view format.</p>
+</div>
+{% endblock %}
+
