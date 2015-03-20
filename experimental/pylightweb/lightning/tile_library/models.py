@@ -347,8 +347,8 @@ class TileVariant(models.Model):
         def get_end(high_int, reference_to_tile_variant):
             for i, (locus_start, variant_start, locus_end, variant_end) in enumerate(reference_to_tile_variant):
                 if high_int <= locus_start:
-                    assert i > 0, "High int (%i) should never be smaller than the lowest tuple (%i, %i, %i, %i) in 'reference_to_tile_variant'" % (high_int, locus_start, variant_start, locus_end, variant_end)
-                    prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[i-1]
+                    index = max(i-1, 0)
+                    prev_locus_start, prev_variant_start, prev_locus_end, prev_variant_end = reference_to_tile_variant[index]
                     break
             if high_int > locus_start:
                 #print "Extends above the tile variant. High int (%i), return val (%i), reference_to_tile_variant %s" % (high_int, variant_end, str(reference_to_tile_variant))
@@ -428,6 +428,8 @@ class LanternTranslator(models.Model):
         tile_variant_string = basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_int))
         return "Variant %s (%i) is referred to by lantern as %s" % (tile_variant_string, self.tile_variant_int, self.lantern_name)
     get_string.short_description='Lantern Translation'
+    def __unicode__(self):
+        return self.get_string()
     class Meta:
         #Ensures ordering by tilename
         ordering = ['lantern_name']

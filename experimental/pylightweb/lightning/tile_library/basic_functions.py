@@ -130,7 +130,7 @@ def get_non_spanning_cgf_string(cgf_str):
     matching = re.match(LANTERN_NAME_FORMAT_STRING, cgf_str)
     if matching == None:
         raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
-    return matching.group(1)
+    return cgf_str.split('+')[0]
 def get_number_of_tiles_spanned_from_cgf_string(cgf_str):
     """
         Returns integer corresponding to the number of positions spanned by a tilevariant encoded

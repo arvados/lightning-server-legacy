@@ -156,9 +156,11 @@ def get_sub_population_sequences_over_position_range(list_of_humans, first_posit
     human_names = get_population_names_and_check_lantern_version()
     for human in list_of_humans:
         assert human in human_names, "%s is not loaded into this server" % (human)
-    position_hex_string = fns.get_position_string_from_position_int(first_position_int)
-    last_position_hex_string = fns.get_position_string_from_position_int(last_position_int)
-    assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string, last_position_hex_string)
+    version, path, step = fns.get_position_strings_from_position_int(first_position_int)
+    position_hex_string = string.join([path, version, step], sep='.')
+    last_v, last_p, last_s = fns.get_position_strings_from_position_int(last_position_int)
+    assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string,
+        string.join([path,verison,step], sep='.'))
     length_to_retrieve = hex(last_position_int - first_position_int + 1).lstrip('0x')
     response = make_sample_position_variant_query(position_hex_string+"+"+length_to_retrieve, human_subsection=list_of_humans)
     assert "success" == response['Type'], "Lantern-communication failure: " + response['Message']

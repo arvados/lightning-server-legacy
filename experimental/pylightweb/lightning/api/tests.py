@@ -18,36 +18,39 @@ import tile_library.test_scripts.complicated_library as build_library
 import tile_library.test_scripts.python_lantern as python_lantern
 
 curr_debugging=False
-multiple_assemblies_known_to_fail=True
+spanning_assemblies_known_to_fail=True
+
+#### TODO: Check different assembly
+#### TODO: Implement functionality for assembly with spanning tiles
 
 population = {
     'person1':[
-        "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG",
-        "ACGGCAGTAGTTTTGCCGCTCGGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG"
+        "ACGGCAGTAGTTTTGCCGCTCGGT C    G  T    CAGAATGTTTGGAGGGCGGTAC                                  GCACCGGAACTTGTGTTTGTGTG TGTG GTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGT T    A       CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC    CGCACCGGAACTTGTGTTTGTGTG TGTG GTCGCCCACTACGCACGTTATATG"
     ],
     'person2':[
-        "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG",
-        "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG"
+        "ACGGCAGTAGTTTTGCCGCTCGGT         TTTT CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTT TGTG GTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGT T    G  T    CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTT TGTG GTCGCCCACTACGCACGTTATATG"
     ],
     'person3':[
-        "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG",
-        "ACGGCAGTAGTTTTGCCGCTCGGTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG"
+        "ACGGCAGTAGTTTTGCCGCTCGGT T    TT T    CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC    CGCACCGGAACTTGTGTTTGTGTG TGTG GTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGT         T    CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTT TGTG GTCGCCCACTACGCACGTTATATG"
     ],
     'person4':[
-        "ACGGCAGTAGTTTTGCCGCTCGGTAAACGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG",
-        "ACGGCAGTAGTTTTGCCGCTCGGTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG"
+        "ACGGCAGTAGTTTTGCCGCTCGGT AAAC G  T    CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTG TGTG GTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGT C    G  A    CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTG TGTG GTCGCCCACTACGCACGTTATATG"
     ],
     'person5':[
-        "ACGGCAGTAGTTTTGCCGCTCGGTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG",
-        "ACGGCAGTAGTTTTGCCGCTCGGTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG"
+        "ACGGCAGTAGTTTTGCCGCTCGGT C    A       CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTT TGTG GTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGT C    G       CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC    CGCACCGGAACTTGTGTTTGTGTG TGTG GTCGCCCACTACGCACGTTATATG"
     ],
     'person6':[
-        "ACGGCAGTAGTTTTGCCGCTCGGTCGTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG",
-        "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG"
+        "ACGGCAGTAGTTTTGCCGCTCGGT C    G  TTTT CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTG TGTG GTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGT C    G  T    CAGAATGTTTGGAGGGCGGTAC      AGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTG TGTG GTCGCCCACTACGCACGTTATATG"
     ],
     'person7':[
-        "ACGGCAGTAGTTTTGCCGCTCGGCGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATG",
-        "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGATCGCCCACTACGCACGTTATATG"
+        "ACGGCAGTAGTTTTGCCGCTCGG  C    G  T    CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC AA CGCACCGGAACTTGTGTTTGTGTT TGTG GTCGCCCACTACGCACGTTATATG",
+        "ACGGCAGTAGTTTTGCCGCTCGGT T    G  T    CAGAATGTTTGGAGGGCGGTACG GC TAGAGATATCACCCTCTGCTACTC    CGCACCGGAACTTGTGTTTGTGTG TGTG ATCGCCCACTACGCACGTTATATG"
     ]
 }
 
@@ -67,8 +70,6 @@ def tearDownModule():
     server_process.terminate()
     server_process.join()
     del(server_process)
-
-#### TODO: Implement and test API to get accepted/loaded values (assembly, chromosome, valid integers)
 
 @skipIf(curr_debugging, "Prevent noise")
 class TestBetweenLoci(TestCase):
@@ -741,11 +742,41 @@ class TestBetweenLoci(TestCase):
     def test_query_entire_first_path_and_first_base_of_next_path(self):
         response = self.client.get(reverse('api:pop_between_loci'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'lower_base':0, 'upper_base':131})
         content = json.loads(response.content)
+        checking = {
+            'person1':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person2':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person3':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person4':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTAAACGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person5':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person6':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person7':[
+                "ACGGCAGTAGTTTTGCCGCTCGGCGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGATCGCCCACTACGCACGTTATATGA"
+            ]
+        }
         self.assertEqual(len(content), len(population))
         for person in content:
             person_name = person['human_name']
             for i, phase in enumerate(person['sequence']):
-                self.assertEqual(phase, population[person_name][i]+'A')
+                self.assertEqual(phase, checking[person_name][i])
     def test_query_different_chromosome(self):
         response = self.client.get(reverse('api:pop_between_loci'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_2, 'lower_base':0, 'upper_base':1})
         content = json.loads(response.content)
@@ -755,8 +786,7 @@ class TestBetweenLoci(TestCase):
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, 'C')
 
-#### TODO: Check different assembly
-@skipIf(multiple_assemblies_known_to_fail, "Assembly 18 contains spanning tiles as the default")
+@skipIf(spanning_assemblies_known_to_fail, "Assembly 18 contains spanning tiles as the default")
 class TestBetweenLociAssembly18(TestCase):
     def setUp(self):
         build_library.make_entire_library(multiple_assemblies=True)
@@ -1367,7 +1397,714 @@ class TestBetweenLociAssembly18(TestCase):
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, 'C')
 
-class TestBetweenLociDevelopment(TestCase):
+@skipIf(curr_debugging, "Prevent noise")
+class TestAroundLocus(TestCase):
+    def setUp(self):
+        build_library.make_entire_library(multiple_assemblies=True)
+        build_library.make_lantern_translators()
+    def test_failure_non_integer_assembly(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':'fail', 'chromosome':CHR_1, 'target_base':25})
+        self.assertEqual(response.status_code, 400)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('assembly', content)
+    @skipIf(0 in SUPPORTED_ASSEMBLY_CHOICES, "Testing behavior if assembly integer not in choices, but 0 is in choices")
+    def test_failure_assembly_not_in_ASSEMBLY_CHOICES(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':0, 'chromosome':CHR_1, 'target_base':25})
+        self.assertEqual(response.status_code, 400)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('assembly', content)
+    def test_failure_assembly_not_loaded_in_database(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_16, 'chromosome':CHR_1, 'target_base':25})
+        self.assertEqual(response.status_code, 404)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('assembly', content)
+    def test_failure_non_integer_chromosome(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':'fail', 'target_base':25})
+        self.assertEqual(response.status_code, 400)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('chromosome', content)
+    @skipIf(0 in CHR_CHOICES, "Testing behavior if chromosome integer not in choices, but 0 is in choices")
+    def test_failure_chromosome_not_in_CHROMOSOME_CHOICES(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':0, 'target_base':25})
+        self.assertEqual(response.status_code, 400)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('chromosome', content)
+    def test_failure_chromosome_not_loaded_in_database(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_3, 'target_base':25})
+        self.assertEqual(response.status_code, 404)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('chromosome', content)
+    def test_failure_non_integer_target_base(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':'fail'})
+        self.assertEqual(response.status_code, 400)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('target_base', content)
+    def test_failure_too_low_target_base(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':-1})
+        self.assertEqual(response.status_code, 404)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('target_base-number_around', content)
+    def test_failure_too_low_target_base_with_number_around(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':0})
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':0, 'number_around':1})
+        self.assertEqual(response.status_code, 404)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('target_base-number_around', content)
+    def test_failure_too_high_target_base(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':260})
+        self.assertEqual(response.status_code, 404)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('target_base+number_around', content)
+    def test_failure_too_high_target_base_with_number_around(self):
+        #Requires defining a lot more variables for path 1, so not going to call it right now
+        #response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':259})
+        #self.assertEqual(response.status_code, 200)
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':259, 'number_around':1})
+        self.assertEqual(response.status_code, 404)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('target_base+number_around', content)
+    def test_failure_non_integer_number_around(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':25, 'number_around':'fail'})
+        self.assertEqual(response.status_code, 400)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('number_around', content)
+    def test_failure_negative_number_around(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':25, 'number_around':-1})
+        self.assertEqual(response.status_code, 400)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), 1)
+        self.assertIn('number_around', content)
+    def test_query_in_only_tile_0(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':24})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["C", "T"],
+            'person2':["", "T"],
+            'person3':["T", ""],
+            'person4':["AAAC", "C"],
+            'person5':["C", "C"],
+            'person6':["C", "C"],
+            'person7':["C", "T"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_only_tile_0_not_touching_tags(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':25})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':['G', 'A'],
+            'person2':['', 'G'],
+            'person3':['TT', ''],
+            'person4':['G', 'G'],
+            'person5':['A', 'G'],
+            'person6':['G', 'G'],
+            'person7':['G', 'G']
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_only_tile_0_explicit_0_indexing(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':24, 'indexing':0})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["C", "T"],
+            'person2':["", "T"],
+            'person3':["T", ""],
+            'person4':["AAAC", "C"],
+            'person5':["C", "C"],
+            'person6':["C", "C"],
+            'person7':["C", "T"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_only_tile_0_explicit_1_indexing(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':25, 'indexing':1})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["C", "T"],
+            'person2':["", "T"],
+            'person3':["T", ""],
+            'person4':["AAAC", "C"],
+            'person5':["C", "C"],
+            'person6':["C", "C"],
+            'person7':["C", "T"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_only_tile_1(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':51})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["", "C"],
+            'person2':["C", "C"],
+            'person3':["C", "C"],
+            'person4':["C", "C"],
+            'person5':["C", "C"],
+            'person6':["C", ""],
+            'person7':["C", "C"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_only_tile_2(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':76})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["", ""],
+            'person2':["A", "A"],
+            'person3':["", "A"],
+            'person4':["A", "A"],
+            'person5':["A", ""],
+            'person6':["A", "A"],
+            'person7':["A", ""]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_only_tile_3(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':103, 'number_around':1})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, "TGT")
+    def test_query_in_tile_0_hits_start_tag(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':24, 'number_around':1})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["TCG", "TTA"],
+            'person2':["TT", "TTG"],
+            'person3':["TTT", "TT"],
+            'person4':["TAAACG", "TCG"],
+            'person5':["TCA", "TCG"],
+            'person6':["TCG", "TCG"],
+            'person7':["GCG", "TTG"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_last_tile_in_path_hits_end_tag(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':105, 'number_around':1})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["TGG", "TGG"],
+            'person2':["TGG", "TGG"],
+            'person3':["TGG", "TGG"],
+            'person4':["TGG", "TGG"],
+            'person5':["TGG", "TGG"],
+            'person6':["TGG", "TGG"],
+            'person7':["TGG", "TGA"],
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tile_0_hits_start_and_end_tag(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':24, 'number_around':2})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["GTCGT", "GTTAC"],
+            'person2':["GTTT", "GTTGT"],
+            'person3':["GTTTT", "GTTC"],
+            'person4':["GTAAACGT", "GTCGA"],
+            'person5':["GTCAC", "GTCGC"],
+            'person6':["GTCGT", "GTCGT"],
+            'person7':["GGCGT", "GTTGT"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tile_1_hits_start_and_end_tag(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':50, 'number_around':2})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["ACGC", "CGGCT"],
+            'person2':["CGGCT", "CGGCT"],
+            'person3':["CGGCT", "CGGCT"],
+            'person4':["CGGCT", "CGGCT"],
+            'person5':["CGGCT", "CGGCT"],
+            'person6':["CGGCT", "ACAG"],
+            'person7':["CGGCT", "CGGCT"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tile_2_hits_start_and_end_tag(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':76, 'number_around':2}) #CAAC
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["ACGC", "TCCG"],
+            'person2':["TCAAC", "TCAAC"],
+            'person3':["TCCG", "TCAAC"],
+            'person4':["TCAAC", "TCAAC"],
+            'person5':["TCAAC", "TCCG"],
+            'person6':["TCAAC", "TCAAC"],
+            'person7':["TCAAC", "TCCG"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tile_3_hits_start_and_end_tag(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':103, 'number_around':3})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':["TGTGTGG", "TGTGTGG"],
+            'person2':["TTTGTGG", "TTTGTGG"],
+            'person3':["TGTGTGG", "TTTGTGG"],
+            'person4':["TGTGTGG", "TGTGTGG"],
+            'person5':["TTTGTGG", "TGTGTGG"],
+            'person6':["TGTGTGG", "TGTGTGG"],
+            'person7':["TTTGTGG", "TGTGTGA"]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tiles_0_and_1(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':37, 'number_around':14}) #T | CG | TCAGAATGTTTGGAGGGCGGTACG | G
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "TCGTCAGAATGTTTGGAGGGCGGTACGCA",
+                "GTTACAGAATGTTTGGAGGGCGGTACGGC"
+            ],
+            'person2':[
+                "TTTTCAGAATGTTTGGAGGGCGGTACGGC",
+                "TTGTCAGAATGTTTGGAGGGCGGTACGGC"
+            ],
+            'person3':[
+                "TTTTCAGAATGTTTGGAGGGCGGTACGGC",
+                "GGTTCAGAATGTTTGGAGGGCGGTACGGC"
+            ],
+            'person4':[
+                "ACGTCAGAATGTTTGGAGGGCGGTACGGC",
+                "TCGACAGAATGTTTGGAGGGCGGTACGGC"
+            ],
+            'person5':[
+                "GTCACAGAATGTTTGGAGGGCGGTACGGC",
+                "GTCGCAGAATGTTTGGAGGGCGGTACGGC"
+            ],
+            'person6':[
+                "TTTTCAGAATGTTTGGAGGGCGGTACGGC",
+                "TCGTCAGAATGTTTGGAGGGCGGTACAGA"
+            ],
+            'person7':[
+                "GCGTCAGAATGTTTGGAGGGCGGTACGGC",
+                "TTGTCAGAATGTTTGGAGGGCGGTACGGC"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tiles_1_and_2(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':64, 'number_around':13}) #C | TAGAGATATCACCCTCTGCTACTC | AA
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "TGGAGGGCGGTACGCACCGGAACTTG",
+                "CTAGAGATATCACCCTCTGCTACTCCG"
+            ],
+            'person2':[
+                "CTAGAGATATCACCCTCTGCTACTCAA",
+                "CTAGAGATATCACCCTCTGCTACTCAA"
+            ],
+            'person3':[
+                "CTAGAGATATCACCCTCTGCTACTCCG",
+                "CTAGAGATATCACCCTCTGCTACTCAA"
+            ],
+            'person4':[
+                "CTAGAGATATCACCCTCTGCTACTCAA",
+                "CTAGAGATATCACCCTCTGCTACTCAA"
+            ],
+            'person5':[
+                "CTAGAGATATCACCCTCTGCTACTCAA",
+                "CTAGAGATATCACCCTCTGCTACTCCG"
+            ],
+            'person6':[
+                "CTAGAGATATCACCCTCTGCTACTCAA",
+                "ACAGAGATATCACCCTCTGCTACTCAA"
+            ],
+            'person7':[
+                "CTAGAGATATCACCCTCTGCTACTCAA",
+                "CTAGAGATATCACCCTCTGCTACTCCG"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tiles_2_and_3(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':91, 'number_around':15}) #AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | G
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "TACGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "TCCGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person2':[
+                "AACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "AACGCACCGGAACTTGTGTTTGTGTTTGTGG"
+            ],
+            'person3':[
+                "TCCGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "AACGCACCGGAACTTGTGTTTGTGTTTGTGG"
+            ],
+            'person4':[
+                "AACGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "AACGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person5':[
+                "AACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "TCCGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person6':[
+                "AACGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "AACGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person7':[
+                "AACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "TCCGCACCGGAACTTGTGTTTGTGTGTGTGA"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_over_paths_simplest(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':130, 'number_around':1}) #G || AG
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, "GAG")
+    def test_query_in_tiles_0_1_and_2(self):
+        #T | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':50, 'number_around':27})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "GTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTG",
+                "GTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCG"
+            ],
+            'person2':[
+                "TTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAA",
+                "TTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAA"
+            ],
+            'person3':[
+                "TTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCG",
+                "GGTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAA"
+            ],
+            'person4':[
+                "ACGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAA",
+                "TCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAA"
+            ],
+            'person5':[
+                "GTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAA",
+                "GTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCG"
+            ],
+            'person6':[
+                "TTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAA",
+                "GTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACG"
+            ],
+            'person7':[
+                "GCGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAA",
+                "TTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCG"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tiles_1_2_and_3(self):
+        #GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | G
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':78, 'number_around':28})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "GGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "CGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person2':[
+                "GCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "GCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG"
+            ],
+            'person3':[
+                "CGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "GCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG"
+            ],
+            'person4':[
+                "GCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "GCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person5':[
+                "GCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "CGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person6':[
+                "GCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "TACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person7':[
+                "GCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "CGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGA"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tiles_2_3_and_next_path(self):
+        #A | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG || AG
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':104, 'number_around':27})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "ACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "CCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person2':[
+                "ACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "ACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person3':[
+                "CCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "ACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person4':[
+                "ACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "ACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person5':[
+                "ACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "CCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person6':[
+                "ACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "ACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person7':[
+                "ACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "CCGCACCGGAACTTGTGTTTGTGTGTGTGATCGCCCACTACGCACGTTATATGAG"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tiles_0_1_2_and_3(self):
+        #GT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | G
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':64, 'number_around':42})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "TAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCA",
+                "GGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTC"
+            ],
+            'person2':[
+                "TTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "GTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG"
+            ],
+            'person3':[
+                "TTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTC",
+                "CGGTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG"
+            ],
+            'person4':[
+                "AACGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "GTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person5':[
+                "GGTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "GGTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTC"
+            ],
+            'person6':[
+                "GTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGG",
+                "CTCGGTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGG"
+            ],
+            'person7':[
+                "GGCGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGG",
+                "GTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGATC"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tiles_1_2_3_and_next_path(self):
+        #C | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACT T GTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG || AG
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':91, 'number_around':40})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "GGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "GGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person2':[
+                "CTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "CTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person3':[
+                "GGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "CTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person4':[
+                "CTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "CTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person5':[
+                "CTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "GGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person6':[
+                "CTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "ACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person7':[
+                "CTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "GGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGATCGCCCACTACGCACGTTATATGAG"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_in_tiles_0_1_2_3_and_next_path(self):
+        #T | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG || A
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':76, 'number_around':54})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        checking = {
+            'person1':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAGA",
+                "GGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person2':[
+                "TTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "GTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person3':[
+                "TTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG",
+                "CGGTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person4':[
+                "AACGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA",
+                "GTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person5':[
+                "GGTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "GGTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAG"
+            ],
+            'person6':[
+                "GTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA",
+                "CTCGGTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person7':[
+                "GGCGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "GTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGATCGCCCACTACGCACGTTATATGAG"
+            ]
+        }
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_entire_first_path_and_some_of_next_path(self):
+        #   AGAGAGCTGGCAGA
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':65, 'number_around':65})
+        content = json.loads(response.content)
+        checking = {
+            'person1':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAGAGAGCTGGCAGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAGA"
+            ],
+            'person2':[
+                "CGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person3':[
+                "CGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person4':[
+                "GCAGTAGTTTTGCCGCTCGGTAAACGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person5':[
+                "ACGGCAGTAGTTTTGCCGCTCGGTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGAGA"
+            ],
+            'person6':[
+                "GCAGTAGTTTTGCCGCTCGGTCGTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATGA"
+            ],
+            'person7':[
+                "ACGGCAGTAGTTTTGCCGCTCGGCGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTTTGTGGTCGCCCACTACGCACGTTATATGA",
+                "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTGTGTGATCGCCCACTACGCACGTTATATGAGA"
+            ]
+        }
+        self.assertEqual(len(content), len(population))
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+
+                self.assertEqual(phase, checking[person_name][i])
+    def test_query_different_chromosome(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_2, 'target_base':0})
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                self.assertEqual(phase, 'C')
+
+class TestDevelopmentSandbox(TestCase):
     def setUp(self):
         build_library.make_entire_library(multiple_assemblies=True)
         build_library.make_lantern_translators()

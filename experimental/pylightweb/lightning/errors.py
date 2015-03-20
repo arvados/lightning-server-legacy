@@ -13,6 +13,12 @@ class LocusOutOfRangeException(Exception):
     def __str__(self):
         return repr(self.value)
 
+class EndOfChromosomeError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class InvalidGenomeError(Exception):
     def __init__(self, value):
         self.value = value

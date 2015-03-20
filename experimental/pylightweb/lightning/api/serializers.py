@@ -53,6 +53,10 @@ class PopulationQuerySerializer(serializers.Serializer):
     indexing = serializers.ChoiceField(choices=INDEX_CHOICES, default=0)
     target_base = serializers.IntegerField()
     number_around = serializers.IntegerField(default=0)
+    def validate_number_around(self, value):
+        if value < 0:
+            raise serializers.ValidationError("number_around must be greater than or equal to 0")
+        return value
 
 class PopulationRangeQuerySerializer(serializers.Serializer):
     INDEX_CHOICES = (

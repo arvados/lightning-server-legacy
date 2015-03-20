@@ -103,7 +103,6 @@ population_index['person7'][1][CHR_PATH_LENGTHS[CHR_1]] = [6]
 def sample_position_variant(sub_pop, position_list):
     result = {}
     for person in sub_pop:
-        #print person, position_list
         result[person] = [[] for phase in population[person]]
         for position in position_list:
             if '-' in position:
@@ -111,6 +110,7 @@ def sample_position_variant(sub_pop, position_list):
             path, version, step = position.split('+')[0].split('.')
             position_int = int(version+path+step,16)
             version, path, step = basic_fns.get_position_ints_from_position_int(position_int)
+
             start_index = step
             if len(position.split('+')) > 1:
                 end_index = start_index + int(position.split('+')[1],16) - 1

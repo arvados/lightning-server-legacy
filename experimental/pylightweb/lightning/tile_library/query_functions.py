@@ -83,9 +83,9 @@ def get_bases_from_lantern_name(lantern_name):
     Can raise LanternTranslator.DoesNotExist if lantern_name is not in the database
     Can raise LanternTranslator.DegradedVariantError if the lantern translator has problems re-retrieving the variant data
     """
-    lantern_name = get_non_spanning_cgf_string(lantern_name)
-    lantern_translation = LanternTranslator.objects.get(lantern_name=lantern_name)
+    lantern_name = fns.get_non_spanning_cgf_string(lantern_name)
     try:
+        lantern_translation = LanternTranslator.objects.get(lantern_name=lantern_name)
         if lantern_translation.tile_library_host == "":
             #In our library!
             bases = TileVariant.objects.get(tile_variant_int=int(lantern_translation.tile_variant_int)).sequence.upper()
@@ -97,6 +97,8 @@ def get_bases_from_lantern_name(lantern_name):
             bases = tile_variant['sequence'].upper()
     except (TileVariant.DoesNotExist, requests.exceptions.RequestException) as e:
         raise LanternTranslator.DegradedVariantError("Translator %s has degraded. %s" % (lantern_name, str(e)))
+    except LanternTranslator.DoesNotExist:
+        return ""
     return bases
 
 def get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(tile_variant, queried_low_int, queried_high_int, assembly):
@@ -148,12 +150,13 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
         lower_tile_position_int = int(variant.tile_id)
         if variant.num_positions_spanned != 1:
             lower_locus = TileLocusAnnotation.objects.filter(assembly_int=assembly).get(tile_position_id=lower_tile_position_int)
-            start_locus_int = int(lower_locus.begin_int)
+            start_locus_int = int(lower_locus.start_int)
             upper_tile_position_int = lower_tile_position_int + var.num_positions_spanned - 1
             upper_locus = TileLocusAnnotation.objects.filter(assembly_int=assembly).get(tile_position_id=upper_tile_position_int)
             end_locus_int = int(upper_locus.end_int)
         keys = [(start_locus_int, target_base), (target_base, target_base+1), (target_base+1, end_locus_int)]
         for i, translator in enumerate(center_cgf_translator):
+            #print center_cgf_translator, keys, i
             cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, keys[i][0], keys[i][1], start_locus_int, end_locus_int)
             if cgf_str in translator:
                 assert bases == translator[cgf_str], "Conflicting cgf_string-base pairing, cgf_str: %s, translator: %s" % (cgf_str,
@@ -162,7 +165,7 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
         return center_cgf_translator
 
     num_locuses = locuses.count()
-    cgf_translator = [{} for i in range(num_locuses)]
+    cgf_translator = {}
     center_cgf_translator = [{}, {}, {}]
 
     for i, locus in enumerate(locuses):
@@ -171,7 +174,7 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
         end_locus_int = int(locus.end_int)
         low_variant_int = fns.convert_position_int_to_tile_variant_int(tile_position_int)
         high_variant_int = fns.convert_position_int_to_tile_variant_int(tile_position_int+1)-1
-        tile_variants = TileVariant.objects.filter(tile_variant_name__range=(low_variant_int, high_variant_int)).all()[:]
+        tile_variants = TileVariant.objects.filter(tile_variant_int__range=(low_variant_int, high_variant_int)).all()[:]
         if i == center_index:
             spanning_tile_variants = get_tile_variants_spanning_into_position(tile_position_int)
             for var in spanning_tile_variants:
@@ -180,7 +183,13 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
             if crosses_center_index(var, i, center_index, max_num_spanned):
                 center_cgf_translator = manage_center_cgfs(center_cgf_translator, var, start_locus_int, end_locus_int)
             else:
-                cgf_str, bases = get_tile_variant_cgf_str_and_all_bases(var)
-                assert cgf_str not in cgf_translator[i], "Repeat cgf_string (%s) in position %s" % (cgf_str, fns.get_position_string_from_position_int(tile_position_int))
-                cgf_translator[i][cgf_str] = bases
+                try:
+                    cgf_str, bases = get_tile_variant_lantern_name_and_all_bases(var)
+                except LanternTranslator.DoesNotExist:
+                    cgf_str = ''
+                    bases = ''
+                if cgf_str != '':
+                    if cgf_str in cgf_translator:
+                        raise CGFTranslatorError("Repeat cgf_string (%s) in non-center cgf_translator" % (cgf_str))
+                    cgf_translator[cgf_str] = bases
     return center_cgf_translator, cgf_translator
