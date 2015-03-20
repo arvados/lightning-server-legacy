@@ -6,9 +6,7 @@ from django.core.urlresolvers import reverse
 
 from api_gui.forms import AroundLocusForm, BetweenLociForm
 from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant
-import tile_library.basic_functions as basic_fns
-import tile_library.functions as fns
-import tile_library.query_functions as query_fns
+from tile_library.constants import SUPPORTED_ASSEMBLY_CHOICES, CHR_CHOICES
 
 def home(request):
     """
@@ -22,8 +20,8 @@ def home(request):
             return HttpResponseRedirect(request.build_absolute_uri(reverse('population_sequence_query:around_locus_form')+'?'+GET_url_section))
         elif 'lower_base' in data:
             return HttpResponseRedirect(request.build_absolute_uri(reverse('population_sequence_query:between_loci_form')+'?'+GET_url_section))
-    assembly_converter = dict(TileLocusAnnotation.SUPPORTED_ASSEMBLY_CHOICES)
-    chrom_converter = dict(TileLocusAnnotation.CHR_CHOICES)
+    assembly_converter = dict(SUPPORTED_ASSEMBLY_CHOICES)
+    chrom_converter = dict(CHR_CHOICES)
     possible_assemblies_int = TileLocusAnnotation.objects.order_by(
         'assembly').distinct('assembly').values_list('assembly', flat=True)
     possible_chromosomes_int = TileLocusAnnotation.objects.order_by(

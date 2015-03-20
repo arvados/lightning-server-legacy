@@ -3,8 +3,8 @@
 #    name1, name2 = name.split('/')
 #    SUPPORTED_ASSEMBLIES[name1] = assembly_int
 #    SUPPORTED_ASSEMBLIES[name2] = assembly_int
-SUPPORTED_ASSEMBLIES = {'hg19':19, 'GRCh37':19}
 
+SUPPORTED_ASSEMBLIES = {'hg19':19, 'GRCh37':19}
 
 FILENAME_TO_PATH = {
     "chr10_band0_s0_e3000000.fj" : "1c6",

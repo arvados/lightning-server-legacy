@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='tilevariant',
             name='end_tag',
-            field=models.CharField(default=b'', max_length=24, blank=True, validators=[tile_library.models.validate_variant_tag]),
+            field=models.CharField(default=b'', max_length=24, blank=True),
             preserve_default=True,
         ),
         migrations.AlterField(
@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='tilevariant',
             name='start_tag',
-            field=models.CharField(default=b'', max_length=24, blank=True, validators=[tile_library.models.validate_variant_tag]),
+            field=models.CharField(default=b'', max_length=24, blank=True),
             preserve_default=True,
         ),
     ]

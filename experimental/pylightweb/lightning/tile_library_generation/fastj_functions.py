@@ -5,7 +5,29 @@ Needs GLOBAL PATH
 from tile_library_generation.fastj_objects import TileObject, LightTileObject
 from tile_library_generation.constants import SUPPORTED_ASSEMBLIES, CHR_CHOICES
 from tile_library.models import TAG_LENGTH, TileLocusAnnotation
+from tile_library.constants import NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, \
+    NUM_HEX_INDEXES_FOR_STEP, NUM_HEX_INDEXES_FOR_VARIANT_VALUE, NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
 from errors import NoteParseError
+
+def copen( filename, mode ):
+    if filename[-3:] == ".gz":
+        return gzip.open( filename, mode )
+    return open( filename, mode )
+
+def write_line(inp_list, out, num_to_keep=None):
+    thingsToJoin = []
+    for i, foo in enumerate(inp_list):
+        if num_to_keep == None or i < num_to_keep:
+            if not foo and type(foo) == str:
+                thingsToJoin.append('""')
+            else:
+                thingsToJoin.append(str(foo))
+    thingsToJoin[-1] += '\n'
+    out.write(string.join(thingsToJoin, sep=','))
+
+def psql_parsable_json_dump(item_to_convert):
+    middle = json.dump(item_to_convert)
+    return re.sub('\"', '\\'+'\"', middle)
 
 def build_tile_library(collection_reader, library_input_filename, loci_input_filename, sequence_input_filename, unpaired_cgf_string_library_filename, global_path):
     """
@@ -13,6 +35,7 @@ def build_tile_library(collection_reader, library_input_filename, loci_input_fil
         library_input_file format:
            tile_var_period_sep, tile_variant_name, tile_int, population_size, md5sum, cgf_string
 
+        Assumes only one assembly?
         loci_input_file format:
            tile_int, assembly, chromosome, locus_beg, locus_end, chrom_name
 
@@ -75,12 +98,14 @@ def build_tile_library(collection_reader, library_input_filename, loci_input_fil
 
     return tile_library
 
+#GenomeVariants are expected to fade out and be replaced by annotations directly to tile variants in the tile library
+#This data structure is not built to span multiple studies
 def build_genome_variants(genome_variants_filename, global_path):
     """
     Input Files:
         genome_variants_file format:
-           genome_variant_id, start_tile_position, start_increment, end_increment, end_tile_position, names (aliases), reference_bases, \
-                alternate_bases, info (in psql-readable json), created, last_modified
+           genome_variant_id, assembly_int, chrom_int, locus_begin_int, locus_end_int, reference_bases, alternate_bases, \
+                names (aliases), info (in psql-readable json), created, last_modified
 
     Return values:
         HG19_GENOME_VARIANTS[(chrom_name, locus_beg_int, locus_end_int, ref_seq, var_seq)] = genome_variant_id
