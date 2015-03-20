@@ -24,7 +24,10 @@ type TileHeader struct {
   Md5Sum string `json:"md5sum"`
   Locus []map[ string ]string `json:"locus"`
   N int `json:"n"`
-  CopyNum int `json:"copy"`
+
+  NocallCount int `json:"nocallCount"`
+  StartTile bool `json:"startTile"`
+  endTile bool `json:"endTile"`
 
   StartTag string `json:"startTag"`
   EndTag string `json:"endTag"`
