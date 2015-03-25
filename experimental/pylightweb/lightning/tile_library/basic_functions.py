@@ -4,11 +4,18 @@
 import string
 import re
 
+from django.conf import settings
+
 import tile_library.human_readable_functions as human_readable_fns
-from tile_library.constants import NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_VERSION, \
-    NUM_HEX_INDEXES_FOR_STEP, NUM_HEX_INDEXES_FOR_VARIANT_VALUE, \
-    LANTERN_NAME_FORMAT_STRING, CHR_PATH_LENGTHS, CHR_CHOICES, \
-    CHR_NONEXISTANT
+
+NUM_HEX_INDEXES_FOR_PATH = settings.NUM_HEX_INDEXES_FOR_PATH
+NUM_HEX_INDEXES_FOR_VERSION = settings.NUM_HEX_INDEXES_FOR_VERSION
+NUM_HEX_INDEXES_FOR_STEP = settings.NUM_HEX_INDEXES_FOR_STEP
+NUM_HEX_INDEXES_FOR_VARIANT_VALUE = settings.NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+LANTERN_NAME_FORMAT_STRING = settings.LANTERN_NAME_FORMAT_STRING
+CHR_PATH_LENGTHS = settings.CHR_PATH_LENGTHS
+CHR_CHOICES = settings.CHR_CHOICES
+CHR_NONEXISTANT = settings.CHR_NONEXISTANT
 
 hex_version_and_path_length = NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH
 hex_tile_length = NUM_HEX_INDEXES_FOR_VERSION+NUM_HEX_INDEXES_FOR_PATH+NUM_HEX_INDEXES_FOR_STEP
@@ -126,11 +133,11 @@ def get_non_spanning_cgf_string(cgf_str):
         Raises TypeError and ValueError
     """
     if type(cgf_str) != str and type(cgf_str) != unicode:
-        raise TypeError("Requires %s to be type string or unicode" % (cgf_str))
+        raise TypeError("Requires %s to be type string or unicode" % (cgf_str)) #Never raised in test functions
     matching = re.match(LANTERN_NAME_FORMAT_STRING, cgf_str)
     if matching == None:
-        raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str))
-    return cgf_str.split('+')[0]
+        raise ValueError("%s does not match expected regex of cgf_string." % (cgf_str)) #Never raised
+    return str(cgf_str.split('+')[0])
 def get_number_of_tiles_spanned_from_cgf_string(cgf_str):
     """
         Returns integer corresponding to the number of positions spanned by a tilevariant encoded
@@ -158,12 +165,12 @@ def get_min_position_and_tile_variant_from_path_int(path_int, path_version=0):
         raise TypeError("Path integer expected to be of type int.")
     if path_int < 0:
         raise ValueError("Path integer expected to be greater than 0.")
-    if path_int > CHR_PATH_LENGTHS[-1]:
+    if path_int > settings.CHR_PATH_LENGTHS[-1]:
         raise ValueError("Path integer expected to be smaller than the maximum number of paths.")
-    name = hex(path_version).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_VERSION)+ \
-           hex(path_int).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)+ \
-           "".zfill(NUM_HEX_INDEXES_FOR_STEP)
-    varname = name + "".zfill(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+    name = hex(path_version).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_VERSION)+ \
+           hex(path_int).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_PATH)+ \
+           "".zfill(settings.NUM_HEX_INDEXES_FOR_STEP)
+    varname = name + "".zfill(settings.NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
     name = int(name, 16)
     varname = int(varname, 16)
     return name, varname

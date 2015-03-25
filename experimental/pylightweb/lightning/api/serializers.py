@@ -1,7 +1,7 @@
 from rest_framework import serializers
+from django.conf import settings
 
 from tile_library.models import TileLocusAnnotation, TileVariant
-from tile_library.constants import SUPPORTED_ASSEMBLY_CHOICES, CHR_CHOICES
 ##################### For returning information ######################
 
 class GenomeVariantSerializer(serializers.Serializer):
@@ -48,8 +48,8 @@ class PopulationQuerySerializer(serializers.Serializer):
         (0, '0-indexed'),
         (1, '1-indexed'),
         )
-    assembly = serializers.ChoiceField(choices=SUPPORTED_ASSEMBLY_CHOICES)
-    chromosome = serializers.ChoiceField(choices=CHR_CHOICES)
+    assembly = serializers.ChoiceField(choices=settings.SUPPORTED_ASSEMBLY_CHOICES)
+    chromosome = serializers.ChoiceField(choices=settings.CHR_CHOICES)
     indexing = serializers.ChoiceField(choices=INDEX_CHOICES, default=0)
     target_base = serializers.IntegerField()
     number_around = serializers.IntegerField(default=0)
@@ -63,8 +63,8 @@ class PopulationRangeQuerySerializer(serializers.Serializer):
         (0, '0-indexed'),
         (1, '1-indexed'),
         )
-    assembly = serializers.ChoiceField(choices=SUPPORTED_ASSEMBLY_CHOICES)
-    chromosome = serializers.ChoiceField(choices=CHR_CHOICES)
+    assembly = serializers.ChoiceField(choices=settings.SUPPORTED_ASSEMBLY_CHOICES)
+    chromosome = serializers.ChoiceField(choices=settings.CHR_CHOICES)
     indexing = serializers.ChoiceField(choices=INDEX_CHOICES, default=0)
     lower_base = serializers.IntegerField()
     upper_base = serializers.IntegerField()

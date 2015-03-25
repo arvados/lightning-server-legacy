@@ -6,18 +6,9 @@ import string
 from django.db.models import Q, Avg, Count, Max, Min
 from django.core.urlresolvers import reverse
 
-from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant, Tile, LanternTranslator
+from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant, Tile, LanternTranslator, get_locus, get_max_num_tiles_spanned_at_position
 import tile_library.basic_functions as fns
 from errors import EmptyPathError, MissingStatisticsError, CGFTranslatorError
-
-def print_friendly_cgf_translator(cgf_translator):
-    """
-    Meant for reducing the number of lines printed while debugging. Not tested
-    """
-    new_string = ""
-    for i in cgf_translator:
-        new_string += str(sorted(i.keys()))+','
-    return new_string.strip(',')
 
 def get_highest_position_int_in_path(path_int):
     min_position, min_tile_var = fns.get_min_position_and_tile_variant_from_path_int(path_int)
@@ -26,22 +17,6 @@ def get_highest_position_int_in_path(path_int):
     if tile == None:
         raise EmptyPathError("No tiles are matched in path %s" % (hex(path_int).lstrip('0x').zfill(3)))
     return int(tile.tile_position_int)
-
-def get_max_num_tiles_spanned_at_position(tile_position_int):
-    #Number to look back!
-    path_int, version_int, step_int = fns.get_position_ints_from_position_int(tile_position_int)
-    #raises AssertionError if tile_position_int is not an integer, negative, or an invalid tile position
-    try:
-        num_tiles_spanned = GenomeStatistic.objects.get(path_name=path_int).max_num_positions_spanned
-    except GenomeStatistic.DoesNotExist:
-        foo, min_path_tile = fns.get_min_position_and_tile_variant_from_path_int(path_int)
-        foo, max_path_tile = fns.get_min_position_and_tile_variant_from_path_int(path_int + 1)
-        tilevars = TileVariant.objects.filter(tile_variant_int__range=(min_path_tile, max_path_tile-1))
-        num_tiles_spanned = tilevars.aggregate(max_pos_spanned=Max('num_positions_spanned'))['max_pos_spanned']
-    if num_tiles_spanned == None:
-        raise EmptyPathError('No tiles are loaded for path containing tile: %s' % (hex(tile_position_int).lstrip('0x').zfill(9)))
-    num_tiles_spanned = min(int(num_tiles_spanned)-1, step_int) #Only need to look back as far as there are steps in this path
-    return num_tiles_spanned
 
 def get_tile_variants_spanning_into_position(tile_position_int):
     """
@@ -108,14 +83,15 @@ def get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(tile_variant, 
         return lantern_name, bases
     return lantern_name, ""
 
-def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, queried_low_int, queried_high_int, start_locus_int, end_locus_int):
+def get_tile_variant_cgf_str_and_bases_between_loci_known_locus(tile_variant, assembly, queried_low_int, queried_high_int, start_locus_int, end_locus_int):
     lantern_name = tile_variant.get_tile_variant_lantern_name()
     if lantern_name != "":
-        bases = tile_variant.get_bases_between_loci_known_locus(queried_low_int, queried_high_int, start_locus_int, end_locus_int)
+        bases = tile_variant.get_bases_between_loci_known_locus(assembly, queried_low_int, queried_high_int, start_locus_int, end_locus_int)
         return lantern_name, bases
     return lantern_name, ""
 
 def get_simple_cgf_translator(locuses, low_int, high_int, assembly):
+    #This function assumes 1 per tile_position
     num_locuses = locuses.count()
     simple_cgf_translator = {}
     for i, locus in enumerate(locuses):
@@ -128,11 +104,11 @@ def get_simple_cgf_translator(locuses, low_int, high_int, assembly):
         for var in tile_variants:
             if var.num_positions_spanned != 1:
                 upper_tile_position_int = tile_position_int + var.num_positions_spanned - 1
-                upper_locus = TileLocusAnnotation.objects.filter(assembly_int=assembly).get(tile_position_id=upper_tile_position_int)
+                upper_locus = get_locus(assembly, upper_tile_position_int)
                 large_end_locus_int = int(upper_locus.end_int)
-                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, large_end_locus_int)
+                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, assembly, low_int, high_int, start_locus_int, large_end_locus_int)
             else:
-                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, low_int, high_int, start_locus_int, end_locus_int)
+                cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, assembly, low_int, high_int, start_locus_int, end_locus_int)
             if cgf_str != '':
                 if cgf_str in simple_cgf_translator:
                     raise CGFTranslatorError("Repeat cgf_string (%s) in cgf_translator" % (cgf_str))
@@ -149,15 +125,14 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
     def manage_center_cgfs(center_cgf_translator, variant, start_locus_int, end_locus_int):
         lower_tile_position_int = int(variant.tile_id)
         if variant.num_positions_spanned != 1:
-            lower_locus = TileLocusAnnotation.objects.filter(assembly_int=assembly).get(tile_position_id=lower_tile_position_int)
+            lower_locus = get_locus(assembly, lower_tile_position_int)
             start_locus_int = int(lower_locus.start_int)
             upper_tile_position_int = lower_tile_position_int + var.num_positions_spanned - 1
-            upper_locus = TileLocusAnnotation.objects.filter(assembly_int=assembly).get(tile_position_id=upper_tile_position_int)
+            upper_locus = get_locus(assembly, upper_tile_position_int)
             end_locus_int = int(upper_locus.end_int)
         keys = [(start_locus_int, target_base), (target_base, target_base+1), (target_base+1, end_locus_int)]
         for i, translator in enumerate(center_cgf_translator):
-            #print center_cgf_translator, keys, i
-            cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, keys[i][0], keys[i][1], start_locus_int, end_locus_int)
+            cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, assembly, keys[i][0], keys[i][1], start_locus_int, end_locus_int)
             if cgf_str in translator:
                 assert bases == translator[cgf_str], "Conflicting cgf_string-base pairing, cgf_str: %s, translator: %s" % (cgf_str,
                     print_friendly_cgf_translator(center_cgf_translator))

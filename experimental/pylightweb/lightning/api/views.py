@@ -1,4 +1,5 @@
 import string
+import requests
 import traceback
 import sys
 import re
@@ -8,6 +9,7 @@ import pprint
 from django.http import Http404
 from django.shortcuts import render
 from django.core.urlresolvers import reverse
+from django.conf import settings
 from rest_framework import generics
 from rest_framework import permissions
 from rest_framework import status
@@ -16,8 +18,7 @@ from rest_framework.response import Response
 from rest_framework.utils.serializer_helpers import ReturnDict
 
 from api.serializers import TileVariantSerializer, RoughTileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
-from tile_library.models import Tile, TileVariant, TileLocusAnnotation, TAG_LENGTH
-from tile_library.constants import CHR_PATH_LENGTHS
+from tile_library.models import Tile, TileVariant, TileLocusAnnotation
 import tile_library.human_readable_functions as human_readable
 import tile_library.query_functions as query_fns
 import tile_library.lantern_query_functions as lantern_query_fns
@@ -159,7 +160,6 @@ def documentation(request):
         ]
     }
     return render(request, 'api/api_docs.html', response)
-
 class TileVariantQuery(APIView):
     """
     Retrieve a tile variant (by its hex string) or retrieve all tile variants at a tile position (by a tile position hex string).
@@ -189,7 +189,6 @@ class TileVariantQuery(APIView):
             tile_variant_info['genome_variants'].append(genome_variant_info)
         tile_variant_info['genome_variants'] = sorted(tile_variant_info['genome_variants'], key=lambda d: d['tile_variant_start_locus'])
         return tile_variant_info
-
     def get(self, request, hex_string, format=None):
         matching = re.match('^[0-9a-f]{3}\.[0-9a-f]{2}\.[0-9a-f]{4}(\.[0-9a-f]{3})?$', hex_string)
         assert matching != None, "%s is not recognized as a valid tile position or tile variant hex representation" % hex_string
@@ -213,11 +212,9 @@ class TileVariantQuery(APIView):
                 tile_variant_list.append(self.get_tile_variant_info(tile_variant))
             serializer = TileVariantSerializer(tile_variant_list, many=True)
         return Response(serializer.data)
-
 class TileVariantDetail(generics.RetrieveAPIView):
     queryset = TileVariant.objects.all()
     serializer_class = RoughTileVariantSerializer
-
 class TileLocusAnnotationList(APIView):
     """
     Retrieve the tile locus annotations for the tile position given by tile_hex_string.
@@ -275,7 +272,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
         num_locuses = locuses.count()
 
         if num_locuses == 0:
-            raise Exception("Should have caught this case in 'check_locus'")
+            raise Exception("Should have caught this case in 'check_locus'") # Never raised in test cases, which is expected
         #Get framing tile position ints
         first_tile_position_int = int(locuses.first().tile_position_id)
         last_tile_position_int = max(int(locuses.last().tile_position_id), first_tile_position_int)
@@ -291,8 +288,8 @@ class PopulationVariantQueryBetweenLoci(APIView):
         for var in spanning_tile_variants:
             cgf_str, bases = query_fns.get_tile_variant_cgf_str_and_bases_between_loci_unknown_locus(var, low_int, high_int, assembly)
             if cgf_str != '':
-                if cgf_str in simple_cgf_translator:
-                    raise CGFTranslatorError("Repeat spanning cgf_string: %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
+                if cgf_str in simple_cgf_translator: # Never raised in test cases, which is expected. This checks for odd behavior before continuing
+                    raise CGFTranslatorError("Repeat spanning cgf_string: %s. %s" % (non_spanning_cgf_string, cgf_translator))
                 simple_cgf_translator[cgf_str] = bases
         return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, simple_cgf_translator
     def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, cgf_translator):
@@ -303,13 +300,13 @@ class PopulationVariantQueryBetweenLoci(APIView):
             tile_position_int = basic_fns.get_position_from_cgf_string(cgf_string)
             tile_position_str = basic_fns.get_position_string_from_position_int(tile_position_int)
             if last_tile_position_int < tile_position_int:
-                raise UnexpectedLanternBehaviorError(
+                raise UnexpectedLanternBehaviorError( #Not raised in test cases, which is expected since this is lantern-specific
                     "Lantern query went over expected max position (Lantern response: %s, Max position: %s)" % (tile_position_str,
                         basic_fns.get_position_string_from_position_int(last_tile_position_int))
                 )
             if first_tile_position_int <= tile_position_int+num_positions_spanned and tile_position_int <= last_tile_position_int:
-                if non_spanning_cgf_string not in cgf_translator:
-                    raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, query_fns.print_friendly_cgf_translator(cgf_translator)))
+                if non_spanning_cgf_string not in cgf_translator: #Not raised in test cases, which is expected. This checks for odd behavior before continuing
+                    raise CGFTranslatorError("Translator doesn't include %s. %s" % (non_spanning_cgf_string, cgf_translator))
                 num_to_skip = 0
                 if len(sequence) > 0:
                     version, path, step = basic_fns.get_position_ints_from_position_int(tile_position_int)
@@ -318,18 +315,18 @@ class PopulationVariantQueryBetweenLoci(APIView):
                     prev_version, prev_path, prev_step = basic_fns.get_position_ints_from_position_int(prev_tile_position_int)
                     if prev_version == version and prev_path == path:
                         #We are in the same path and version, so check TAGs
-                        curr_ending_tag = sequence[-TAG_LENGTH:]
-                        new_starting_tag = cgf_translator[non_spanning_cgf_string][:TAG_LENGTH]
+                        curr_ending_tag = sequence[-settings.TAG_LENGTH:]
+                        new_starting_tag = cgf_translator[non_spanning_cgf_string][:settings.TAG_LENGTH]
                         if len(curr_ending_tag) >= len(new_starting_tag):
                             if not curr_ending_tag.endswith(new_starting_tag):
-                                raise UnexpectedLanternBehaviorError(
+                                raise UnexpectedLanternBehaviorError( #Not raised in test cases, which is expected since this is lantern-specific
                                     "Tags do not match for human %s at position %s. Sequence length: %i, Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
                                         tile_position_str, len(sequence), curr_ending_tag, new_starting_tag, str(positions_queried))
                                 )
-                            num_to_skip = TAG_LENGTH
+                            num_to_skip = settings.TAG_LENGTH
                         else:
                             if not new_starting_tag.startswith(curr_ending_tag):
-                                raise UnexpectedLanternBehaviorError(
+                                raise UnexpectedLanternBehaviorError( #Not raised in test cases, which is expected since this is lantern-specific
                                     "Tags do not match for human %s at position %s. Sequence length: %i, Ending Tag: %s. Starting Tag: %s. Positions Queried: %s" % (human_name,
                                         tile_position_str, len(sequence), curr_ending_tag, new_starting_tag, str(positions_queried))
                                 )
@@ -384,12 +381,12 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator)
             except LocusOutOfRangeException as e:
                 return Response(e.value, status=status.HTTP_404_NOT_FOUND)
-            except (UnexpectedLanternBehaviorError, CGFTranslatorError) as e:
+            except (UnexpectedLanternBehaviorError, CGFTranslatorError, requests.ConnectionError) as e: # Not raised in test cases, which is expected since this is either Lantern-specific or a test case I haven't considered yet
                 return Response(e.value, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
-            return Response(return_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(return_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR) #Would only be returned if return serializer is off, not raised in test cases, which is expected
 
         return Response(query_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -455,32 +452,32 @@ class PopulationVariantQueryAroundLocus(APIView):
             for i, locus in enumerate(locuses):
                 if locus.tile_position_id == center_tile_position_int:
                     if center_index != None:
-                        raise CGFTranslatorError("Multiple center locuses when preparing to create cgf translator")
+                        raise CGFTranslatorError("Multiple center locuses when preparing to create cgf translator") # Not raised in test cases, which is expected
                     center_index = i
             if center_index == None:
-                raise CGFTranslatorError("No center index found when creating cgf_translator")
+                raise CGFTranslatorError("No center index found when creating cgf_translator") # Not raised in test cases, which is expected
         center_cgf_translator, cgf_translator = query_fns.get_cgf_translator_and_center_cgf_translator(locuses, target_base_int, center_index, max_num_spanning_tiles, assembly)
         return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, center_tile_position_int, center_index, cgf_translator, center_cgf_translator
     def helper_get_bases_forward(self, curr_sequence, cgf_string, translator, num_bases_around, string_to_print, cgf_translator_around, positions_queried, length_of_middle):
         non_spanning_cgf_string = cgf_string.split('+')[0]
         step_int = int(non_spanning_cgf_string.split('.')[2], 16)
         if non_spanning_cgf_string not in translator:
-            raise CGFTranslatorError(string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string,
-                query_fns.print_friendly_cgf_translator(cgf_translator_around)))
+            raise CGFTranslatorError(string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, # Not raised in test cases, which is expected
+                cgf_translator_around))
         if len(curr_sequence) > length_of_middle and step_int > 0:
-            curr_ending_tag = curr_sequence[-TAG_LENGTH:]
-            new_starting_tag = translator[non_spanning_cgf_string][:TAG_LENGTH]
-            if len(curr_sequence) < TAG_LENGTH:
-                if not new_starting_tag.endswith(curr_ending_tag):
+            curr_ending_tag = curr_sequence[-settings.TAG_LENGTH:]
+            new_starting_tag = translator[non_spanning_cgf_string][:settings.TAG_LENGTH]
+            if len(curr_sequence) < settings.TAG_LENGTH:
+                if not new_starting_tag.endswith(curr_ending_tag): #Not raised in test cases, which is expected since this is Lantern-specific
                     raise UnexpectedLanternBehaviorError("Tags do not match at %s. Ending Tag: %s, Starting Tag: %s. curr_seq is smaller than TAG_LENGTH. Positions_queried: %s" % (cgf_string,
                         curr_ending_tag, new_starting_tag, str(positions_queried)))
             elif len(curr_ending_tag) >= len(new_starting_tag):
-                if not curr_ending_tag.endswith(new_starting_tag):
+                if not curr_ending_tag.endswith(new_starting_tag): # Not raised in test cases, which is expected since this is Lantern-specific
                     raise UnexpectedLanternBehaviorError("Tags do not match at %s. Ending Tag: %s, Starting Tag: %s. Ending tag is larger or equal to the starting tag. Positions queried: %s" % (cgf_string,
                         curr_ending_tag, new_starting_tag, str(positions_queried)))
-            else:
+            else: #Not raised in test cases. Unsure if this is to be expected or not, but I was being careful
                 raise UnexpectedLanternBehaviorError("Unexpected TAG case. Ending tag: %s, Starting tag: %s, current sequence length: %i." % (curr_ending_tag, new_starting_tag, len(curr_sequence)))
-            new_sequence = translator[non_spanning_cgf_string][TAG_LENGTH:]
+            new_sequence = translator[non_spanning_cgf_string][settings.TAG_LENGTH:]
         else:
             new_sequence = translator[non_spanning_cgf_string]
         if len(curr_sequence) + len(new_sequence) >= num_bases_around + length_of_middle:
@@ -492,21 +489,18 @@ class PopulationVariantQueryAroundLocus(APIView):
         non_spanning_cgf_string = cgf_string.split('+')[0]
         path, path_version, step, ignore = non_spanning_cgf_string.split('.')
         edge_path_version, edge_path_int, edge_path_step = basic_fns.get_position_ints_from_position_int(query_fns.get_highest_position_int_in_path(int(path,16)))
-        if non_spanning_cgf_string not in translator:
-            raise CGFTranslatorError(string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string,
-                query_fns.print_friendly_cgf_translator(cgf_translator_around)))
+        if non_spanning_cgf_string not in translator: # Not raised in test cases, which is expected
+            raise CGFTranslatorError(string_to_print + "(Failed). Expects %s to be in translator (%s)" % (non_spanning_cgf_string, cgf_translator_around))
         if len(curr_sequence) > length_of_middle and int(step,16) < edge_path_step: # Tags will only overlap if we are on the same path
-            curr_starting_tag = curr_sequence[:TAG_LENGTH]
-            new_ending_tag = translator[non_spanning_cgf_string][-TAG_LENGTH:]
+            curr_starting_tag = curr_sequence[:settings.TAG_LENGTH]
+            new_ending_tag = translator[non_spanning_cgf_string][-settings.TAG_LENGTH:]
             if len(curr_starting_tag) >= len(new_ending_tag):
-                if not curr_starting_tag.startswith(new_ending_tag):
+                if not curr_starting_tag.startswith(new_ending_tag): #Not raised in test cases, which is expected since this is Lantern-specific
                     raise UnexpectedLanternBehaviorError("Tags do not match at %s. Prev Starting Tag: %s, New Ending Tag: %s. Positions queried: %s" % (cgf_string,
                         curr_starting_tag, new_ending_tag, str(positions_queried)))
-            else:
-                if not new_ending_tag.endswith(curr_starting_tag):
-                    raise UnexpectedLanternBehaviorError("Tags do not match at %s. Prev Starting Tag: %s, New Ending Tag: %s. Positions queried: %s" % (cgf_string,
-                        curr_starting_tag, new_ending_tag, str(positions_queried)))
-            new_sequence = translator[non_spanning_cgf_string][:-TAG_LENGTH]
+            else: #Not raised in test cases, which is expected since this is not expected to happen
+                raise CGFTranslatorError("Short tag fell on reverse helper. At lantern position %s. Positions queried: %s" % (cgf_string, str(positions_queried)))
+            new_sequence = translator[non_spanning_cgf_string][:-settings.TAG_LENGTH]
         else:
             new_sequence = translator[non_spanning_cgf_string]
         if len(curr_sequence) + len(new_sequence) >= num_bases_around + length_of_middle:
@@ -522,16 +516,15 @@ class PopulationVariantQueryAroundLocus(APIView):
         check_position = query_fns.get_highest_position_int_in_path(prev_path)
         if curr_position > check_position:
             # Need to go to next path
-            if prev_path > 0 and prev_path in CHR_PATH_LENGTHS:
+            if prev_path > 0 and prev_path+1 in settings.CHR_PATH_LENGTHS:
                 raise EndOfChromosomeError("")
             try:
-                next_path_min_position, ignore = basic_fns.get_min_position_and_tile_variant_from_path_int(prev_path+1)
+                next_path_min_position, foo = basic_fns.get_min_position_and_tile_variant_from_path_int(prev_path+1)
                 curr_position = curr_position - (check_position+1) + next_path_min_position
                 t = Tile.objects.get(tile_position_int=curr_position)
-            except AssertionError:
-                raise query_fns.EmptyPathError("")
             except Tile.DoesNotExist:
-                raise query_fns.EmptyPathError("")
+                next_position_name = basic_fns.get_position_string_from_position_int(curr_position)
+                raise EmptyPathError("Unable to find tile %s. Path assumed to be empty" % (next_position_name))
         #Query lantern to get call at the next position
         cgf_string = lantern_query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase][0]
         #Get bases (tile_variant from cgf_string)
@@ -541,9 +534,9 @@ class PopulationVariantQueryAroundLocus(APIView):
         def get_next_position(prev_position):
             prev_path_version, prev_path, prev_step = basic_fns.get_position_ints_from_position_int(prev_position)
             if prev_step == 0:
-                if prev_path in CHR_PATH_LENGTHS:
+                if prev_path in settings.CHR_PATH_LENGTHS:
                     raise EndOfChromosomeError("")
-                next_position = query_fns.get_highest_position_int_in_path(prev_path-1)
+                next_position = query_fns.get_highest_position_int_in_path(prev_path-1) #Checks to see that the position exists in the Tile Library and throws an EmptyPathError if not
             else:
                 next_position = prev_position - 1
             return next_position
@@ -568,7 +561,7 @@ class PopulationVariantQueryAroundLocus(APIView):
             if curr_position <= middle_position:
                 middle_index = i
         assert middle_index != None, "Human %s did not have a position less than the middle_position %s. Positions: %s, center_cgf_translator keys: (%s), not center_cgf_translator keys: (%s)" % (human,
-            middle_position_str, str(sequence_of_tile_variants), query_fns.print_friendly_cgf_translator(center_cgf_translator), query_fns.print_friendly_cgf_translator(cgf_translator))
+            middle_position_str, str(sequence_of_tile_variants), center_cgf_translator, cgf_translator)
         center_cgf_string = sequence_of_tile_variants[middle_index].split('+')[0]
         assert center_cgf_string in center_cgf_translator[1], \
             "CGF string %s at middle index %i (for middle position %s) is not in center_cgf_translator" % (center_cgf_string, middle_index, middle_position_str)
@@ -607,7 +600,7 @@ class PopulationVariantQueryAroundLocus(APIView):
                 new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, {cgf_string.split('+')[0]:bases}, num_bases_around, string_to_print,
                     [], sequence_of_tile_variants + [cgf_string], len(middle_sequence))
                 forward_sequence += new_sequence
-            except EndOfChromosomeError:
+            except EndOfChromosomeError: ##### NOT CHECKED!!!! ####
                 finished = True
 
         ##################################################
@@ -659,7 +652,7 @@ class PopulationVariantQueryAroundLocus(APIView):
             short_name = human.strip('" ').split('/')[-1]
             human_sequence_dict[human] = []
             for i, positions_in_one_phase in enumerate(humans[human]):
-                if positions_in_one_phase == []:
+                if positions_in_one_phase == []: # Not raised in test cases, which is expected since this checks Lantern's behavior
                     raise UnexpectedLanternBehaviorError("Human sequence is empty for person %s. First int: %i, Last int: %i, number_spanning: %i" % (short_name, first_tile_position_int, last_tile_position_int, max_num_spanning_variants))
                 human_sequence_dict[human].append(
                     self.get_bases_for_human(human, positions_in_one_phase, cgf_translator, center_cgf_translator, num_bases_around, center_position_int, middle_index, i)
@@ -693,14 +686,14 @@ class PopulationVariantQueryAroundLocus(APIView):
                     int(query_serializer.data['number_around']))
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, center_position_int, center_index,
                     cgf_translator, center_cgf_translator, int(query_serializer.data['number_around']))
-            except query_fns.EmptyPathError:
+            except EmptyPathError:
                 return Response("Query includes loci that are not included in tile library", status=status.HTTP_404_NOT_FOUND)
             except LocusOutOfRangeException as e:
                 return Response(e.value, status=status.HTTP_404_NOT_FOUND)
-            except (UnexpectedLanternBehaviorError, CGFTranslatorError) as e:
+            except (UnexpectedLanternBehaviorError, CGFTranslatorError, requests.ConnectionError) as e: # Not run in test cases, which is expected
                 return Response(e.value, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
-            return Response(return_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(return_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR) # Not raised in test cases, which is expected, since only would be run if the return serializer had errors
         return Response(query_serializer.errors, status=status.HTTP_400_BAD_REQUEST)

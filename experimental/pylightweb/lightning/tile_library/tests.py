@@ -1,36 +1,48 @@
-"""
-settings
-override_settings seems to be a good idea for constants
-"""
-
 import random
+import requests
 import hashlib
 import string
 import subprocess
 from unittest import skipIf, skip
 
-from django.test import TestCase, LiveServerTestCase
+from django.test import TestCase, LiveServerTestCase, override_settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.urlresolvers import reverse
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
+from django.conf import settings
 
-from errors import MissingStatisticsError, InvalidGenomeError, ExistingStatisticsError, MissingLocusError
-from tile_library.constants import TAG_LENGTH, CHR_1, CHR_2, CHR_3, CHR_Y, CHR_M, CHR_OTHER, CHR_NONEXISTANT, ASSEMBLY_18, ASSEMBLY_19, \
-    NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, NUM_HEX_INDEXES_FOR_VARIANT_VALUE, \
-    NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE, GENOME, PATH
+TAG_LENGTH = settings.TAG_LENGTH
+CHR_1 = settings.CHR_1
+CHR_2 = settings.CHR_2
+CHR_3 = settings.CHR_3
+CHR_Y = settings.CHR_Y
+CHR_M = settings.CHR_M
+CHR_OTHER = settings.CHR_OTHER
+CHR_NONEXISTANT = settings.CHR_NONEXISTANT
+ASSEMBLY_18 = settings.ASSEMBLY_18
+ASSEMBLY_19 = settings.ASSEMBLY_19
+NUM_HEX_INDEXES_FOR_VERSION = settings.NUM_HEX_INDEXES_FOR_VERSION
+NUM_HEX_INDEXES_FOR_PATH = settings.NUM_HEX_INDEXES_FOR_PATH
+NUM_HEX_INDEXES_FOR_STEP = settings.NUM_HEX_INDEXES_FOR_STEP
+NUM_HEX_INDEXES_FOR_VARIANT_VALUE = settings.NUM_HEX_INDEXES_FOR_VARIANT_VALUE
+NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE = settings.NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+GENOME = settings.GENOME
+PATH = settings.PATH
+
+from errors import MissingStatisticsError, InvalidGenomeError, ExistingStatisticsError, MissingLocusError, UnexpectedLanternBehaviorError, CallsetNameDoesNotExist
 from tile_library.models import Tile, TileLocusAnnotation, TileVariant, LanternTranslator, GenomeVariant, GenomeVariantTranslation, GenomeStatistic
+from tile_library import settings
 import tile_library.test_scripts.complicated_library as build_library
 import tile_library.basic_functions as basic_fns
 import tile_library.generate_stats as gen_stats
 import tile_library.query_functions as query_fns
-import tile_library.constants as constants
+import tile_library.lantern_query_functions as lantern_query_fns
 
-
-SUPPORTED_ASSEMBLY_INTS = [i for i, j in constants.SUPPORTED_ASSEMBLY_CHOICES]
-SUPPORTED_CHR_INTS = [i for i, j in constants.CHR_CHOICES]
-SUPPORTED_STATISTICS_TYPE_INTS = [i for i, j in constants.STATISTICS_TYPE_CHOICES]
-genome_and_chromosomes = SUPPORTED_STATISTICS_TYPE_INTS[:]
+supported_assembly_ints = [i for i, j in settings.SUPPORTED_ASSEMBLY_CHOICES]
+supported_chr_ints = [i for i, j in settings.CHR_CHOICES]
+supported_statistics_type_ints = [i for i, j in settings.STATISTICS_TYPE_CHOICES]
+genome_and_chromosomes = supported_statistics_type_ints[:]
 genome_and_chromosomes.remove(PATH)
 
 NUM_RANDOM_TESTS_TO_RUN=1
@@ -58,7 +70,7 @@ BASE_LIBRARY_STRUCTURE = {
         ]
     },
     CHR_2: {
-        hex(constants.CHR_PATH_LENGTHS[CHR_1]).lstrip('0x'): [
+        hex(settings.CHR_PATH_LENGTHS[CHR_1]).lstrip('0x'): [
             {'vars':3, 'lengths':[248,498,248], 'spanning_nums':[1,2,1]},
             {'vars':3, 'lengths':[250,264,265], 'spanning_nums':[1,1,1]},
         ]
@@ -66,7 +78,7 @@ BASE_LIBRARY_STRUCTURE = {
 }
 INVALID_HUMAN_LIBRARY = {
     CHR_OTHER: {
-        hex(constants.CHR_PATH_LENGTHS[CHR_OTHER]).lstrip('0x'): [
+        hex(settings.CHR_PATH_LENGTHS[CHR_OTHER]).lstrip('0x'): [
             {'vars':3, 'lengths':[448,749,450], 'spanning_nums':[1,2,1]},
             {'vars':2, 'lengths':[301,301], 'spanning_nums':[1,1]},
             {'vars':3, 'lengths':[273,300,840], 'spanning_nums':[1,2,3]},
@@ -262,42 +274,8 @@ def make_tile_position_and_variant(tile_position, tile_variant, length, tile_end
     tilevar = make_tile_variant(tile, ending_tile, tile_variant, length, num_spanned=num_spanned)
     return tile, tilevar
 
-######################### TEST constants ###################################
-class TestConstants(TestCase):
-    def test_chr_path_lengths_constants(self):
-        """
-            CHR_PATH_LENGTHS
-        """
-        chr_list = constants.CHR_PATH_LENGTHS
-        #Check type of lists
-        self.assertEqual(type(chr_list), list)
-        #Check format of CHR_PATH_LENGTHS
-        for i, length in enumerate(chr_list):
-            self.assertEqual(type(length), int)
-            if i > 0:
-                self.assertGreaterEqual(length, chr_list[i-1])
-            else:
-                self.assertEqual(length, 0)
-        self.assertEqual(len(chr_list), CHR_NONEXISTANT)
-        self.assertLessEqual(chr_list[-1], int('f'*NUM_HEX_INDEXES_FOR_PATH,16))
-    def test_cytomap_constants(self):
-        """
-            CYTOMAP
-        """
-        chr_list = constants.CHR_PATH_LENGTHS
-        cytomap = constants.CYTOMAP
-        #Check type of lists
-        self.assertEqual(type(cytomap), list)
-        #Make sure we have the same number of paths and cytomap entries
-        self.assertEqual(len(cytomap), chr_list[-1])
-        for s in cytomap:
-            self.assertEqual(type(s), str)
-    def test_genome_statistics_types(self):
-        statistics_types = constants.STATISTICS_TYPE_CHOICES
-        chr_list = constants.CHR_CHOICES
-        self.assertEqual(len(statistics_types), len(chr_list)+2)
-        self.assertListEqual(SUPPORTED_STATISTICS_TYPE_INTS, [GENOME] + SUPPORTED_CHR_INTS + [PATH])
 ######################### TEST basic_functions ###################################
+@skip("Debugging lantern query")
 class TestBasicFunctions(TestCase):
     #get_position_strings_from_position_int
     def test_get_position_strings_from_position_int_type(self):
@@ -612,6 +590,65 @@ class TestBasicFunctions(TestCase):
         vv = 'f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
         max_tv_int = int(v+p+s+vv,16)
         self.assertRaises(ValueError, basic_fns.convert_tile_variant_int_to_position_int, max_tv_int+1)
+    def test_get_non_spanning_cgf_string_type(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        sv = '0'
+        cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertIsInstance(cgf_str, str)
+        cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.')+'+'+sv)
+        self.assertIsInstance(cgf_str, str)
+        cgf_str = basic_fns.get_non_spanning_cgf_string(unicode(string.join([p,v,s,vv],sep='.')))
+        self.assertIsInstance(cgf_str, str)
+        cgf_str = basic_fns.get_non_spanning_cgf_string(unicode(string.join([p,v,s,vv],sep='.')+'+'+sv))
+        self.assertIsInstance(cgf_str, str)
+    def test_get_non_spanning_cgf_strings(self):
+        for i in range(NUM_RANDOM_TESTS_TO_RUN):
+            v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
+            p=mk_hex_num(NUM_HEX_INDEXES_FOR_PATH)
+            s=mk_hex_num(NUM_HEX_INDEXES_FOR_STEP)
+            vv=mk_hex_num(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+            sv=mk_hex_num(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+            cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.'))
+            self.assertEqual(cgf_str, string.join([p,v,s,vv], sep='.'))
+            cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.')+'+'+sv)
+            self.assertEqual(cgf_str, string.join([p,v,s,vv], sep='.'))
+    def test_get_non_spanning_cgf_string_from_min_and_max_cgf_strings(self):
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertEqual(cgf_str, string.join([p,v,s,vv], sep='.'))
+        cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.')+'+0')
+        self.assertEqual(cgf_str, string.join([p,v,s,vv], sep='.'))
+        cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.')+'+fff')
+        self.assertEqual(cgf_str, string.join([p,v,s,vv], sep='.'))
+        v='f'*NUM_HEX_INDEXES_FOR_VERSION
+        p='f'*NUM_HEX_INDEXES_FOR_PATH
+        s='f'*NUM_HEX_INDEXES_FOR_STEP
+        vv = 'f'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.'))
+        self.assertEqual(cgf_str, string.join([p,v,s,vv], sep='.'))
+        cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.')+'+0')
+        self.assertEqual(cgf_str, string.join([p,v,s,vv], sep='.'))
+        cgf_str = basic_fns.get_non_spanning_cgf_string(string.join([p,v,s,vv],sep='.')+'+fff')
+        self.assertEqual(cgf_str, string.join([p,v,s,vv], sep='.'))
+    def test_get_non_spanning_cgf_string_failure(self):
+        self.assertRaises(TypeError, basic_fns.get_non_spanning_cgf_string, 0)
+        v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        p='0'*NUM_HEX_INDEXES_FOR_PATH
+        s='0'*NUM_HEX_INDEXES_FOR_STEP
+        vv = '0'*(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE-1)
+        vv2 = 'x'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
+        self.assertRaises(ValueError, basic_fns.get_non_spanning_cgf_string, string.join([p,v,s],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_non_spanning_cgf_string, string.join([p,v,s,vv],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_non_spanning_cgf_string, string.join([p,v,s,vv2],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_non_spanning_cgf_string, string.join([p,v,s,vv+'0'],sep='.')+'+')
+        self.assertRaises(ValueError, basic_fns.get_non_spanning_cgf_string, string.join([v,p,s,vv+'0'],sep='.'))
+        self.assertRaises(ValueError, basic_fns.get_non_spanning_cgf_string, string.join([p,v,s,vv+'0'],sep='.')+'+x')
     #get_position_from_cgf_string
     def test_get_position_from_cgf_string_type(self):
         v='0'*NUM_HEX_INDEXES_FOR_VERSION
@@ -747,7 +784,7 @@ class TestBasicFunctions(TestCase):
         for i in range(NUM_RANDOM_TESTS_TO_RUN):
             v=mk_hex_num(NUM_HEX_INDEXES_FOR_VERSION)
             v_0 = '0'*NUM_HEX_INDEXES_FOR_VERSION
-            p=hex(random.randrange(constants.CHR_PATH_LENGTHS[-1]+1)).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+            p=hex(random.randrange(settings.CHR_PATH_LENGTHS[-1]+1)).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
             s='0'*NUM_HEX_INDEXES_FOR_STEP
             vv='0'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
             pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16))
@@ -768,7 +805,7 @@ class TestBasicFunctions(TestCase):
         pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16), path_version=int(v_max,16))
         self.assertEqual(pos, int(v_max+p+s, 16))
         self.assertEqual(tv, int(v_max+p+s+vv, 16))
-        p=hex(constants.CHR_PATH_LENGTHS[-1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        p=hex(settings.CHR_PATH_LENGTHS[-1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         pos, tv = basic_fns.get_min_position_and_tile_variant_from_path_int(int(p,16))
         self.assertEqual(pos, int(v_min+p+s, 16))
         self.assertEqual(tv, int(v_min+p+s+vv, 16))
@@ -778,11 +815,11 @@ class TestBasicFunctions(TestCase):
     def test_get_min_position_and_tile_variant_from_path_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_min_position_and_tile_variant_from_path_int, '1')
         self.assertRaises(ValueError, basic_fns.get_min_position_and_tile_variant_from_path_int, -1)
-        bad_path = constants.CHR_PATH_LENGTHS[-1] + 1
+        bad_path = settings.CHR_PATH_LENGTHS[-1] + 1
         self.assertRaises(ValueError, basic_fns.get_min_position_and_tile_variant_from_path_int, bad_path)
     #Is it acceptable to use an already tested function to check against another function?
     def test_get_min_position_and_tile_variant_from_chromosome_int(self):
-        for i, path_int in enumerate(constants.CHR_PATH_LENGTHS):
+        for i, path_int in enumerate(settings.CHR_PATH_LENGTHS):
             name, varname = basic_fns.get_min_position_and_tile_variant_from_chromosome_int(i+1)
             exp_name, exp_varname = basic_fns.get_min_position_and_tile_variant_from_path_int(int(path_int))
             self.assertEqual(name, exp_name)
@@ -810,19 +847,19 @@ class TestBasicFunctions(TestCase):
         c = basic_fns.get_chromosome_int_from_position_int(int(v_max+path_in_one+s_max,16))
         self.assertEqual(c, CHR_1)
 
-        path_in_one = get_path_hex(constants.CHR_PATH_LENGTHS[1]/2)
+        path_in_one = get_path_hex(settings.CHR_PATH_LENGTHS[1]/2)
         c = basic_fns.get_chromosome_int_from_position_int(int(v_min+path_in_one+s_min,16))
         self.assertEqual(c, CHR_1)
         c = basic_fns.get_chromosome_int_from_position_int(int(v_max+path_in_one+s_max,16))
         self.assertEqual(c, CHR_1)
 
-        path_in_two = get_path_hex(constants.CHR_PATH_LENGTHS[1])
+        path_in_two = get_path_hex(settings.CHR_PATH_LENGTHS[1])
         c = basic_fns.get_chromosome_int_from_position_int(int(v_min+path_in_two+s_min,16))
         self.assertEqual(c, CHR_2)
         c = basic_fns.get_chromosome_int_from_position_int(int(v_max+path_in_two+s_max,16))
         self.assertEqual(c, CHR_2)
 
-        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-3])
+        path_in_last = get_path_hex(settings.CHR_PATH_LENGTHS[-3])
         c = basic_fns.get_chromosome_int_from_position_int(int(v_min+path_in_last+s_min,16))
         self.assertEqual(c, CHR_M)
         c = basic_fns.get_chromosome_int_from_position_int(int(v_max+path_in_last+s_max,16))
@@ -830,7 +867,7 @@ class TestBasicFunctions(TestCase):
     def test_get_chromosome_int_from_position_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_chromosome_int_from_position_int, '0')
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_position_int, -1)
-        bad_path = constants.CHR_PATH_LENGTHS[-2] #Create error when CHR_PATH_LENGTHS is edited
+        bad_path = settings.CHR_PATH_LENGTHS[-1] + 1
         v='0'*NUM_HEX_INDEXES_FOR_VERSION
         p=hex(bad_path).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         s='0'*NUM_HEX_INDEXES_FOR_STEP
@@ -854,19 +891,19 @@ class TestBasicFunctions(TestCase):
         c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_max+path_in_one+s_max+vv_max,16))
         self.assertEqual(c, CHR_1)
 
-        path_in_one = get_path_hex(constants.CHR_PATH_LENGTHS[1]/2)
+        path_in_one = get_path_hex(settings.CHR_PATH_LENGTHS[1]/2)
         c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_min+path_in_one+s_min+vv_min,16))
         self.assertEqual(c, CHR_1)
         c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_max+path_in_one+s_max+vv_max,16))
         self.assertEqual(c, CHR_1)
 
-        path_in_two = get_path_hex(constants.CHR_PATH_LENGTHS[1])
+        path_in_two = get_path_hex(settings.CHR_PATH_LENGTHS[1])
         c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_min+path_in_two+s_min+vv_min,16))
         self.assertEqual(c, CHR_2)
         c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_max+path_in_two+s_max+vv_max,16))
         self.assertEqual(c, CHR_2)
 
-        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-3])
+        path_in_last = get_path_hex(settings.CHR_PATH_LENGTHS[-3])
         c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_min+path_in_last+s_min+vv_min,16))
         self.assertEqual(c, CHR_M)
         c = basic_fns.get_chromosome_int_from_tile_variant_int(int(v_max+path_in_last+s_max+vv_max,16))
@@ -874,7 +911,7 @@ class TestBasicFunctions(TestCase):
     def test_get_chromosome_int_from_tile_variant_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_chromosome_int_from_tile_variant_int, '0')
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_tile_variant_int, -1)
-        bad_path = constants.CHR_PATH_LENGTHS[-2] #Create error when CHR_PATH_LENGTHS is edited
+        bad_path = settings.CHR_PATH_LENGTHS[-1]+1
         v='0'*NUM_HEX_INDEXES_FOR_VERSION
         p=hex(bad_path).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         s='0'*NUM_HEX_INDEXES_FOR_STEP
@@ -882,23 +919,24 @@ class TestBasicFunctions(TestCase):
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_tile_variant_int, int(v+p+s+vv,16))
     #Feels a bit weird because the last populated path is 25, but technical last path is 26...
     def test_get_chromosome_int_from_path_int(self):
-        path_in_one = constants.CHR_PATH_LENGTHS[1]/2
+        path_in_one = settings.CHR_PATH_LENGTHS[1]/2
         self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_one), CHR_1)
         path_in_one = 0
         self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_one), CHR_1)
-        path_in_two = constants.CHR_PATH_LENGTHS[1]
+        path_in_two = settings.CHR_PATH_LENGTHS[1]
         self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_two), CHR_2)
-        path_in_last = constants.CHR_PATH_LENGTHS[-3]
+        path_in_last = settings.CHR_PATH_LENGTHS[-3]
         self.assertEqual(basic_fns.get_chromosome_int_from_path_int(path_in_last), CHR_M)
     def test_get_chromosome_int_from_path_int_failure(self):
         self.assertRaises(TypeError, basic_fns.get_chromosome_int_from_path_int, '0')
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_path_int, -1)
-        bad_path = constants.CHR_PATH_LENGTHS[-2] #Create error when CHR_PATH_LENGTHS is edited
+        bad_path = settings.CHR_PATH_LENGTHS[-1] +1
         self.assertRaises(ValueError, basic_fns.get_chromosome_int_from_path_int, bad_path)
 ################################## TEST Tile model ###################################
 ## Currently unable to test the validity of the tile_library
 ##  (ie. 1 'is_start_of_path' and 1 'is_end_of_path')
 ##  (The path starts at tile position 0 and increments by one each time)
+@skip("Debugging lantern query")
 class TestTileModel(TestCase):
     def test_get_string_type(self):
         new_tile = Tile(tile_position_int=0)
@@ -986,6 +1024,7 @@ class TestTileModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('tile_position_int', cm.exception.message_dict)
 ################################## TEST TileLocusAnnotation model ###################################
+@skip("Debugging lantern query")
 class TestTileLocusAnnotationModel(TestCase):
     def test_non_int_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
@@ -993,7 +1032,7 @@ class TestTileLocusAnnotationModel(TestCase):
             TileLocusAnnotation(assembly_int="hg19", chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('assembly_int', cm.exception.message_dict)
-    @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
+    @skipIf(0 in settings.SUPPORTED_ASSEMBLY_CHOICES, "Testing behavior for saving an unknown assembly, but 0 is in settings.SUPPORTED_ASSEMBLY_CHOICES")
     def test_unknown_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValidationError) as cm:
@@ -1006,11 +1045,11 @@ class TestTileLocusAnnotationModel(TestCase):
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int="chr1", start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int', cm.exception.message_dict)
-    @skipIf(CHR_1-1 in SUPPORTED_CHR_INTS, "Testing if error is raised with an unsupported assembly, but chromosome=CHR_1-1 is defined")
+    @skipIf(0 in settings.CHR_CHOICES, "Testing behavior for saving an unknown chromosome, but 0 is in settings.CHR_CHOICES")
     def test_unknown_chromosome(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValidationError) as cm:
-            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1-1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
+            TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=0, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int', cm.exception.message_dict)
     def test_missing_tile(self):
@@ -1068,28 +1107,28 @@ class TestTileLocusAnnotationModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
 
-        path_in_one = get_path_hex(constants.CHR_PATH_LENGTHS[1]-1)
+        path_in_one = get_path_hex(settings.CHR_PATH_LENGTHS[1]-1)
         tile, tilevar = make_tile_position_and_variant(int(v_max+path_in_one+s_max,16), int(v_max+path_in_one+s_max+vv,16), 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_2, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
 
-        path_in_two = get_path_hex(constants.CHR_PATH_LENGTHS[1])
+        path_in_two = get_path_hex(settings.CHR_PATH_LENGTHS[1])
         tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_two+s_min,16), int(v_min+path_in_two+s_min+vv,16), 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
 
-        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-2]-1)
+        path_in_last = get_path_hex(settings.CHR_PATH_LENGTHS[-2]-1)
         tile, tilevar = make_tile_position_and_variant(int(v_max+path_in_last+s_max,16), int(v_max+path_in_last+s_max+vv,16), 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_OTHER, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int-tile_position', cm.exception.message_dict)
 
-        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-3])
+        path_in_last = get_path_hex(settings.CHR_PATH_LENGTHS[-3])
         tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_last+s_min,16), int(v_min+path_in_last+s_min+vv,16), 250)
         with self.assertRaises(ValidationError) as cm:
             TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_Y, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
@@ -1108,19 +1147,19 @@ class TestTileLocusAnnotationModel(TestCase):
         tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_one+s_min,16), int(v_min+path_in_one+s_min+vv,16), 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
 
-        path_in_one = get_path_hex(constants.CHR_PATH_LENGTHS[1]-1)
+        path_in_one = get_path_hex(settings.CHR_PATH_LENGTHS[1]-1)
         tile, tilevar = make_tile_position_and_variant(int(v_max+path_in_one+s_max,16), int(v_max+path_in_one+s_max+vv,16), 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
 
-        path_in_two = get_path_hex(constants.CHR_PATH_LENGTHS[1])
+        path_in_two = get_path_hex(settings.CHR_PATH_LENGTHS[1])
         tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_two+s_min,16), int(v_min+path_in_two+s_min+vv,16), 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_2, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
 
-        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-2]-1)
+        path_in_last = get_path_hex(settings.CHR_PATH_LENGTHS[-2]-1)
         tile, tilevar = make_tile_position_and_variant(int(v_max+path_in_last+s_max,16), int(v_max+path_in_last+s_max+vv,16), 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_M, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
 
-        path_in_last = get_path_hex(constants.CHR_PATH_LENGTHS[-3])
+        path_in_last = get_path_hex(settings.CHR_PATH_LENGTHS[-3])
         tile, tilevar = make_tile_position_and_variant(int(v_min+path_in_last+s_min,16), int(v_min+path_in_last+s_min+vv,16), 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_M, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
     def test_multiple_annotations_failure(self):
@@ -1132,6 +1171,7 @@ class TestTileLocusAnnotationModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('__all__', cm.exception.message_dict)
 ################################## TEST TileVariant model ###################################
+@skip("Debugging lantern query")
 class TestTileVariantModel(TestCase):
     def test_non_int_tile_variant_int(self):
         tile=make_tile_position(1)
@@ -1635,7 +1675,7 @@ class TestTileVariantModel(TestCase):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValueError) as cm:
             tilevar.is_reference('a')
-    @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
+    @override_settings(SUPPORTED_ASSEMBLY_CHOICES=((18, 'hg18'),))
     def test_is_reference_unsupported_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         with self.assertRaises(ValueError) as cm:
@@ -1702,7 +1742,7 @@ class TestTileVariantModel(TestCase):
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
         with self.assertRaises(ValueError) as cm:
             tilevar.get_locus('hi')
-    @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
+    @override_settings(SUPPORTED_ASSEMBLY_CHOICES=((19, 'hg19'),))
     def test_get_locus_unsupported_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
         TileLocusAnnotation(assembly_int=ASSEMBLY_19, chromosome_int=CHR_1, start_int=0, end_int=250, tile_position=tile, tile_variant_value=0).save()
@@ -1853,6 +1893,7 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(tile.get_base_group_between_positions(1,5), 'GTCN')
         self.assertEqual(tile.get_base_group_between_positions(1,4), 'GTC')
 ################################## TEST LanternTranslator model ###################################
+@skip("Debugging lantern query")
 class TestLanternTranslatorModel(TestCase):
     def setUp(self):
         self.v='0'*NUM_HEX_INDEXES_FOR_VERSION
@@ -1954,7 +1995,7 @@ class TestLanternTranslatorModel(TestCase):
         LanternTranslator(lantern_name=self.min_name, tile_variant_int=0).save()
     def test_success_max(self):
         v='f'*NUM_HEX_INDEXES_FOR_VERSION
-        p = hex(constants.CHR_PATH_LENGTHS[-1]-1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        p = hex(settings.CHR_PATH_LENGTHS[-1]-1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         s='f'*NUM_HEX_INDEXES_FOR_STEP
         lantern_vv = 'f'*NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE
         library_vv = 'f'*NUM_HEX_INDEXES_FOR_VARIANT_VALUE
@@ -1978,6 +2019,7 @@ class TestLanternTranslatorModel(TestCase):
             LanternTranslator(lantern_name=new_name, tile_variant_int=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('__all__', cm.exception.message_dict)
+@skip("Debugging lantern query")
 class TestLanternTranslatorModelOtherDB(LiveServerTestCase):
     def setUp(self):
         self.v='0'*NUM_HEX_INDEXES_FOR_VERSION
@@ -2010,6 +2052,7 @@ class TestLanternTranslatorModelOtherDB(LiveServerTestCase):
     def test_success(self):
         LanternTranslator(lantern_name=self.min_name, tile_library_host=self.live_server_url.strip().lstrip('http://'), tile_variant_int=0).save()
 ################################## TEST GenomeVariant model ###################################
+@skip("Debugging lantern query")
 class TestGenomeVariantModel(TestCase):
     def setUp(self):
         build_library.make_reference()
@@ -2024,7 +2067,7 @@ class TestGenomeVariantModel(TestCase):
             build_library.make_genome_variant(0, 24, 25, 'C', 'G', assembly="hi")
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('assembly_int', cm.exception.message_dict)
-    @skipIf(0 in SUPPORTED_ASSEMBLY_INTS, "Testing if error is raised with an unsupported assembly, but assembly=0 is defined")
+    @skipIf(0 in supported_assembly_ints, "Checking behavior for unsupported assembly, but 0 is supported")
     def test_failure_unsupported_assembly(self):
         with self.assertRaises(ValidationError) as cm:
             build_library.make_genome_variant(0, 24, 25, 'C', 'G', assembly=0)
@@ -2040,7 +2083,7 @@ class TestGenomeVariantModel(TestCase):
             build_library.make_genome_variant(0, 24, 25, 'C', 'G', chrom='hi')
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int', cm.exception.message_dict)
-    @skipIf(0 in SUPPORTED_CHR_INTS, "Testing if error is raised with an unsupported chromosome, but chromosome=0 is defined")
+    @skipIf(0 in supported_chr_ints, "Checking behavior for unsupported chromosome, but 0 is supported")
     def test_failure_unsupported_chromosome(self):
         with self.assertRaises(ValidationError) as cm:
             build_library.make_genome_variant(0, 24, 25, 'C', 'G', chrom=0)
@@ -2124,6 +2167,7 @@ class TestGenomeVariantModel(TestCase):
     def test_success_sub_on_end_tag_unable_to_span(self):
         build_library.make_genome_variant(0, 106, 107, 'G', 'ATG')
 ################################## TEST GenomeVariantTranslation model ###################################
+@skip("Debugging lantern query")
 class TestGenomeVariantTranslationModel(TestCase):
     #Check failures
     #tv missing gv assembly
@@ -2153,28 +2197,30 @@ class TestGenomeVariantTranslationModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('assembly_int', cm.exception.message_dict)
     #gv on different chromosome
+    @override_settings(CHR_PATH_LENGTHS = (0,2,3))
     def test_failure_tile_variant_different_chromosome_int(self):
         build_library.make_reference()
-        chr2_path = hex(constants.CHR_PATH_LENGTHS[CHR_1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         chr2_tilevar = build_library.make_tile_variant(
-            int(chr2_path+step_min+variant_value_min,16)+1,
+            int('2'+step_min+variant_value_min,16)+1,
             "CTACCGTTTAGGCGGATATCGCGTGTTTCCTTAAACTCATCTCCTGGGGG".lower(),
             1,
-            start_tag="CTACCGTTTAGGCGGATATCGCGT"
+            start_tag="CTACCGTTTAGGCGGATATCGCGT",
+            end_tag="TTCCTTAAACTCATCTCCTGGGGG"
         )
         gv = build_library.make_genome_variant(0, 24, 25, 'C', 'G')
         with self.assertRaises(ValidationError) as cm:
             GenomeVariantTranslation(tile_variant=chr2_tilevar, genome_variant=gv, start=24, end=25).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int', cm.exception.message_dict)
+    @override_settings(CHR_PATH_LENGTHS = (0,2,3))
     def test_failure_spanning_tile_variant_different_chromosome_in_middle_tile(self):
         build_library.make_reference()
-        chr2_path = hex(constants.CHR_PATH_LENGTHS[CHR_1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         chr2_tilevar = build_library.make_tile_variant(
-            int(chr2_path+step_min+variant_value_min,16)+1,
+            int('2'+step_min+variant_value_min,16)+1,
             "CTACCGTTTAGGCGGATATCGCGTCTATCCTTAAACTCATCTCCTGGGGGGAGGTCGTGGTTTTGAGCCAGTTATGGGGTTCGGCTGACGGGCCGACACATG".lower(),
             3,
-            start_tag="CTACCGTTTAGGCGGATATCGCGT"
+            start_tag="CTACCGTTTAGGCGGATATCGCGT",
+            end_tag="GTTCGGCTGACGGGCCGACACATG"
         )
         gv = build_library.make_genome_variant(0, 26, 27, 'T', 'A')
         with self.assertRaises(ValidationError) as cm:
@@ -2182,10 +2228,10 @@ class TestGenomeVariantTranslationModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('chromosome_int', cm.exception.message_dict)
     #gv loci on different alternate chromosomes
-    @skipIf(constants.CHR_PATH_LENGTHS[-1]==constants.CHR_PATH_LENGTHS[CHR_OTHER-1], "Need to have an alternate chromosome path available to test")
+    @override_settings(CHR_PATH_LENGTHS = (0,63,125,187,234,279,327,371,411,454,496,532,573,609,641,673,698,722,742,761,781,795,811,851,862,863,864))
     def test_failure_tile_variant_different_alternate_chromosome_name(self):
         build_library.make_alternate_reference()
-        chr_other_path = hex(constants.CHR_PATH_LENGTHS[CHR_OTHER-1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        chr_other_path = hex(settings.CHR_PATH_LENGTHS[CHR_OTHER-1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         tv = build_library.make_tile_variant(
             int(chr_other_path+step_min+variant_value_min,16)+1,
             "ACGGCAGTAGTTTTGCCGCTCGGTGGTCAGAATGTTTGGAGGGCGGTACG".lower(),
@@ -2197,10 +2243,10 @@ class TestGenomeVariantTranslationModel(TestCase):
             GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=25).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('alternate_chromosome_name', cm.exception.message_dict)
-    @skipIf(constants.CHR_PATH_LENGTHS[-1]==constants.CHR_PATH_LENGTHS[CHR_OTHER-1], "Need to have an alternate chromosome path available to test")
+    @override_settings(CHR_PATH_LENGTHS = (0,63,125,187,234,279,327,371,411,454,496,532,573,609,641,673,698,722,742,761,781,795,811,851,862,863,864))
     def test_failure_spanning_tile_variant_different_alternate_chromosome_name_in_middle_tile(self):
         build_library.make_alternate_reference()
-        chr_other_path = hex(constants.CHR_PATH_LENGTHS[CHR_OTHER-1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
+        chr_other_path = hex(settings.CHR_PATH_LENGTHS[CHR_OTHER-1]).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
         tv = build_library.make_tile_variant(
             int(chr_other_path+step_min+variant_value_min,16)+1,
             "ACGGCAGTAGTTTTGCCGCTCGGTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTGAACGCACCGGAACTTGTGTTTGTGTG".lower(),
@@ -2391,14 +2437,15 @@ class TestGenomeVariantTranslationModel(TestCase):
     def test_success_complicated_library(self):
         build_library.make_entire_library()
 ################################## TEST GenomeStatistic model ###################################
+@skip("Debugging lantern query")
 class TestGenomeStatisticModel(TestCase):
-    @skipIf(GENOME-1 in SUPPORTED_STATISTICS_TYPE_INTS, "Testing if error is raised with an unsupported statistics type, but %i is a valid Statistics type" % (GENOME-1))
+    @skipIf(GENOME-1 in supported_statistics_type_ints, "Checking behavior for too small statistics type, but GENOME-1 is defined")
     def test_negative_statistics_int(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=GENOME-1, num_of_positions=0, num_of_tiles=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertTrue('statistics_type' in cm.exception.message_dict)
-    @skipIf(PATH+1 in SUPPORTED_STATISTICS_TYPE_INTS, "Testing if error is raised with an unsupported statistics type, but %i is a valid Statistics type" % (PATH+1))
+    @skipIf(PATH+1 in supported_statistics_type_ints, "Checking behavior for too big statistics type, but PATH+1 is defined")
     def test_too_big_statistics_int(self):
         with self.assertRaises(ValidationError) as cm:
             GenomeStatistic(statistics_type=PATH+1, num_of_positions=0, num_of_tiles=0).save()
@@ -2437,7 +2484,7 @@ class TestGenomeStatisticModel(TestCase):
         self.assertTrue('path_name' in cm.exception.message_dict)
     def test_too_big_path_name_for_path_statistic(self):
         with self.assertRaises(ValidationError) as cm:
-            GenomeStatistic(statistics_type=PATH, path_name=constants.CHR_PATH_LENGTHS[-1], num_of_positions=0, num_of_tiles=0).save()
+            GenomeStatistic(statistics_type=PATH, path_name=settings.CHR_PATH_LENGTHS[-1], num_of_positions=0, num_of_tiles=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertTrue('path_name' in cm.exception.message_dict)
     def test_negative_num_positions(self):
@@ -2478,8 +2525,9 @@ class TestGenomeStatisticModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertTrue('__all__' in cm.exception.message_dict)
     def test_successful_save(self):
-        GenomeStatistic(statistics_type=PATH, path_name=constants.CHR_PATH_LENGTHS[-1]-1, num_of_positions=0, num_of_tiles=0).save()
+        GenomeStatistic(statistics_type=PATH, path_name=settings.CHR_PATH_LENGTHS[-1]-1, num_of_positions=0, num_of_tiles=0).save()
 ################################## TEST generate_statistics ###################################
+@skip("Debugging lantern query")
 class TestGenerateStatistics(TestCase):
     def setUp(self):
         make_tiles(BASE_LIBRARY_STRUCTURE)
@@ -2501,7 +2549,7 @@ class TestGenerateStatistics(TestCase):
                     1, 1, {'vars':3, 'lengths':[250,264,265], 'spanning_num':[1,1,1]}
         """
         gen_stats.initialize(silent=True)
-        self.assertEqual(GenomeStatistic.objects.count(), len(SUPPORTED_STATISTICS_TYPE_INTS)-1+constants.CHR_PATH_LENGTHS[-1])
+        self.assertEqual(GenomeStatistic.objects.count(), len(supported_statistics_type_ints)-1+settings.CHR_PATH_LENGTHS[-1])
         check_vals = {GENOME:{'num_pos':8, 'num_tiles':21, 'max_num_spanned':3}, #Genome
                       CHR_1:{'num_pos':6, 'num_tiles':15, 'max_num_spanned':3}, #Chromosome 1
                       CHR_2:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}} #Chromosome 2
@@ -2524,7 +2572,7 @@ class TestGenerateStatistics(TestCase):
         check_vals = {0:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':3}, #Path 0
                       1:{'num_pos':1, 'num_tiles':5, 'max_num_spanned':1}, #Path 1
                       path:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}} #Path 63
-        for i in range(constants.CHR_PATH_LENGTHS[-1]):
+        for i in range(settings.CHR_PATH_LENGTHS[-1]):
             path_stats = GenomeStatistic.objects.filter(statistics_type=PATH).filter(path_name=i).all()
             self.assertEqual(len(path_stats), 1)
             path_stats = path_stats.first()
@@ -2542,7 +2590,7 @@ class TestGenerateStatistics(TestCase):
     def test_update_on_same_library(self):
         gen_stats.initialize(silent=True)
         gen_stats.update(silent=True)
-        self.assertEqual(GenomeStatistic.objects.count(), len(SUPPORTED_STATISTICS_TYPE_INTS)-1+constants.CHR_PATH_LENGTHS[-1])
+        self.assertEqual(GenomeStatistic.objects.count(), len(supported_statistics_type_ints)-1+settings.CHR_PATH_LENGTHS[-1])
         check_vals = {GENOME:{'num_pos':8, 'num_tiles':21, 'max_num_spanned':3}, #Genome
                       CHR_1:{'num_pos':6, 'num_tiles':15, 'max_num_spanned':3}, #Chromosome 1
                       CHR_2:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}} #Chromosome 2
@@ -2565,7 +2613,7 @@ class TestGenerateStatistics(TestCase):
         check_vals = {0:{'num_pos':5, 'num_tiles':10, 'max_num_spanned':3}, #Path 0
                       1:{'num_pos':1, 'num_tiles':5, 'max_num_spanned':1}, #Path 1
                       path:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2}} #Path 63
-        for i in range(constants.CHR_PATH_LENGTHS[-1]):
+        for i in range(settings.CHR_PATH_LENGTHS[-1]):
             whole_genome_or_chrom_stats = GenomeStatistic.objects.filter(statistics_type=PATH).filter(path_name=i).all()
             self.assertEqual(len(whole_genome_or_chrom_stats), 1)
             whole_genome_or_chrom_stats = whole_genome_or_chrom_stats.first()
@@ -2635,7 +2683,7 @@ class TestGenerateStatistics(TestCase):
                 mk_tilevars(position['vars'], position['lengths'], tile, position['spanning_nums'], start_variant_value=1)
         chr3_paths = {
             CHR_3: {
-                hex(constants.CHR_PATH_LENGTHS[CHR_2]).lstrip('0x'): [
+                hex(settings.CHR_PATH_LENGTHS[CHR_2]).lstrip('0x'): [
                     {'vars':6, 'lengths':[250,300,300,310,260,275], 'spanning_nums':[1,1,1,1,1,1]},
                     {'vars':1, 'lengths':[301], 'spanning_nums':[1]},
                 ]
@@ -2673,7 +2721,7 @@ class TestGenerateStatistics(TestCase):
                       path_on_2:{'num_pos':2, 'num_tiles':6, 'max_num_spanned':2},
                       path_on_3:{'num_pos':2, 'num_tiles':7, 'max_num_spanned':1},
                      }
-        for i in range(constants.CHR_PATH_LENGTHS[-1]):
+        for i in range(settings.CHR_PATH_LENGTHS[-1]):
             genome_piece = GenomeStatistic.objects.filter(statistics_type=PATH).filter(path_name=i).all()
             self.assertEqual(len(genome_piece), 1)
             genome_piece = genome_piece.first()
@@ -2697,6 +2745,21 @@ class TestGenerateStatistics(TestCase):
         make_tiles(INVALID_HUMAN_LIBRARY, ignore_loci=True)
         self.assertRaises(InvalidGenomeError, gen_stats.update)
 ################################## TEST lantern_query_functions ###################################
+#Checking behavior for when lantern isn't running
+#lantern_query_functions is a wrapper around lantern APIs, so actual behavior should be tested with actual lantern
+class TestLanternQueryFunctionsWithoutPyLanternRunning(TestCase):
+    def test_failure_get_population_names_and_check_lantern_version(self):
+        with self.assertRaises(requests.ConnectionError) as cm:
+            lantern_query_fns.get_population_names_and_check_lantern_version()
+    def test_failure_make_sample_position_variant_query(self):
+        with self.assertRaises(requests.ConnectionError) as cm:
+            lantern_query_fns.make_sample_position_variant_query('000.00.0000')
+    def test_failure_get_population_sequences_over_position_range(self):
+        with self.assertRaises(requests.ConnectionError) as cm:
+            lantern_query_fns.get_population_sequences_over_position_range(0, 3)
+    def test_failure_get_sub_population_sequences_over_position_range(self):
+        with self.assertRaises(requests.ConnectionError) as cm:
+            lantern_query_fns.get_population_sequences_over_position_range(0, 3, sub_population_list=['sample1'])
 ##################################     TEST query_functions      ###################################
 ################################## TEST overall_statistics_views ###################################
 ##class TestViewOverallStatistics(TestCase):

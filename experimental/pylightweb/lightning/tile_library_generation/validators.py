@@ -4,12 +4,18 @@ import requests
 import re
 
 import tile_library.basic_functions as basic_fns
-from tile_library.constants import CHR_PATH_LENGTHS, CHR_OTHER, TAG_LENGTH, \
-    NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, \
-    NUM_HEX_INDEXES_FOR_VARIANT_VALUE, LANTERN_NAME_FORMAT_STRING
+try:
+    from django.conf import settings
+    position_length = settings.NUM_HEX_INDEXES_FOR_VERSION + settings.NUM_HEX_INDEXES_FOR_PATH + settings.NUM_HEX_INDEXES_FOR_STEP
+except ImportError:
+    #Not using overall django configuration settings to avoid django dependency
+    from tile_library.settings import CHR_PATH_LENGTHS, CHR_OTHER, TAG_LENGTH, \
+        NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, \
+        NUM_HEX_INDEXES_FOR_VARIANT_VALUE, LANTERN_NAME_FORMAT_STRING
+    position_length = NUM_HEX_INDEXES_FOR_VERSION + NUM_HEX_INDEXES_FOR_PATH + NUM_HEX_INDEXES_FOR_STEP
+
 from errors import TileLibraryValidationError
 
-position_length = NUM_HEX_INDEXES_FOR_VERSION + NUM_HEX_INDEXES_FOR_PATH + NUM_HEX_INDEXES_FOR_STEP
 def validate_json(text):
     try:
         json.loads(text)
@@ -19,9 +25,14 @@ def validate_json(text):
 def validate_tile_position_int(tile_position_int):
     if tile_position_int < 0:
         raise TileLibraryValidationError({'tile_position_int':"integer must be positive"})
-    v='f'*(NUM_HEX_INDEXES_FOR_VERSION)
-    p='f'*(NUM_HEX_INDEXES_FOR_PATH)
-    s='f'*(NUM_HEX_INDEXES_FOR_STEP)
+    try:
+        v='f'*(settings.NUM_HEX_INDEXES_FOR_VERSION)
+        p='f'*(settings.NUM_HEX_INDEXES_FOR_PATH)
+        s='f'*(settings.NUM_HEX_INDEXES_FOR_STEP)
+    except NameError:
+        v='f'*(NUM_HEX_INDEXES_FOR_VERSION)
+        p='f'*(NUM_HEX_INDEXES_FOR_PATH)
+        s='f'*(NUM_HEX_INDEXES_FOR_STEP)
     max_tile_position = int(v+p+s, 16)
     if tile_position_int > max_tile_position:
         raise TileLibraryValidationError({'tile_position_int':"tile position int must be smaller than or equal to '%s.%s.%s'" % (v,p,s)})
@@ -29,10 +40,16 @@ def validate_tile_position_int(tile_position_int):
 def validate_tile_variant_int(tile_variant_int):
     if tile_variant_int < 0:
         raise TileLibraryValidationError({'tile_variant_int':"integer must be positive"})
-    v='f'*(NUM_HEX_INDEXES_FOR_VERSION)
-    p='f'*(NUM_HEX_INDEXES_FOR_PATH)
-    s='f'*(NUM_HEX_INDEXES_FOR_STEP)
-    vv='f'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+    try:
+        v='f'*(settings.NUM_HEX_INDEXES_FOR_VERSION)
+        p='f'*(settings.NUM_HEX_INDEXES_FOR_PATH)
+        s='f'*(settings.NUM_HEX_INDEXES_FOR_STEP)
+        vv='f'*(settings.NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+    except NameError:
+        v='f'*(NUM_HEX_INDEXES_FOR_VERSION)
+        p='f'*(NUM_HEX_INDEXES_FOR_PATH)
+        s='f'*(NUM_HEX_INDEXES_FOR_STEP)
+        vv='f'*(NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
     max_tile_variant = int(v+p+s+vv, 16)
     if tile_variant_int > max_tile_variant:
         raise TileLibraryValidationError({'tile_variant_int':"tile variant int must be smaller than or equal to '%s.%s.%s.%s'" % (v,p,s,vv)})
@@ -40,6 +57,10 @@ def validate_tile_variant_int(tile_variant_int):
 def validate_tag(tag):
     if tag.lower() != tag:
         raise TileLibraryValidationError("Tag must be lowercase")
+    try:
+        TAG_LENGTH = settings.TAG_LENGTH
+    except NameError:
+        pass
     if len(tag) != TAG_LENGTH and len(tag) != 0:
         raise TileLibraryValidationError("Tag length must be equal to the set TAG_LENGTH or must be empty")
 
@@ -93,6 +114,10 @@ def validate_spanning_tile(tile_position_one, tile_position_two, num_positions_s
         raise TileLibraryValidationError({'spanning_tile_error':'number of steps spanned (from tile position integers and reported) do not match'})
 
 def validate_tile_variant(tile_position_int, tile_variant_int, variant_value, sequence, seq_length, seq_md5sum, start_tag, end_tag, is_start_of_path, is_end_of_path):
+    try:
+        TAG_LENGTH = settings.TAG_LENGTH
+    except NameError:
+        pass
     acceptable_seq_length = TAG_LENGTH*2
     if is_start_of_path:
         acceptable_seq_length -= TAG_LENGTH
@@ -129,6 +154,10 @@ def validate_tile_variant(tile_position_int, tile_variant_int, variant_value, se
         raise TileLibraryValidationError(VALIDATION_ERRORS)
 
 def validate_locus(chromosome_int, tile_position_int, TAG_LENGTH, tile_sequence_length, begin_int, end_int):
+    try:
+        CHR_PATH_LENGTHS = settings.CHR_PATH_LENGTHS
+    except NameError:
+        pass
     VALIDATION_ERRORS = {}
     version, path, step = basic_fns.get_position_ints_from_position_int(tile_position_int)
     if path not in range(CHR_PATH_LENGTHS[chromosome_int-1], CHR_PATH_LENGTHS[chromosome_int]):
@@ -143,6 +172,10 @@ def validate_locus(chromosome_int, tile_position_int, TAG_LENGTH, tile_sequence_
         raise TileLibraryValidationError(VALIDATION_ERRORS)
 
 def validate_lantern_translation(lantern_name, tile_variant_int):
+    try:
+        LANTERN_NAME_FORMAT_STRING = settings.LANTERN_NAME_FORMAT_STRING
+    except NameError:
+        pass
     VALIDATION_ERRORS = {}
     #If these throw an error, I want it to propogate.
     #Check that lantern_name doesn't have spanning tile notation
@@ -200,6 +233,10 @@ def validate_tile_variant_loci_encompass_genome_variant_loci(genome_var_start_in
     """
         check genome variant loci are within tile variant loci
     """
+    try:
+        TAG_LENGTH = settings.TAG_LENGTH
+    except NameError:
+        pass
     VALIDATION_ERRORS = {}
     acceptable_start_position = tile_var_start_int+TAG_LENGTH
     start_msg = "%s is in the start tag or before the locus"

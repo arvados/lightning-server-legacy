@@ -24,15 +24,12 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
+from django.conf import settings
 
 import tile_library.basic_functions as basic_fns
 import tile_library_generation.validators as validation_fns
 import tile_library.human_readable_functions as human_readable_fns
 from errors import TileLibraryValidationError, MissingLocusError
-from tile_library.constants import TAG_LENGTH, SUPPORTED_ASSEMBLY_CHOICES, \
-    CHR_CHOICES, STATISTICS_TYPE_CHOICES, PATH, CHR_PATH_LENGTHS, \
-    NUM_HEX_INDEXES_FOR_VERSION, NUM_HEX_INDEXES_FOR_PATH, NUM_HEX_INDEXES_FOR_STEP, \
-    LANTERN_NAME_FORMAT_STRING
 
 def validate_json(text):
     try:
@@ -64,8 +61,8 @@ def validate_num_spanning_tiles(num_spanning):
         raise ValidationError(e.value)
 def get_tile_n_positions_forward(curr_tile_int, n):
     version, path, step = basic_fns.get_position_strings_from_position_int(curr_tile_int)
-    next_path = hex(int(path,16)+1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_PATH)
-    next_step = hex(n-1).lstrip('0x').zfill(NUM_HEX_INDEXES_FOR_STEP)
+    next_path = hex(int(path,16)+1).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_PATH)
+    next_step = hex(n-1).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_STEP)
     if n <= 0:
         raise Exception("asked to get current tile")
     try:
@@ -76,6 +73,37 @@ def get_tile_n_positions_forward(curr_tile_int, n):
         return Tile.objects.get(tile_position_int=int(version+next_path+next_step,16))
     except Tile.DoesNotExist:
         raise ValidationError({'spanning_tile_error_missing_tile': 'Unable to find tile %s or %s' % (string.join([version,path,step], sep='.'), string.join([version,next_path,next_step], sep='.'))})
+
+def get_max_num_tiles_spanned_at_position(tile_position_int):
+    #Find the maximum number to look back for a given position
+    version_int, path_int, step_int = basic_fns.get_position_ints_from_position_int(tile_position_int)
+    #raises AssertionError if tile_position_int is not an integer, negative, or an invalid tile position
+    try:
+        num_tiles_spanned = GenomeStatistic.objects.get(path_name=path_int).max_num_positions_spanned
+    except GenomeStatistic.DoesNotExist:
+        foo, min_path_tile = basic_fns.get_min_position_and_tile_variant_from_path_int(path_int)
+        foo, max_path_tile = basic_fns.get_min_position_and_tile_variant_from_path_int(path_int + 1)
+        tilevars = TileVariant.objects.filter(tile_variant_int__range=(min_path_tile, max_path_tile-1))
+        num_tiles_spanned = tilevars.aggregate(max_pos_spanned=models.Max('num_positions_spanned'))['max_pos_spanned']
+    if num_tiles_spanned == None:
+        raise EmptyPathError('No tiles are loaded for path containing tile: %s' % (hex(tile_position_int).lstrip('0x').zfill(9)))
+    num_tiles_spanned = min(int(num_tiles_spanned)-1, step_int) #Only need to look back as far as there are steps in this path
+    return num_tiles_spanned
+
+def get_locus(assembly, tile_position_int):
+    qs = TileLocusAnnotation.objects.filter(assembly_int=assembly)
+    try:
+        return qs.get(tile_position_id=tile_position_int)
+    except TileLocusAnnotation.DoesNotExist:
+        num_look_back = 1
+        max_look_back = get_max_num_tiles_spanned_at_position(tile_position_int)
+        while num_look_back <= max_look_back:
+            if qs.filter(tile_position_id=tile_position_int-num_look_back).exists():
+                locus = qs.get(tile_position_id=tile_position_int-num_look_back)
+                if locus.get_tile_variant().num_positions_spanned > num_look_back:
+                    return locus
+            num_look_back += 1
+        raise TileLocusAnnotation.DoesNotExist("TileLocusAnnotation matching query does not exist.")
 
 class Tile(models.Model):
     """
@@ -107,8 +135,8 @@ class Tile(models.Model):
     tile_position_int = models.BigIntegerField(primary_key=True, editable=False, db_index=True, validators=[validate_tile_position_int])
     is_start_of_path = models.BooleanField(default=False, editable=False)
     is_end_of_path = models.BooleanField(default=False, editable=False)
-    start_tag = models.CharField(blank=True, max_length=TAG_LENGTH, validators=[validate_tag])
-    end_tag = models.CharField(blank=True, max_length=TAG_LENGTH, validators=[validate_tag])
+    start_tag = models.CharField(blank=True, max_length=settings.TAG_LENGTH, validators=[validate_tag])
+    end_tag = models.CharField(blank=True, max_length=settings.TAG_LENGTH, validators=[validate_tag])
     created = models.DateTimeField(auto_now_add=True)
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -154,8 +182,8 @@ class TileLocusAnnotation(models.Model):
             tile_variant_value(positive int): the variant value of the tile variant containing the
                 reference sequence
     """
-    assembly_int = models.PositiveSmallIntegerField(choices=SUPPORTED_ASSEMBLY_CHOICES, db_index=True)
-    chromosome_int = models.PositiveSmallIntegerField(choices=CHR_CHOICES, db_index=True)
+    assembly_int = models.PositiveSmallIntegerField(choices=settings.SUPPORTED_ASSEMBLY_CHOICES, db_index=True)
+    chromosome_int = models.PositiveSmallIntegerField(choices=settings.CHR_CHOICES, db_index=True)
     alternate_chromosome_name = models.CharField(max_length=100, blank=True)
     start_int = models.PositiveIntegerField(db_index=True)
     end_int = models.PositiveIntegerField(db_index=True)
@@ -166,7 +194,7 @@ class TileLocusAnnotation(models.Model):
         try:
             tile_var_int = basic_fns.convert_position_int_to_tile_variant_int(int(self.tile_position_id), variant_value=int(self.tile_variant_value))
             length = int(TileVariant.objects.get(tile_variant_int=tile_var_int).length)
-            validation_fns.validate_locus(int(self.chromosome_int), int(self.tile_position_id), TAG_LENGTH, length, int(self.start_int), int(self.end_int))
+            validation_fns.validate_locus(int(self.chromosome_int), int(self.tile_position_id), settings.TAG_LENGTH, length, int(self.start_int), int(self.end_int))
         except TileVariant.DoesNotExist:
             raise ValidationError({'tile_variant_value':'tile does not have a tilevariant (with a variant value of %i) associated with it' % (self.tile_variant_value)})
         except TileLibraryValidationError as e:
@@ -176,6 +204,8 @@ class TileLocusAnnotation(models.Model):
         return TileVariant.objects.filter(tile_id=self.tile_position).get(variant_value=self.tile_variant_value).sequence
     def get_readable_chr_name(self):
         return human_readable_fns.get_readable_chr_name(self.chromosome_int, self.alternate_chromosome_name)
+    def get_tile_variant(self):
+        return TileVariant.objects.filter(tile_id=self.tile_position).get(variant_value=self.tile_variant_value)
     def __unicode__(self):
         assembly = human_readable_fns.get_readable_assembly_name(self.assembly_int)
         return "%s: %s Translation" % (self.tile_position.get_string(), assembly)
@@ -215,14 +245,14 @@ class TileVariant(models.Model):
     md5sum = models.CharField(max_length=32)
     created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
-    sequence = models.TextField(validators=[
+    sequence = models.TextField(blank=True, validators=[
         RegexValidator(
-            regex='[acgtn]+',
+            regex='[acgtn]*',
             message="Not a valid sequence, must be lowercase, and can only include a,c,g,t, or n."
         )
     ])
-    start_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_tag])
-    end_tag = models.CharField(default='', blank=True, max_length=TAG_LENGTH, validators=[validate_tag])
+    start_tag = models.CharField(default='', blank=True, max_length=settings.TAG_LENGTH, validators=[validate_tag])
+    end_tag = models.CharField(default='', blank=True, max_length=settings.TAG_LENGTH, validators=[validate_tag])
     def save(self, *args, **kwargs):
         try:
             self.full_clean()
@@ -247,7 +277,6 @@ class TileVariant(models.Model):
             super(TileVariant, self).save(*args, **kwargs)
         except TileLibraryValidationError as e:
             raise ValidationError(e.value)
-
     def get_string(self):
         """Displays hex indexing for tile variant"""
         return basic_fns.get_tile_variant_string_from_tile_variant_int(int(self.tile_variant_int))
@@ -255,24 +284,24 @@ class TileVariant(models.Model):
     def is_reference(self, assembly_int):
         if type(assembly_int) != int:
             raise ValueError("assembly_int must be of type int")
-        if assembly_int not in [i for i,j in SUPPORTED_ASSEMBLY_CHOICES]:
+        if assembly_int not in [i for i,j in settings.SUPPORTED_ASSEMBLY_CHOICES]:
             raise ValueError("%i not a supported assembly choice" % (assembly_int))
         try:
-            return int(self.variant_value) == TileLocusAnnotation.objects.filter(tile_position_id=self.tile_id).get(assembly_int=assembly_int).tile_variant_value
+            return int(self.variant_value) == get_locus(assembly_int, self.tile_id).tile_variant_value
         except TileLocusAnnotation.DoesNotExist:
             raise MissingLocusError("A locus for assembly %i not found for tile %s" % (assembly_int, str(self.tile)))
     def get_locus(self, assembly_int):
         if type(assembly_int) != int:
             raise ValueError("assembly_int must be of type int")
-        if assembly_int not in [i for i,j in SUPPORTED_ASSEMBLY_CHOICES]:
+        if assembly_int not in [i for i,j in settings.SUPPORTED_ASSEMBLY_CHOICES]:
             raise ValueError("%i not a supported assembly choice" % (assembly_int))
         start_tile = int(self.tile_id)
         end_tile = int(self.tile_id)+int(self.num_positions_spanned)-1
         try:
-            start_locus = TileLocusAnnotation.objects.filter(tile_position_id=start_tile).get(assembly_int=assembly_int)
+            start_locus = get_locus(assembly_int, start_tile)
             if start_tile == end_tile:
                 return start_locus.start_int, start_locus.end_int
-            end_locus = TileLocusAnnotation.objects.filter(tile_position_id=end_tile).get(assembly_int=assembly_int)
+            end_locus = get_locus(assembly_int, end_tile)
             return start_locus.start_int, end_locus.end_int
         except TileLocusAnnotation.DoesNotExist:
             start_str = basic_fns.get_position_string_from_position_int(start_tile)
@@ -307,10 +336,10 @@ class TileVariant(models.Model):
         if lower_position_int > upper_position_int:
             raise ValueError("Expects lower position_int to be less than or equal to upper position int. " + info_str)
         return self.sequence[lower_position_int:upper_position_int]
-    def get_conversion_list_between_genome_variant_loci_and_tile_loci(self, start_locus_int, end_locus_int):
+    def get_conversion_list_between_genome_variant_loci_and_tile_loci(self, assembly, start_locus_int, end_locus_int):
         #print self.get_string()
         reference_to_tile_variant = [(0, 0, 0, 0), (end_locus_int-start_locus_int, self.length, end_locus_int-start_locus_int, self.length)]
-        genome_variant_positions = self.translations_to_genome_variant.all()
+        genome_variant_positions = self.translations_to_genome_variant.filter(genome_variant__assembly_int=assembly).all()
         for translation in genome_variant_positions:
             #print translation
             trans_locus_start = translation.genome_variant.locus_start_int - start_locus_int
@@ -320,7 +349,7 @@ class TileVariant(models.Model):
         reference_to_tile_variant.sort()
         #print reference_to_tile_variant
         return reference_to_tile_variant
-    def get_bases_between_loci_known_locus(self, queried_low_int, queried_high_int, start_locus_int, end_locus_int):
+    def get_bases_between_loci_known_locus(self, assembly, queried_low_int, queried_high_int, start_locus_int, end_locus_int):
         def get_start(low_int, reference_to_tile_variant):
             for i, (locus_start, variant_start, locus_end, variant_end) in enumerate(reference_to_tile_variant):
                 if low_int <= locus_start:
@@ -371,7 +400,7 @@ class TileVariant(models.Model):
         #If we are asked to retrieve the entire tile, our job is easy:
         if end_locus_int <= queried_high_int and start_locus_int >= queried_low_int:
             return self.sequence.upper()
-        reference_to_tile_variant = self.get_conversion_list_between_genome_variant_loci_and_tile_loci(start_locus_int, end_locus_int)
+        reference_to_tile_variant = self.get_conversion_list_between_genome_variant_loci_and_tile_loci(assembly, start_locus_int, end_locus_int)
         low_int = max(queried_low_int - start_locus_int, 0)
         high_int = queried_high_int - start_locus_int
 
@@ -380,7 +409,7 @@ class TileVariant(models.Model):
         return self.get_base_group_between_positions(lower_base_index, higher_base_index).upper()
     def get_bases_between_loci(self, queried_low_int, queried_high_int, assembly):
         start_locus_int, end_locus_int = self.get_locus(assembly)
-        return self.get_bases_between_loci_known_locus(queried_low_int, queried_high_int, start_locus_int, end_locus_int)
+        return self.get_bases_between_loci_known_locus(assembly, queried_low_int, queried_high_int, start_locus_int, end_locus_int)
     def get_tile_variant_lantern_name(self):
         try:
             lantern_name = LanternTranslator.objects.filter(tile_variant_int=int(self.tile_variant_int)).get(tile_library_host='').lantern_name
@@ -407,7 +436,7 @@ class LanternTranslator(models.Model):
     Functions:
         get_string(): returns string
     """
-    lantern_name = models.TextField(unique=True, validators=[RegexValidator(regex=LANTERN_NAME_FORMAT_STRING, message="Not a valid lantern name format (specified in tile_library.constants.LANTERN_NAME_FORMAT_STRING)")])
+    lantern_name = models.TextField(unique=True, validators=[RegexValidator(regex=settings.LANTERN_NAME_FORMAT_STRING, message="Not a valid lantern name format (specified in tile_library.constants.LANTERN_NAME_FORMAT_STRING)")])
     tile_library_host = models.TextField(blank=True, default="")
     tile_variant_int = models.BigIntegerField(db_index=True, validators=[validate_tile_variant_int])
     created = models.DateTimeField(auto_now_add=True)
@@ -486,8 +515,8 @@ class GenomeVariant(models.Model):
             GAVariant.calls -> A list of the samples containing TileVariants in tile_variants
     """
     id = models.BigIntegerField(primary_key=True, editable=False)
-    assembly_int = models.PositiveSmallIntegerField(choices=SUPPORTED_ASSEMBLY_CHOICES, db_index=True)
-    chromosome_int = models.PositiveSmallIntegerField(choices=CHR_CHOICES, db_index=True)
+    assembly_int = models.PositiveSmallIntegerField(choices=settings.SUPPORTED_ASSEMBLY_CHOICES, db_index=True)
+    chromosome_int = models.PositiveSmallIntegerField(choices=settings.CHR_CHOICES, db_index=True)
     alternate_chromosome_name = models.CharField(max_length=100, blank=True)
     locus_start_int = models.PositiveIntegerField(db_index=True)
     locus_end_int = models.PositiveIntegerField(db_index=True)
@@ -536,9 +565,9 @@ class GenomeVariant(models.Model):
                 zero = locus.start_int
                 reference_seq += reference_tile_variant_sequence
             else:
-                assert reference_seq[-TAG_LENGTH:].upper() == reference_tile_variant_sequence[:TAG_LENGTH].upper(), \
+                assert reference_seq[-settings.TAG_LENGTH:].upper() == reference_tile_variant_sequence[:settings.TAG_LENGTH].upper(), \
                     "Tags mismatching at locus %s: %s not %s" % (loci, reference_seq, reference_tile_variant_sequence)
-                reference_seq += reference_tile_variant_sequence[TAG_LENGTH:]
+                reference_seq += reference_tile_variant_sequence[settings.TAG_LENGTH:]
         try:
             validation_fns.validate_reference_bases(reference_seq, start-zero, end-zero, self.reference_bases)
             validation_fns.validate_reference_versus_alternate_bases(self.reference_bases, self.alternate_bases)
@@ -583,7 +612,7 @@ class GenomeVariantTranslation(models.Model):
             start_int, end_int = tv.get_locus(gv.assembly_int)
             is_start_of_path, is_end_of_path = tv.get_start_and_end_of_path_bools()
             for tile_position in range(int(tv.tile_id), int(tv.tile_id) + int(tv.num_positions_spanned)):
-                locus = TileLocusAnnotation.objects.filter(tile_position=tile_position).get(assembly_int=gv.assembly_int)
+                locus = get_locus(gv.assembly_int, tile_position)
                 validation_fns.validate_same_chromosome(locus.chromosome_int, gv.chromosome_int, locus.alternate_chromosome_name, gv.alternate_chromosome_name)
             validation_fns.validate_tile_variant_loci_encompass_genome_variant_loci(
                 gv.locus_start_int, gv.locus_end_int, start_int, end_int, is_start_of_path, is_end_of_path
@@ -605,7 +634,7 @@ class GenomeStatistic(models.Model):
         Provides some basic statistics capabilites and a running counter of the maximum
         number of positions spanned in each path
     """
-    statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=STATISTICS_TYPE_CHOICES)
+    statistics_type = models.PositiveSmallIntegerField(db_index=True, choices=settings.STATISTICS_TYPE_CHOICES)
     path_name = models.IntegerField(db_index=True, default=-1)
     num_of_positions = models.BigIntegerField(validators=[validate_positive])
     num_of_tiles = models.BigIntegerField(validators=[validate_positive])
@@ -616,13 +645,13 @@ class GenomeStatistic(models.Model):
             raise ValidationError({'num_of_positions-num_of_tiles': "No tiles can exist if no positions exist"})
         if self.num_of_positions  > self.num_of_tiles:
             raise ValidationError({'num_of_positions-num_of_tiles': "Number of tiles must be larger than or equal to the number of positions"})
-        if self.statistics_type == PATH:
+        if self.statistics_type == settings.PATH:
             if self.path_name < 0:
-                raise ValidationError({'path_name': 'If statistics type is equal to %i, path name must be greater than -1' % (PATH)})
-            if self.path_name >= CHR_PATH_LENGTHS[-1]:
-                raise ValidationError({'path_name': 'Path name must be less than %i' % (CHR_PATH_LENGTHS[-1])})
-        if self.path_name != -1 and self.statistics_type != PATH:
-            raise ValidationError({'path_name': 'If statistics type is not equal to %i, path name must be exactly -1' % (PATH)})
+                raise ValidationError({'path_name': 'If statistics type is equal to %i, path name must be greater than -1' % (settings.PATH)})
+            if self.path_name >= settings.CHR_PATH_LENGTHS[-1]:
+                raise ValidationError({'path_name': 'Path name must be less than %i' % (settings.CHR_PATH_LENGTHS[-1])})
+        if self.path_name != -1 and self.statistics_type != settings.PATH:
+            raise ValidationError({'path_name': 'If statistics type is not equal to %i, path name must be exactly -1' % (settings.PATH)})
         super(GenomeStatistic, self).save(*args, **kwargs)
     def __unicode__(self):
         return human_readable_fns.get_readable_genome_statistics_name(self.statistic_type, path=self.path_name) + "Statistics"
