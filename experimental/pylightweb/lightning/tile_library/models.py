@@ -64,7 +64,7 @@ def get_tile_n_positions_forward(curr_tile_int, n):
     next_path = hex(int(path,16)+1).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_PATH)
     next_step = hex(n-1).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_STEP)
     if n <= 0:
-        raise Exception("asked to get current tile")
+        raise Exception("asked to get current tile") #Not raised in tests, which is expected
     try:
         return Tile.objects.get(tile_position_int=curr_tile_int+n)
     except Tile.DoesNotExist:
@@ -85,7 +85,7 @@ def get_max_num_tiles_spanned_at_position(tile_position_int):
         foo, max_path_tile = basic_fns.get_min_position_and_tile_variant_from_path_int(path_int + 1)
         tilevars = TileVariant.objects.filter(tile_variant_int__range=(min_path_tile, max_path_tile-1))
         num_tiles_spanned = tilevars.aggregate(max_pos_spanned=models.Max('num_positions_spanned'))['max_pos_spanned']
-    if num_tiles_spanned == None:
+    if num_tiles_spanned == None: #Not raised in tests
         raise EmptyPathError('No tiles are loaded for path containing tile: %s' % (hex(tile_position_int).lstrip('0x').zfill(9)))
     num_tiles_spanned = min(int(num_tiles_spanned)-1, step_int) #Only need to look back as far as there are steps in this path
     return num_tiles_spanned

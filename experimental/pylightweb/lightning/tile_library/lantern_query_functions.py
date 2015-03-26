@@ -91,7 +91,7 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
     assert last_position_int >= first_position_int, "Expects first_position_int (%s) to be less than last_position_int (%s)" % (position_hex_string, last_position_hex_string)
     if first_path == last_path:
         length_to_retrieve = hex(last_position_int - first_position_int + 1).lstrip('0x')
-        response = make_sample_position_variant_query(position_hex_string+"+"+length_to_retrieve)
+        response = make_sample_position_variant_query(position_hex_string+"+"+length_to_retrieve, human_subsection=sub_population_list)
         humans = response['Result']
         human_names_returned = sorted(humans.keys())
         if human_names_returned != human_names:
@@ -105,9 +105,10 @@ def get_population_sequences_over_position_range(first_position_int, last_positi
             tmp_last_position_int = min(last_position_int, path_max_position_int)
             tmp_first_position_hex_string = convert_to_cgf(tmp_first_position_int)
             length_to_retrieve = hex(tmp_last_position_int - tmp_first_position_int + 1).lstrip('0x')
-            response = make_sample_position_variant_query(tmp_first_position_hex_string+"+"+length_to_retrieve)
+            response = make_sample_position_variant_query(tmp_first_position_hex_string+"+"+length_to_retrieve, human_subsection=sub_population_list)
             if humans == {}:
                 humans = response['Result']
+                human_names_returned = sorted(humans.keys())
                 if human_names_returned != human_names:
                     raise UnexpectedLanternBehaviorError("Lantern error: sample-position-variant did not returned the requestd list of callsets")
             else:

@@ -275,7 +275,6 @@ def make_tile_position_and_variant(tile_position, tile_variant, length, tile_end
     return tile, tilevar
 
 ######################### TEST basic_functions ###################################
-@skip("Debugging lantern query")
 class TestBasicFunctions(TestCase):
     #get_position_strings_from_position_int
     def test_get_position_strings_from_position_int_type(self):
@@ -936,7 +935,6 @@ class TestBasicFunctions(TestCase):
 ## Currently unable to test the validity of the tile_library
 ##  (ie. 1 'is_start_of_path' and 1 'is_end_of_path')
 ##  (The path starts at tile position 0 and increments by one each time)
-@skip("Debugging lantern query")
 class TestTileModel(TestCase):
     def test_get_string_type(self):
         new_tile = Tile(tile_position_int=0)
@@ -1024,7 +1022,6 @@ class TestTileModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('tile_position_int', cm.exception.message_dict)
 ################################## TEST TileLocusAnnotation model ###################################
-@skip("Debugging lantern query")
 class TestTileLocusAnnotationModel(TestCase):
     def test_non_int_assembly(self):
         tile, tilevar = make_tile_position_and_variant(0, 0, 250)
@@ -1171,7 +1168,6 @@ class TestTileLocusAnnotationModel(TestCase):
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('__all__', cm.exception.message_dict)
 ################################## TEST TileVariant model ###################################
-@skip("Debugging lantern query")
 class TestTileVariantModel(TestCase):
     def test_non_int_tile_variant_int(self):
         tile=make_tile_position(1)
@@ -1893,7 +1889,6 @@ class TestTileVariantModel(TestCase):
         self.assertEqual(tile.get_base_group_between_positions(1,5), 'GTCN')
         self.assertEqual(tile.get_base_group_between_positions(1,4), 'GTC')
 ################################## TEST LanternTranslator model ###################################
-@skip("Debugging lantern query")
 class TestLanternTranslatorModel(TestCase):
     def setUp(self):
         self.v='0'*NUM_HEX_INDEXES_FOR_VERSION
@@ -2019,7 +2014,6 @@ class TestLanternTranslatorModel(TestCase):
             LanternTranslator(lantern_name=new_name, tile_variant_int=0).save()
         self.assertEqual(len(cm.exception.message_dict), 1)
         self.assertIn('__all__', cm.exception.message_dict)
-@skip("Debugging lantern query")
 class TestLanternTranslatorModelOtherDB(LiveServerTestCase):
     def setUp(self):
         self.v='0'*NUM_HEX_INDEXES_FOR_VERSION
@@ -2052,7 +2046,6 @@ class TestLanternTranslatorModelOtherDB(LiveServerTestCase):
     def test_success(self):
         LanternTranslator(lantern_name=self.min_name, tile_library_host=self.live_server_url.strip().lstrip('http://'), tile_variant_int=0).save()
 ################################## TEST GenomeVariant model ###################################
-@skip("Debugging lantern query")
 class TestGenomeVariantModel(TestCase):
     def setUp(self):
         build_library.make_reference()
@@ -2167,7 +2160,6 @@ class TestGenomeVariantModel(TestCase):
     def test_success_sub_on_end_tag_unable_to_span(self):
         build_library.make_genome_variant(0, 106, 107, 'G', 'ATG')
 ################################## TEST GenomeVariantTranslation model ###################################
-@skip("Debugging lantern query")
 class TestGenomeVariantTranslationModel(TestCase):
     #Check failures
     #tv missing gv assembly
@@ -2437,7 +2429,6 @@ class TestGenomeVariantTranslationModel(TestCase):
     def test_success_complicated_library(self):
         build_library.make_entire_library()
 ################################## TEST GenomeStatistic model ###################################
-@skip("Debugging lantern query")
 class TestGenomeStatisticModel(TestCase):
     @skipIf(GENOME-1 in supported_statistics_type_ints, "Checking behavior for too small statistics type, but GENOME-1 is defined")
     def test_negative_statistics_int(self):
@@ -2527,7 +2518,6 @@ class TestGenomeStatisticModel(TestCase):
     def test_successful_save(self):
         GenomeStatistic(statistics_type=PATH, path_name=settings.CHR_PATH_LENGTHS[-1]-1, num_of_positions=0, num_of_tiles=0).save()
 ################################## TEST generate_statistics ###################################
-@skip("Debugging lantern query")
 class TestGenerateStatistics(TestCase):
     def setUp(self):
         make_tiles(BASE_LIBRARY_STRUCTURE)
@@ -2761,6 +2751,30 @@ class TestLanternQueryFunctionsWithoutPyLanternRunning(TestCase):
         with self.assertRaises(requests.ConnectionError) as cm:
             lantern_query_fns.get_population_sequences_over_position_range(0, 3, sub_population_list=['sample1'])
 ##################################     TEST query_functions      ###################################
+class TestQueryFunctionsSparsely(LiveServerTestCase):
+    def setUp(self):
+        self.v='0'*NUM_HEX_INDEXES_FOR_VERSION
+        self.p='0'*NUM_HEX_INDEXES_FOR_PATH
+        self.s='0'*NUM_HEX_INDEXES_FOR_STEP
+        self.vv = '0'*(NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+        self.min_name = string.join([self.p,self.v,self.s,self.vv], sep='.')
+        tile, tilevar = make_tile_position_and_variant(0, 0, 250)
+        self.tile = tile
+        self.tilevar = tilevar
+    def test_failure_due_to_deletion(self):
+        LanternTranslator(lantern_name=self.min_name, tile_library_host=self.live_server_url.strip().lstrip('http://'), tile_variant_int=0).save()
+        self.tilevar.delete()
+        with self.assertRaises(LanternTranslator.DegradedVariantError) as cm:
+            query_fns.get_bases_from_lantern_name(self.min_name)
+    def test_success_return_empty_string_if_no_lantern_translator(self):
+        bases = query_fns.get_bases_from_lantern_name(self.min_name)
+        self.assertEqual(bases, "")
+    def test_success_return_bases(self):
+        LanternTranslator(lantern_name=self.min_name, tile_library_host=self.live_server_url.strip().lstrip('http://'), tile_variant_int=0).save()
+        bases = query_fns.get_bases_from_lantern_name(self.min_name)
+        self.assertEqual(bases, self.tilevar.sequence.upper())
+
+
 ################################## TEST overall_statistics_views ###################################
 ##class TestViewOverallStatistics(TestCase):
 ##    def test_overall_statistics_empty_view(self):

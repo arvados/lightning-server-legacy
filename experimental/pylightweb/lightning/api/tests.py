@@ -1,7 +1,6 @@
 import json
 import pprint
-
-from django.test import TestCase, override_settings
+import string
 
 from unittest import skipIf, skip
 
@@ -10,10 +9,12 @@ import multiprocessing
 
 from django.core.urlresolvers import reverse
 from django.conf import settings
+from django.test import TestCase, LiveServerTestCase, override_settings
 
 from errors import MissingStatisticsError, InvalidGenomeError, ExistingStatisticsError, MissingLocusError
 import tile_library.test_scripts.complicated_library as build_library
 import tile_library.test_scripts.python_lantern as python_lantern
+from tile_library.models import LanternTranslator
 
 TAG_LENGTH = settings.TAG_LENGTH
 CHR_1 = settings.CHR_1
@@ -31,8 +32,9 @@ ASSEMBLY_19 = settings.ASSEMBLY_19
 GENOME = settings.GENOME
 PATH = settings.PATH
 
-curr_debugging=True
+curr_debugging=False
 spanning_assemblies_known_to_fail=True
+different_server_holding_tile_library_known_to_fail = True
 
 #### TODO: Check different assembly
 #### TODO: Implement functionality for assembly with spanning tiles
@@ -72,24 +74,94 @@ class QuietHandler(WSGIRequestHandler):
     def log_request(*args, **kwargs):
         pass
 
-httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application, handler_class=QuietHandler)
-httpd.quiet = True
-server_process = multiprocessing.Process(target=httpd.serve_forever)
-
 @override_settings(CHR_PATH_LENGTHS = (0,2,3))
-def setUpModule():
-    global server_process
-    #print "Starting python-lantern on port %i ..." % (python_lantern.LANTERN_PORT)
-    server_process.start()
-def tearDownModule():
-    global server_process
-    #print "\nClosing python-lantern ..."
-    server_process.terminate()
-    server_process.join()
-    del(server_process)
+class TestMissingLantern(TestCase):
+    def setUp(self):
+        build_library.make_entire_library(multiple_assemblies=True)
+        build_library.make_lantern_translators()
+    def test_between_loci_returns_500(self):
+        response = self.client.get(reverse('api:pop_between_loci'), {'assembly':settings.ASSEMBLY_19, 'chromosome':settings.CHR_1, 'lower_base':24, 'upper_base':25})
+        self.assertEqual(response.status_code, 500)
+    def test_around_locus_returns_500(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':settings.ASSEMBLY_19, 'chromosome':settings.CHR_1, 'target_base':24})
+        self.assertEqual(response.status_code, 500)
 
+@skipIf(different_server_holding_tile_library_known_to_fail, "These test cases are not currently supported")
 @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+@override_settings(LANTERN_TIMEOUT=1)
+class TestPartTileLibraryOnDifferentServer(LiveServerTestCase):
+    @classmethod
+    @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+    def setUpClass(cls):
+        pylantern_httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application, handler_class=QuietHandler)
+        cls.pylantern_server_process = multiprocessing.Process(target=pylantern_httpd.serve_forever)
+        cls.pylantern_server_process.start()
+        super(TestPartTileLibraryOnDifferentServer, cls).setUpClass()
+    @classmethod
+    def tearDownClass(cls):
+        cls.pylantern_server_process.terminate()
+        cls.pylantern_server_process.join()
+        del(cls.pylantern_server_process)
+        super(TestPartTileLibraryOnDifferentServer, cls).tearDownClass()
+    def setUp(self):
+        def mk_name(step, variant_value, path=0, version=0):
+            p = hex(path).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_PATH)
+            v = hex(version).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_VERSION)
+            s = hex(step).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_STEP)
+            vv = hex(variant_value).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_CGF_VARIANT_VALUE)
+            return string.join([p,v,s,vv],sep='.')
+        def mk_int(step, variant_value, path=0, version=0):
+            p = hex(path).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_PATH)
+            v = hex(version).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_VERSION)
+            s = hex(step).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_STEP)
+            vv = hex(variant_value).lstrip('0x').zfill(settings.NUM_HEX_INDEXES_FOR_VARIANT_VALUE)
+            return int(v+p+s+vv,16)
+        build_library.make_entire_library(multiple_assemblies=True)
+        build_library.make_lantern_translators(skip_path_1=True)
+        LanternTranslator(lantern_name=mk_name(0,0,path=1), tile_library_host=self.live_server_url.strip().lstrip('http://'), tile_variant_int=mk_int(0,0,path=1)).save()
+        LanternTranslator(lantern_name=mk_name(0,1,path=1), tile_library_host=self.live_server_url.strip().lstrip('http://'), tile_variant_int=mk_int(0,1,path=1)).save()
+    def test_between_loci_query_over_paths_simplest(self):
+        response = self.client.get(reverse('api:pop_between_loci'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'lower_base':129, 'upper_base':131}) #G || A
+        self.assertEqual(response.status_code, 200)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                if person_name == 'person1' and i == 0:
+                    self.assertEqual(phase, 'G')
+                else:
+                    self.assertEqual(phase, "GA")
+    def test_around_locus_query_over_paths_simplest(self):
+        response = self.client.get(reverse('api:pop_around_locus'), {'assembly':ASSEMBLY_19, 'chromosome':CHR_1, 'target_base':130, 'number_around':1}) #G || AG
+        self.assertEqual(response.status_code, 200)
+        content = json.loads(response.content)
+        self.assertEqual(len(content), len(population))
+        for person in content:
+            person_name = person['human_name']
+            for i, phase in enumerate(person['sequence']):
+                if person_name == 'person1' and i == 0:
+                    self.assertEqual(phase, 'G')
+                else:
+                    self.assertEqual(phase, "GAG")
+
+@skipIf(curr_debugging, "prevent noise")
+@override_settings(CHR_PATH_LENGTHS = (0,2,3))
+@override_settings(LANTERN_TIMEOUT=1)
 class TestEmptyPath(TestCase):
+    @classmethod
+    @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+    def setUpClass(cls):
+        pylantern_httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application, handler_class=QuietHandler)
+        cls.pylantern_server_process = multiprocessing.Process(target=pylantern_httpd.serve_forever)
+        cls.pylantern_server_process.start()
+        super(TestEmptyPath, cls).setUpClass()
+    @classmethod
+    def tearDownClass(cls):
+        cls.pylantern_server_process.terminate()
+        cls.pylantern_server_process.join()
+        del(cls.pylantern_server_process)
+        super(TestEmptyPath, cls).tearDownClass()
     def test_failure_get_one_more_tile_forward_returns_404(self):
         build_library.make_library_missing_path_1()
         build_library.make_lantern_translators(skip_path_1=True)
@@ -128,7 +200,21 @@ class TestEmptyPath(TestCase):
 
 @skipIf(curr_debugging, "Prevent noise")
 @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+@override_settings(LANTERN_TIMEOUT=1)
 class TestBetweenLoci(TestCase):
+    @classmethod
+    @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+    def setUpClass(cls):
+        pylantern_httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application, handler_class=QuietHandler)
+        cls.pylantern_server_process = multiprocessing.Process(target=pylantern_httpd.serve_forever)
+        cls.pylantern_server_process.start()
+        super(TestBetweenLoci, cls).setUpClass()
+    @classmethod
+    def tearDownClass(cls):
+        cls.pylantern_server_process.terminate()
+        cls.pylantern_server_process.join()
+        del(cls.pylantern_server_process)
+        super(TestBetweenLoci, cls).tearDownClass()
     def setUp(self):
         build_library.make_entire_library(multiple_assemblies=True)
         build_library.make_lantern_translators()
@@ -872,7 +958,21 @@ class TestBetweenLoci(TestCase):
 
 @skipIf(spanning_assemblies_known_to_fail, "Assembly 18 contains spanning tiles as the default")
 @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+@override_settings(LANTERN_TIMEOUT=1)
 class TestBetweenLociAssembly18(TestCase):
+    @classmethod
+    @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+    def setUpClass(cls):
+        pylantern_httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application, handler_class=QuietHandler)
+        cls.pylantern_server_process = multiprocessing.Process(target=pylantern_httpd.serve_forever)
+        cls.pylantern_server_process.start()
+        super(TestBetweenLociAssembly18, cls).setUpClass()
+    @classmethod
+    def tearDownClass(cls):
+        cls.pylantern_server_process.terminate()
+        cls.pylantern_server_process.join()
+        del(cls.pylantern_server_process)
+        super(TestBetweenLociAssembly18, cls).tearDownClass()
     def setUp(self):
         build_library.make_entire_library(multiple_assemblies=True)
         build_library.make_lantern_translators()
@@ -979,7 +1079,21 @@ class TestBetweenLociAssembly18(TestCase):
 
 @skipIf(curr_debugging, "Prevent noise")
 @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+@override_settings(LANTERN_TIMEOUT=1)
 class TestAroundLocus(TestCase):
+    @classmethod
+    @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+    def setUpClass(cls):
+        pylantern_httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application, handler_class=QuietHandler)
+        cls.pylantern_server_process = multiprocessing.Process(target=pylantern_httpd.serve_forever)
+        cls.pylantern_server_process.start()
+        super(TestAroundLocus, cls).setUpClass()
+    @classmethod
+    def tearDownClass(cls):
+        cls.pylantern_server_process.terminate()
+        cls.pylantern_server_process.join()
+        del(cls.pylantern_server_process)
+        super(TestAroundLocus, cls).tearDownClass()
     def setUp(self):
         build_library.make_entire_library(multiple_assemblies=True)
         build_library.make_lantern_translators()
@@ -1752,7 +1866,21 @@ class TestAroundLocus(TestCase):
                 self.assertEqual(phase, checking[person_name][i])
 
 @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+@override_settings(LANTERN_TIMEOUT=1)
 class TestDevelopmentSandbox(TestCase):
+    @classmethod
+    @override_settings(CHR_PATH_LENGTHS = (0,2,3))
+    def setUpClass(cls):
+        pylantern_httpd = make_server('', python_lantern.LANTERN_PORT, python_lantern.lantern_application, handler_class=QuietHandler)
+        cls.pylantern_server_process = multiprocessing.Process(target=pylantern_httpd.serve_forever)
+        cls.pylantern_server_process.start()
+        super(TestDevelopmentSandbox, cls).setUpClass()
+    @classmethod
+    def tearDownClass(cls):
+        cls.pylantern_server_process.terminate()
+        cls.pylantern_server_process.join()
+        del(cls.pylantern_server_process)
+        super(TestDevelopmentSandbox, cls).tearDownClass()
     def setUp(self):
         build_library.make_entire_library(multiple_assemblies=True)
         build_library.make_lantern_translators()

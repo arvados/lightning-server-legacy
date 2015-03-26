@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.utils.serializer_helpers import ReturnDict
 
 from api.serializers import TileVariantSerializer, RoughTileVariantSerializer, LocusSerializer, PopulationVariantSerializer, PopulationQuerySerializer, PopulationRangeQuerySerializer
-from tile_library.models import Tile, TileVariant, TileLocusAnnotation
+from tile_library.models import Tile, TileVariant, TileLocusAnnotation, get_max_num_tiles_spanned_at_position
 import tile_library.human_readable_functions as human_readable
 import tile_library.query_functions as query_fns
 import tile_library.lantern_query_functions as lantern_query_fns
@@ -278,7 +278,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
         last_tile_position_int = max(int(locuses.last().tile_position_id), first_tile_position_int)
 
         #Get maximum number of spanning tiles
-        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
+        max_num_spanning_tiles = get_max_num_tiles_spanned_at_position(first_tile_position_int)
 
         #Create cgf_translator (Dictionary keyed by cgf names where the values are the necessary bases)
         simple_cgf_translator = query_fns.get_simple_cgf_translator(locuses, low_int, high_int, assembly)
@@ -381,8 +381,10 @@ class PopulationVariantQueryBetweenLoci(APIView):
                 humans_and_sequences = self.get_population_sequences(first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, cgf_translator)
             except LocusOutOfRangeException as e:
                 return Response(e.value, status=status.HTTP_404_NOT_FOUND)
-            except (UnexpectedLanternBehaviorError, CGFTranslatorError, requests.ConnectionError) as e: # Not raised in test cases, which is expected since this is either Lantern-specific or a test case I haven't considered yet
+            except (UnexpectedLanternBehaviorError, CGFTranslatorError) as e: # Not raised in test cases, which is expected since this is either Lantern-specific or a test case I haven't considered yet
                 return Response(e.value, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except (requests.ConnectionError, requests.Timeout) as e:
+                return Response("Error querying Lantern: %s" % (str(e)), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
@@ -442,7 +444,7 @@ class PopulationVariantQueryAroundLocus(APIView):
         last_tile_position_int = max(int(locuses.last().tile_position_id), first_tile_position_int)
 
         #Get maximum number of spanning tiles
-        max_num_spanning_tiles = query_fns.get_max_num_tiles_spanned_at_position(first_tile_position_int)
+        max_num_spanning_tiles = get_max_num_tiles_spanned_at_position(first_tile_position_int)
 
         #Create cgf_translator for each position
         if locuses.count() == last_tile_position_int - first_tile_position_int + 1:
@@ -526,7 +528,7 @@ class PopulationVariantQueryAroundLocus(APIView):
                 next_position_name = basic_fns.get_position_string_from_position_int(curr_position)
                 raise EmptyPathError("Unable to find tile %s. Path assumed to be empty" % (next_position_name))
         #Query lantern to get call at the next position
-        cgf_string = lantern_query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase][0]
+        cgf_string = lantern_query_fns.get_population_sequences_over_position_range(curr_position, curr_position, sub_population_list=[human_name])[human_name][phase][0]
         #Get bases (tile_variant from cgf_string)
         bases = query_fns.get_bases_from_lantern_name(cgf_string)
         return cgf_string, bases
@@ -546,7 +548,7 @@ class PopulationVariantQueryAroundLocus(APIView):
         #Query lantern to get call at the next position
         curr_call = []
         while len(curr_call) == 0:
-            curr_call = lantern_query_fns.get_sub_population_sequences_over_position_range([human_name], curr_position, curr_position)[human_name][phase]
+            curr_call = lantern_query_fns.get_population_sequences_over_position_range(curr_position, curr_position, sub_population_list=[human_name])[human_name][phase]
             curr_position = get_next_position(curr_position)
 
         cgf_string = curr_call[0]
@@ -600,7 +602,7 @@ class PopulationVariantQueryAroundLocus(APIView):
                 new_sequence, finished = self.helper_get_bases_forward(forward_sequence, cgf_string, {cgf_string.split('+')[0]:bases}, num_bases_around, string_to_print,
                     [], sequence_of_tile_variants + [cgf_string], len(middle_sequence))
                 forward_sequence += new_sequence
-            except EndOfChromosomeError: ##### NOT CHECKED!!!! ####
+            except EndOfChromosomeError:
                 finished = True
 
         ##################################################
@@ -690,8 +692,10 @@ class PopulationVariantQueryAroundLocus(APIView):
                 return Response("Query includes loci that are not included in tile library", status=status.HTTP_404_NOT_FOUND)
             except LocusOutOfRangeException as e:
                 return Response(e.value, status=status.HTTP_404_NOT_FOUND)
-            except (UnexpectedLanternBehaviorError, CGFTranslatorError, requests.ConnectionError) as e: # Not run in test cases, which is expected
+            except (UnexpectedLanternBehaviorError, CGFTranslatorError) as e: # Not run in test cases, which is expected
                 return Response(e.value, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except (requests.ConnectionError, requests.Timeout) as e:
+                return Response("Error querying Lantern: %s" % (str(e)), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return_serializer = PopulationVariantSerializer(data=humans_and_sequences, many=True)
             if return_serializer.is_valid():
                 return Response(return_serializer.data)

@@ -110,7 +110,7 @@ def get_simple_cgf_translator(locuses, low_int, high_int, assembly):
             else:
                 cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(var, assembly, low_int, high_int, start_locus_int, end_locus_int)
             if cgf_str != '':
-                if cgf_str in simple_cgf_translator:
+                if cgf_str in simple_cgf_translator: #not raised in test cases, which is expected
                     raise CGFTranslatorError("Repeat cgf_string (%s) in cgf_translator" % (cgf_str))
                 simple_cgf_translator[cgf_str] = bases
     return simple_cgf_translator
@@ -134,8 +134,8 @@ def get_cgf_translator_and_center_cgf_translator(locuses, target_base, center_in
         for i, translator in enumerate(center_cgf_translator):
             cgf_str, bases = get_tile_variant_cgf_str_and_bases_between_loci_known_locus(variant, assembly, keys[i][0], keys[i][1], start_locus_int, end_locus_int)
             if cgf_str in translator:
-                assert bases == translator[cgf_str], "Conflicting cgf_string-base pairing, cgf_str: %s, translator: %s" % (cgf_str,
-                    print_friendly_cgf_translator(center_cgf_translator))
+                if bases != translator[cgf_str]:
+                    raise CGFTranslatorError("Conflicting cgf_string-base pairing, cgf_str: %s, translator: %s" % (cgf_str, center_cgf_translator))
             center_cgf_translator[i][cgf_str] = bases
         return center_cgf_translator
 
