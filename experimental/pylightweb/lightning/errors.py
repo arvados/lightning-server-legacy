@@ -7,6 +7,15 @@ class MissingLocusError(Exception):
     def __str__(self):
         return repr(self.value)
 
+class SpanningAssemblyError(Exception):
+    """
+        Raised when a locus is spanning
+    """
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class LocusOutOfRangeException(Exception):
     def __init__(self, value):
         self.value = value

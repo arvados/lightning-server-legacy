@@ -594,126 +594,126 @@ def make_19_and_18_libraries():
     tv0 = make_tile_variant(1, "ACGGCAGTAGTTTTGCCGCTCGGTTGTCAGAATGTTTGGAGGGCGGTACG".lower(), 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     basic_snp_gv = make_genome_variant(0, 24, 25, 'C', 'T')
     GenomeVariantTranslation(tile_variant=tv0, genome_variant=basic_snp_gv, start=24, end=25).save()
-    AAA_del_gv = make_genome_variant(1, 26, 29, 'AAA', '-', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv0, genome_variant=AAA_del_gv, start=26, end=26).save()
+#    AAA_del_gv = make_genome_variant(1, 26, 29, 'AAA', '-', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv0, genome_variant=AAA_del_gv, start=26, end=26).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACGGC | TAGAGATATCACCCTCTGCTACTC
     #   ACGGCAGTAGTTTTGCCGCTCGGT   TTT  TCAGAATGTTTGGAGGGCGGTACG
     tv1 = make_tile_variant(2, "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACG".lower(), 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(2, 24, 26, "CG", "TTT")
     GenomeVariantTranslation(tile_variant=tv1, genome_variant=gv, start=24, end=27).save()
-    gv = make_genome_variant(3, 25, 27, "GA", "TT", assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv1, genome_variant=gv, start=25, end=27).save()
+#    gv = make_genome_variant(3, 25, 27, "GA", "TT", assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv1, genome_variant=gv, start=25, end=27).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACGGC | TAGAGATATCACCCTCTGCTACTC
     #   ACGGCAGTAGTTTTGCCGCTCGGT        TCAGAATGTTTGGAGGGCGGTACG
     tv2 = make_tile_variant(3, "ACGGCAGTAGTTTTGCCGCTCGGTTCAGAATGTTTGGAGGGCGGTACG".lower(), 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     basic_del_gv = make_genome_variant(4, 24, 26, "CG", "-")
     GenomeVariantTranslation(tile_variant=tv2, genome_variant=basic_del_gv, start=24, end=24).save()
-    gv = make_genome_variant(5, 24, 29, "TGAAA", "-", assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv2, genome_variant=gv, start=24, end=24).save()
+#    gv = make_genome_variant(5, 24, 29, "TGAAA", "-", assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv2, genome_variant=gv, start=24, end=24).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACGGC | TAGAGATATCACCCTCTGCTACTC
     #   ACGGCAGTAGTTTTGCCGCTCGGT   AAACGTCAGAATGTTTGGAGGGCGGTACG
     tv3 = make_tile_variant(4, "ACGGCAGTAGTTTTGCCGCTCGGTAAACGTCAGAATGTTTGGAGGGCGGTACG".lower(), 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(6, 24, 24, '-', 'AAA')
     GenomeVariantTranslation(tile_variant=tv3, genome_variant=gv, start=24, end=27).save()
-    gv = make_genome_variant(7, 24, 26, 'TG', 'AA', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv3, genome_variant=gv, start=24, end=26).save()
-    gv = make_genome_variant(8, 27, 29, 'AA', 'CG', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv3, genome_variant=gv, start=27, end=29).save()
+#    gv = make_genome_variant(7, 24, 26, 'TG', 'AA', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv3, genome_variant=gv, start=24, end=26).save()
+#    gv = make_genome_variant(8, 27, 29, 'AA', 'CG', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv3, genome_variant=gv, start=27, end=29).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC
     #   ACGGCAGTAGTTTTGCCGCTCGGT   CG   ACAGAATGTTTGGAGGGCGGTACG   GC   TAGAGATATCACCCTCTGCTACTC
     tv4 = make_tile_variant(5, "ACGGCAGTAGTTTTGCCGCTCGGTCGACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower(), 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(9, 26, 27, 'T', 'A')
     GenomeVariantTranslation(tile_variant=tv4, genome_variant=gv, start=26, end=27).save()
-    T_C_24_gv = make_genome_variant(10, 24, 25, 'T', 'C', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv4, genome_variant=T_C_24_gv, start=24, end=25).save()
-    gv = make_genome_variant(11, 26, 30, 'AAAT', 'A', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv4, genome_variant=gv, start=26, end=27).save()
+#    T_C_24_gv = make_genome_variant(10, 24, 25, 'T', 'C', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv4, genome_variant=T_C_24_gv, start=24, end=25).save()
+#    gv = make_genome_variant(11, 26, 30, 'AAAT', 'A', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv4, genome_variant=gv, start=26, end=27).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC
     #   ACGGCAGTAGTTTTGCCGCTCGGT   C    ACAGAATGTTTGGAGGGCGGTACG   GC   TAGAGATATCACCCTCTGCTACTC
     tv5 = make_tile_variant(6, "ACGGCAGTAGTTTTGCCGCTCGGTCACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower(), 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     spanning_sub_gv = make_genome_variant(12, 25, 27, 'GT', 'A')
     GenomeVariantTranslation(tile_variant=tv5, genome_variant=spanning_sub_gv, start=25, end=26).save()
-    gaaat_a_gv = make_genome_variant(13, 25, 30, 'GAAAT', 'A', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv5, genome_variant=T_C_24_gv, start=24, end=25).save()
-    GenomeVariantTranslation(tile_variant=tv5, genome_variant=gaaat_a_gv, start=25, end=26).save()
+#    gaaat_a_gv = make_genome_variant(13, 25, 30, 'GAAAT', 'A', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv5, genome_variant=T_C_24_gv, start=24, end=25).save()
+#    GenomeVariantTranslation(tile_variant=tv5, genome_variant=gaaat_a_gv, start=25, end=26).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC
     #   ACGGCAGTAGTTTTGCCGCTCGGT   CG    CAGAATGTTTGGAGGGCGGTACG   GC   TAGAGATATCACCCTCTGCTACTC
     tv6 = make_tile_variant(7, "ACGGCAGTAGTTTTGCCGCTCGGTCGCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower(), 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(14, 26, 27, 'T', '-')
     GenomeVariantTranslation(tile_variant=tv6, genome_variant=gv, start=26, end=26).save()
-    gv = make_genome_variant(15, 26, 30, 'AAAT', '-', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv6, genome_variant=T_C_24_gv, start=24, end=25).save()
-    GenomeVariantTranslation(tile_variant=tv6, genome_variant=gv, start=26, end=26).save()
+#    gv = make_genome_variant(15, 26, 30, 'AAAT', '-', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv6, genome_variant=T_C_24_gv, start=24, end=25).save()
+#    GenomeVariantTranslation(tile_variant=tv6, genome_variant=gv, start=26, end=26).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC
     #   ACGGCAGTAGTTTTGCCGCTCGGT   CGTTTTCAGAATGTTTGGAGGGCGGTACG   GC   TAGAGATATCACCCTCTGCTACTC
     tv7 = make_tile_variant(8, "ACGGCAGTAGTTTTGCCGCTCGGTCGTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower(), 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     spanning_ins_gv = make_genome_variant(16, 26, 26, '-', 'TTT')
     GenomeVariantTranslation(tile_variant=tv7, genome_variant=spanning_ins_gv, start=26, end=29).save()
-    gv = make_genome_variant(17, 26, 29, 'AAA', 'TTT', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv7, genome_variant=T_C_24_gv, start=24, end=25).save()
-    GenomeVariantTranslation(tile_variant=tv7, genome_variant=gv, start=26, end=29).save()
+#    gv = make_genome_variant(17, 26, 29, 'AAA', 'TTT', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv7, genome_variant=T_C_24_gv, start=24, end=25).save()
+#    GenomeVariantTranslation(tile_variant=tv7, genome_variant=gv, start=26, end=29).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
     #   ACGGCAGTAGTTTTGCCGCTCGGT   CG   TCAGAATGTTTGGAGGGCGGTAC          AGAGATATCACCCTCTGCTACTC   AA   CGCACCGGAACTTGTGTTTGTGTG
     tv8 = make_tile_variant(9, "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACAGAGATATCACCCTCTGCTACTCAACGCACCGGAACTTGTGTTTGTGTG".lower(), 3, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     gv = make_genome_variant(18, 49, 53, 'GGCT', '-')
     GenomeVariantTranslation(tile_variant=tv8, genome_variant=gv, start=49, end=49).save()
-    gv = make_genome_variant(19, 52, 56, 'GGCT', '-', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv8, genome_variant=AAA_del_gv, start=26, end=26).save()
-    GenomeVariantTranslation(tile_variant=tv8, genome_variant=T_C_24_gv, start=24, end=25).save()
-    GenomeVariantTranslation(tile_variant=tv8, genome_variant=gv, start=49, end=49).save()
-    T_G_104_gv = make_genome_variant(20, 104, 105, 'T', 'G', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv8, genome_variant=T_G_104_gv, start=97, end=98).save()
+#    gv = make_genome_variant(19, 52, 56, 'GGCT', '-', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv8, genome_variant=AAA_del_gv, start=26, end=26).save()
+#    GenomeVariantTranslation(tile_variant=tv8, genome_variant=T_C_24_gv, start=24, end=25).save()
+#    GenomeVariantTranslation(tile_variant=tv8, genome_variant=gv, start=49, end=49).save()
+#    T_G_104_gv = make_genome_variant(20, 104, 105, 'T', 'G', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv8, genome_variant=T_G_104_gv, start=97, end=98).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
     #   ACGGCAGTAGTTTTGCCGCTCGGT   CG   TCAGAATGTTTGGAGGGCGGTAC                                          GCACCGGAACTTGTGTTTGTGTG   TGTG   GTCGCCCACTACGCACGTTATATG
     tv9 = make_tile_variant(10, "ACGGCAGTAGTTTTGCCGCTCGGTCGTCAGAATGTTTGGAGGGCGGTACGCACCGGAACTTGTGTTTGTGTGTGTGGTCGCCCACTACGCACGTTATATG".lower(), 4, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT", end_tag="GTCGCCCACTACGCACGTTATATG")
     gv = make_genome_variant(21, 49, 79, 'GGCTAGAGATATCACCCTCTGCTACTCAAC', '-')
     GenomeVariantTranslation(tile_variant=tv9, genome_variant=gv, start=49, end=49).save()
-    gv = make_genome_variant(22, 52, 82, 'GGCTAGAGATATCACCCTCTGCTACTCAAC', '-', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv9, genome_variant=gv, start=49, end=49).save()
-    GenomeVariantTranslation(tile_variant=tv9, genome_variant=AAA_del_gv, start=26, end=26).save()
-    GenomeVariantTranslation(tile_variant=tv9, genome_variant=T_C_24_gv, start=24, end=25).save()
-    GenomeVariantTranslation(tile_variant=tv9, genome_variant=T_G_104_gv, start=71, end=72).save()
+#    gv = make_genome_variant(22, 52, 82, 'GGCTAGAGATATCACCCTCTGCTACTCAAC', '-', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv9, genome_variant=gv, start=49, end=49).save()
+#    GenomeVariantTranslation(tile_variant=tv9, genome_variant=AAA_del_gv, start=26, end=26).save()
+#    GenomeVariantTranslation(tile_variant=tv9, genome_variant=T_C_24_gv, start=24, end=25).save()
+#    GenomeVariantTranslation(tile_variant=tv9, genome_variant=T_G_104_gv, start=71, end=72).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
     #   ACGGCAGTAGTTTTGCCGCTCGGT   T    ACAGAATGTTTGGAGGGCGGTACG   GC   TAGAGATATCACCCTCTGCTACTC
     tv = make_tile_variant(11, "ACGGCAGTAGTTTTGCCGCTCGGTTACAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower(), 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=basic_snp_gv, start=24, end=25).save()
     GenomeVariantTranslation(tile_variant=tv, genome_variant=spanning_sub_gv, start=25, end=26).save()
-    GenomeVariantTranslation(tile_variant=tv, genome_variant=gaaat_a_gv, start=25, end=26).save()
+#    GenomeVariantTranslation(tile_variant=tv, genome_variant=gaaat_a_gv, start=25, end=26).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
     #   ACGGCAGTAGTTTTGCCGCTCGGT   T  TTTCAGAATGTTTGGAGGGCGGTACG   GC   TAGAGATATCACCCTCTGCTACTC
     tv = make_tile_variant(12, "ACGGCAGTAGTTTTGCCGCTCGGTTTTTCAGAATGTTTGGAGGGCGGTACGGCTAGAGATATCACCCTCTGCTACTC".lower(), 2, start_tag="ACGGCAGTAGTTTTGCCGCTCGGT")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=basic_del_gv, start=24, end=24).save()
     GenomeVariantTranslation(tile_variant=tv, genome_variant=spanning_ins_gv, start=24, end=27).save()
-    gv = make_genome_variant(27, 25, 29, 'GAAA', 'TT', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=25, end=27).save()
+#    gv = make_genome_variant(27, 25, 29, 'GAAA', 'TT', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=25, end=27).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
     #   ACGGCAGTAGTTTTGCCGCTCGG       CGTCAGAATGTTTGGAGGGCGGTACG
     tv_a = make_tile_variant(13, "ACGGCAGTAGTTTTGCCGCTCGGCGTCAGAATGTTTGGAGGGCGGTACG".lower(), 1, start_tag="ACGGCAGTAGTTTTGCCGCTCGGC")
     gv = make_genome_variant(23, 23, 24, 'T', '-')
     GenomeVariantTranslation(tile_variant=tv_a, genome_variant=gv, start=23, end=23).save()
-    gv = make_genome_variant(24, 23, 29, 'TTGAAA', 'CG', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv_a, genome_variant=gv, start=23, end=25).save()
+#    gv = make_genome_variant(24, 23, 29, 'TTGAAA', 'CG', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv_a, genome_variant=gv, start=23, end=25).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
     #                                                                                                   CGCACCGGAACTTGTGTTTGTGTG   TGTG   ATCGCCCACTACGCACGTTATATG
     tv = make_tile_variant(int('3'+vv_min,16)+1, "CGCACCGGAACTTGTGTTTGTGTGTGTGATCGCCCACTACGCACGTTATATG".lower(), 1, end_tag="ATCGCCCACTACGCACGTTATATG")
     gv = make_genome_variant(25, 106, 107, 'G', 'A')
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=28, end=29).save()
-    gv = make_genome_variant(26, 109, 110, 'G', 'A', assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=28, end=29).save()
-    GenomeVariantTranslation(tile_variant=tv, genome_variant=T_G_104_gv, start=23, end=24).save()
+#    gv = make_genome_variant(26, 109, 110, 'G', 'A', assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=28, end=29).save()
+#    GenomeVariantTranslation(tile_variant=tv, genome_variant=T_G_104_gv, start=23, end=24).save()
 
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
@@ -721,9 +721,9 @@ def make_19_and_18_libraries():
     tv = make_tile_variant(int('2'+vv_min,16)+1, "TAGAGATATCACCCTCTGCTACTCCGCACCGGAACTTGTGTTTGTGTG".lower(), 1)
     gv = make_genome_variant(28, 76, 78, "AA", "-")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=24).save()
-    gv = make_genome_variant(29, 79, 81, "AA", "-", assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=24).save()
-    GenomeVariantTranslation(tile_variant=tv, genome_variant=T_G_104_gv, start=47, end=48).save()
+#    gv = make_genome_variant(29, 79, 81, "AA", "-", assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=24, end=24).save()
+#    GenomeVariantTranslation(tile_variant=tv, genome_variant=T_G_104_gv, start=47, end=48).save()
     #19 ACGGCAGTAGTTTTGCCGCTCGGT | CG | TCAGAATGTTTGGAGGGCGGTACG | GC | TAGAGATATCACCCTCTGCTACTC | AA | CGCACCGGAACTTGTGTTTGTGTG | TGTG | GTCGCCCACTACGCACGTTATATG ||
     #18 ACGGCAGTAGTTTTGCCGCTCGGT | TGAAATCAGAATGTTTGGAGGGCGGTACG   GC | TAGAGATATCACCCTCTGCTACTC | AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG | GTCGCCCACTACGCACGTTATATG ||
     #                                                                   TAGAGATATCACCCTCTGCTACTC   AA   CGCACCGGAACTTGTGTTTGTGTT   TGTG   GTCGCCCACTACGCACGTTATATG
@@ -734,8 +734,8 @@ def make_19_and_18_libraries():
     tv = make_tile_variant(int('1'+step_min+vv_min,16)+1, "", 1)
     gv = make_genome_variant(31, 130, 180, "AGAGAGCTGGCAGATGCCTTATGGAAGTGACTGCTACCGTTTGTTGACAC", "-")
     GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=0, end=0).save()
-    gv = make_genome_variant(32, 133, 183, "AGAGAGCTGGCAGATGCCTTATGGAAGTGACTGCTACCGTTTGTTGACAC", "-", assembly=ASSEMBLY_18)
-    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=0, end=0).save()
+#    gv = make_genome_variant(32, 133, 183, "AGAGAGCTGGCAGATGCCTTATGGAAGTGACTGCTACCGTTTGTTGACAC", "-", assembly=ASSEMBLY_18)
+#    GenomeVariantTranslation(tile_variant=tv, genome_variant=gv, start=0, end=0).save()
 
 def make_entire_library(multiple_assemblies=False):
     make_reference(multiple_assemblies=multiple_assemblies)

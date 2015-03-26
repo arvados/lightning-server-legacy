@@ -389,7 +389,6 @@ class PopulationVariantQueryBetweenLoci(APIView):
             if return_serializer.is_valid():
                 return Response(return_serializer.data)
             return Response(return_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR) #Would only be returned if return serializer is off, not raised in test cases, which is expected
-
         return Response(query_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PopulationVariantQueryAroundLocus(APIView):

@@ -29,7 +29,7 @@ from django.conf import settings
 import tile_library.basic_functions as basic_fns
 import tile_library_generation.validators as validation_fns
 import tile_library.human_readable_functions as human_readable_fns
-from errors import TileLibraryValidationError, MissingLocusError
+from errors import TileLibraryValidationError, MissingLocusError, SpanningAssemblyError
 
 def validate_json(text):
     try:
@@ -299,9 +299,17 @@ class TileVariant(models.Model):
         end_tile = int(self.tile_id)+int(self.num_positions_spanned)-1
         try:
             start_locus = get_locus(assembly_int, start_tile)
+            num_positions_spanned_by_locus = start_locus.get_tile_variant().num_positions_spanned
+            if start_tile != int(start_locus.tile_position_id):
+                raise SpanningAssemblyError("locus starts before tile variant")
             if start_tile == end_tile:
+                if end_tile != int(start_locus.tile_position_id)+num_positions_spanned_by_locus-1:
+                    raise SpanningAssemblyError("mismatching ends")
                 return start_locus.start_int, start_locus.end_int
             end_locus = get_locus(assembly_int, end_tile)
+            num_positions_spanned_by_end_locus = end_locus.get_tile_variant().num_positions_spanned
+            if end_tile != int(end_locus.tile_position_id)+num_positions_spanned_by_end_locus-1:
+                raise SpanningAssemblyError("mismatching ends")
             return start_locus.start_int, end_locus.end_int
         except TileLocusAnnotation.DoesNotExist:
             start_str = basic_fns.get_position_string_from_position_int(start_tile)
