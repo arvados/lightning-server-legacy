@@ -18,6 +18,7 @@ var gProfileFlag bool = false
 var gProfileFile string = "align2vcf.cprof"
 var gMemProfileFile string = "align2vcf.mprof"
 var g_verbose bool = false
+var g_normalize_flag bool = true
 
 var g_chrom string = "Un"
 
@@ -31,7 +32,6 @@ var strState []string = []string{ "nocall", "ref", "snp", "sub", "indel" }
 
 func byte_low( b byte ) byte {
   if b >= 'A' && b <= 'Z' { return b+32 }
-  //if b >= 'a' && b <= 'z' { return b+32 }
   return b
 }
 
@@ -233,6 +233,7 @@ type SeqDiff struct {
   Alt []byte
   Type int
 }
+
 
 // Essentially gVCF emits non-ref lines, which include
 // alts.  Non ref lines that are low-quality are emited
@@ -466,11 +467,11 @@ func seq_align( ref, seqb string ) error {
   // Gap open: -5
   fitted := align.FittedAffine{
       Matrix: align.Linear{
-          {0, -1, -1, -1, -1},
-          {-1, 1, -1, -1, -1},
-          {-1, -1, 1, -1, -1},
-          {-1, -1, -1, 1, -1},
-          {-1, -1, -1, -1, 1},
+          { 0, -1, -1, -1, -1},
+          {-1,  1, -1, -1, -1},
+          {-1, -1,  1, -1, -1},
+          {-1, -1, -1,  1, -1},
+          {-1, -1, -1, -1,  1},
       },
       GapOpen: -5,
   }
@@ -491,7 +492,9 @@ func seq_align( ref, seqb string ) error {
   m:=len(string(aln_seq_b))
   if n!=m { return fmt.Errorf("n %d != m %d", n, m) }
 
-  seq_pair_normalize( aln_seq_a, aln_seq_b )
+  if g_normalize_flag {
+    seq_pair_normalize( aln_seq_a, aln_seq_b )
+  }
 
   if g_verbose {
     fmt.Printf("after normalization:\n%s\n%s\n", aln_seq_a, aln_seq_b)
@@ -500,115 +503,10 @@ func seq_align( ref, seqb string ) error {
 
   d,e := diff_from_aligned_seqs( aln_seq_a, aln_seq_b )
   if e!=nil { log.Fatal(e) }
-  /*
-  for i:=0; i<len(d); i++ {
-    fmt.Printf("[%d] ", i)
-    debug_print_seqdiff( d[i] )
-  }
-  */
-
   for i:=0; i<len(d); i++ { emit_gvcf( &d[i] ) }
 
   return nil
 
-  //n:=len(string(aln_seq_a[0]))
-  //m:=len(string(aln_seq_b[1]))
-  if n!=m { return fmt.Errorf("n %d != m %d", n, m) }
-
-
-
-  gvcf_state := NOCALL
-  prev_ref_start := 0
-  prev_ref_base := byte('n') ; _ = prev_ref_base
-  cur_ref_len := 0
-  refseq := "-"
-  altseq := ""
-
-  print_tail := true
-
-  var x,y byte
-  for p:=0; p<n; p++ {
-    x = byte_low(aln_seq_a[p])
-    y = byte_low(aln_seq_b[p])
-
-
-    x_gact := false ; if x != '-' && x != 'n' { x_gact = true }
-    y_gact := false ; if y != '-' && y != 'n' { y_gact = true }
-
-    if gvcf_state == NOCALL {
-
-      if        x == '-' && y == '-' {
-      } else if x == '-' && y == 'n' {
-      } else if x == '-' && y_gact   {
-      } else if x == 'n' && y == '-' {
-      } else if x == 'n' && y == 'n' {
-      } else if x == 'n' && y_gact   {
-      } else if x_gact   && y == '-' {
-      } else if x_gact   && y == 'n' {
-      } else if x_gact   && y_gact   {
-      }
-
-    } else if gvcf_state == REF {
-
-      // If they're equal, stay in our nocall/ref state
-      //
-      if x == y { cur_ref_len++
-      } else {
-
-        // Otherwise we transition.  Emit state information and
-        // reset state.
-        //
-        fmt.Printf("s%d e%d %s %s %s\n", prev_ref_start, prev_ref_start+cur_ref_len, strState[gvcf_state], refseq, altseq)
-        prev_ref_start = prev_ref_start+cur_ref_len
-        cur_ref_len = 0
-        prev_ref_base = x
-
-        // Transition:
-        // (ref)         -  n  -> nocall
-        // (nocall)      - x=y -> ref
-        // (nocall|ref)  - gap -> indel
-        // (nocall|ref)  - x!=y -> snp (to start, might transition to sub later)
-        //
-        if y == 'n' {
-          gvcf_state = NOCALL
-        } else if x == y {
-          gvcf_state = REF
-        } else if x == '-' || y == '-' {
-          gvcf_state = INDEL
-        } else {
-          gvcf_state = SNP
-        }
-      }
-
-    } else if gvcf_state == SUB {
-
-      if x != y {
-        cur_ref_len++
-        if cur_ref_len > 1 { gvcf_state = SUB }
-      } else {
-        if cur_ref_len==1 {
-          fmt.Printf("%s%d e%d %s\n", prev_ref_start, prev_ref_start+cur_ref_len, "SNP")
-        } else {
-          fmt.Printf("%s%d e%d %s\n", prev_ref_start, prev_ref_start+cur_ref_len, "SUB")
-        }
-      }
-
-    } else if gvcf_state == INDEL {
-
-      if x == '-' {
-      } else if y == '-' {
-        cur_ref_len++
-      }
-
-    }
-
-  }
-
-  if print_tail {
-    fmt.Printf("s%d e%d %s %s %s\n", prev_ref_start, prev_ref_start+cur_ref_len, strState[gvcf_state], refseq, altseq)
-  }
-
-  return nil
 }
 
 func normalize_tests() {
@@ -974,20 +872,29 @@ func _main( c *cli.Context ) {
 
   g_verbose = c.Bool("Verbose")
   g_chrom = c.String("chrom")
+  g_normalize_flag = !c.Bool("no-normalize")
+
+  if c.Bool("run-tests") {
+    seqdiff_tests()
+    normalize_tests()
+    os.Exit(0)
+  }
 
   if (len(c.String("ref"))==0) || (len(c.String("seq"))==0) {
     cli.ShowAppHelp(c)
     os.Exit(1)
   }
 
-  seqa_scan,err := autoio.OpenReadScanner( c.String("ref") )
+  seqa_scan,err := autoio.OpenReadScannerSimple( c.String("ref") )
   if err != nil { log.Fatal(err) }
   defer seqa_scan.Close()
+
   seqa := seqa_scan.ReadText()
 
-  seqb_scan,err := autoio.OpenReadScanner( c.String("seq") )
+  seqb_scan,err := autoio.OpenReadScannerSimple( c.String("seq") )
   if err != nil { log.Fatal(err) }
   defer seqb_scan.Close()
+
   seqb := seqb_scan.ReadText()
 
   ref_seq := []byte(seqa)
@@ -1036,9 +943,30 @@ func main() {
       Usage: "MAXPROCS",
     },
 
+    cli.IntFlag{
+      Name: "gap-penalty, g",
+      Value: -5,
+      Usage: "Affine gap penalty (initial cost of gap creation)",
+    },
+
+    cli.StringFlag{
+      Name: "score-matrix, m",
+      Usage: "Score matrix as a comma separated integer list (no spaced, row major, 'gap,a,c,t,g')",
+    },
+
     cli.BoolFlag{
       Name: "Verbose, V",
       Usage: "Verbose flag",
+    },
+
+    cli.BoolFlag{
+      Name: "no-normalize, Z",
+      Usage: "Don't normalize gVCF",
+    },
+
+    cli.BoolFlag{
+      Name: "run-tests, T",
+      Usage: "Run tests",
     },
 
     cli.BoolFlag{
