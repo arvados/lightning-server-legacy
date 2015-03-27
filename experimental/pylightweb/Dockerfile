@@ -37,5 +37,11 @@ RUN go get code.google.com/p/vitess/go/cgzip
 RUN go get github.com/lib/pq
 RUN go get github.com/mattn/go-sqlite3
 RUN go build
+WORKDIR /home/lightning/lightning/experimental
+RUN go get github.com/abeconnelly/autoio
+RUN go get github.com/biogo/biogo/align
+RUN go get github.com/biogo/biogo/alphabet
+RUN go get github.com/biogo/biogo/seq/linear
+RUN go build align2vcf.go
 
 WORKDIR /home/lightning/lightning/experimental/pylightweb/lightning

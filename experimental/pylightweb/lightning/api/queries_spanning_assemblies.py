@@ -1,3 +1,29 @@
+def get_bases_from_lantern_name(lantern_name):
+    """
+    No assumptions about the location of the tile library
+
+    Can raise ValueError, TypeError if lantern_name is not the correct format
+    Can raise LanternTranslator.DoesNotExist if lantern_name is not in the database
+    Can raise LanternTranslator.DegradedVariantError if the lantern translator has problems re-retrieving the variant data
+    """
+    lantern_name = fns.get_non_spanning_cgf_string(lantern_name)
+    try:
+        lantern_translation = LanternTranslator.objects.get(lantern_name=lantern_name)
+        if lantern_translation.tile_library_host == "":
+            #In our library!
+            bases = TileVariant.objects.get(tile_variant_int=int(lantern_translation.tile_variant_int)).sequence.upper()
+        else:
+            tile_library_path = reverse('api:tile_variant_query_by_int', args=[lantern_translation.tile_variant_int])
+            r = requests.get("http://%s%s" % (lantern_translation.tile_library_host, tile_library_path))
+            r.raise_for_status()
+            tile_variant = json.loads(r.text)
+            bases = tile_variant['sequence'].upper()
+    except (TileVariant.DoesNotExist, requests.exceptions.RequestException) as e:
+        raise LanternTranslator.DegradedVariantError("Translator %s has degraded. %s" % (lantern_name, str(e)))
+    except LanternTranslator.DoesNotExist:
+        return ""
+    return bases
+
 def get_tile_variant_lantern_name_and_bases_between_loci_known_locus(tile_variant, assembly, queried_low_int, queried_high_int, start_locus_int, end_locus_int):
     lantern_name = tile_variant.get_tile_variant_lantern_name()
     if lantern_name != "":
@@ -142,8 +168,34 @@ def get_variants_and_bases(self, assembly, chromosome, low_int, high_int):
     return first_tile_position_int, last_tile_position_int, max_num_spanning_tiles, lantern_name_translator, locus_tile_variants_list
 
 def concatonate_sequences(sequence_list):
+    complete_sequence = ""
     for i, sequence in enumerate(sequence_list):
+        if complete_sequence == "":
+            complete_sequence += sequence
+        else:
+            if complete_sequence[-settings.TAG_LENGTH:] != sequence[:settings.TAG_LENGTH]:
+                raise Exception("concatonate sequences Tag mismatch")
+            complete_sequence += sequence[settings.TAG_LENGTH:]
+    return complete_sequence
 
+def get_alignments(reference_seq, tile_variant_seq):
+    reference_to_tile_variant = [(0, 0, 0, 0), (len(reference_seq), len(tile_variant_seq), len(reference_seq), len(tile_variant_seq))]
+    ref_seq_file = open('ref.txt', 'w')
+    ref_seq_file.write(reference_seq)
+    ref_seq_file.close()
+    alt_seq_file = open('seq.txt', 'w')
+    alt_seq_file.write(tile_variant_seq)
+    alt_seq_file.close()
+    p = subprocess.Popen(['~/lightning/experimental/align2vcf --ref ref.txt --seq seq.txt'], shell=True, stdout=subprocess.PIPE)
+    for translation in p.stdout:
+        chr_name, start_int, ignore, ref_base, alt_base, ignore, ignore, end, ignore, ignore = translation.strip().split('\t')
+            trans_locus_start = translation.genome_variant.locus_start_int - start_locus_int
+            trans_locus_end = translation.genome_variant.locus_end_int - start_locus_int
+            # we only need to add if the variant is an INDEL, but I'm adding all of them here since we iterate over all of them anyway
+            reference_to_tile_variant.append((trans_locus_start, translation.start, trans_locus_end, translation.end))
+        reference_to_tile_variant.sort()
+        #print reference_to_tile_variant
+        return reference_to_tile_variant
 
 def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, lantern_name_translator, locus_tile_variant_list):
     locus_tile_position_list = [int(var.tile_id) for var in locus_tile_variant_list]
@@ -181,7 +233,9 @@ def get_bases_for_human(self, human_name, positions_queried, first_tile_position
                 start_i  = locus_tile_position_list.index(basic_fns.get_position_from_lantern_name(callset_subsequence[0]))
                 end_i  = locus_tile_position_list.index(basic_fns.get_position_from_lantern_name(callset_subsequence[-1]))
                 reference_sequence = concatonate_sequences([var.sequence for var in locus_tile_variant_list[start_i:end_i+1]])
-                callset_sequence = concatonate_sequences([])
+                callset_sequence = concatonate_sequences([get_lantern_name_translator(lantern_name) for lantern_name in callset_subsequence])
+
+
 
 
             num_to_skip = 0
