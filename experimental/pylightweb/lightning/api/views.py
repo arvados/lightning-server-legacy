@@ -344,7 +344,7 @@ class PopulationVariantQueryBetweenLoci(APIView):
         humans_with_sequences = []
         for human in human_sequence_dict:
             humans_with_sequences.append(
-                {'human_name':human.strip('" ').split('/')[-1],
+                {'callset':human.strip('" ').split('/')[-1],
                  'sequence':human_sequence_dict[human],
                  'phased':False}
             )
@@ -661,9 +661,9 @@ class PopulationVariantQueryAroundLocus(APIView):
         humans_with_sequences = []
         for human in human_sequence_dict:
             humans_with_sequences.append(
-                {'human_name':human.strip('" ').split('/')[-1],
+                {'callset':human.strip('" ').split('/')[-1],
                  'sequence':human_sequence_dict[human],
-                 'phase_groups_known':False}
+                 'phased':False}
                  )
         return humans_with_sequences
     def get(self, request, format=None):

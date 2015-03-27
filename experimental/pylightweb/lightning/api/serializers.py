@@ -35,11 +35,11 @@ class LocusSerializer(serializers.ModelSerializer):
 
 
 class PopulationVariantSerializer(serializers.Serializer):
-    human_name = serializers.CharField(max_length=200)
+    callset = serializers.CharField(max_length=200)
     sequence = serializers.ListField(
         child=serializers.CharField(style={'type': 'textarea'}, allow_blank=True)
     )
-    phase_groups_known = serializers.BooleanField(default=False)
+    phased = serializers.BooleanField(default=False)
 
 ################## For User Inputs ##################################
 

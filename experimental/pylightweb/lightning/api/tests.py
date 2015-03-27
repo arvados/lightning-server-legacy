@@ -126,7 +126,7 @@ class TestPartTileLibraryOnDifferentServer(LiveServerTestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 if person_name == 'person1' and i == 0:
                     self.assertEqual(phase, 'G')
@@ -138,7 +138,7 @@ class TestPartTileLibraryOnDifferentServer(LiveServerTestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 if person_name == 'person1' and i == 0:
                     self.assertEqual(phase, 'G')
@@ -175,7 +175,7 @@ class TestEmptyPath(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, 'ATG')
     def test_failure_get_one_more_tile_reverse_returns_404(self):
@@ -191,7 +191,7 @@ class TestEmptyPath(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 if person_name == 'person1' and i == 0:
                     self.assertEqual(phase, '')
@@ -307,7 +307,7 @@ class TestBetweenLoci(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_0_explicit_0_indexing(self):
@@ -325,7 +325,7 @@ class TestBetweenLoci(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_0_explicit_1_indexing(self):
@@ -343,7 +343,7 @@ class TestBetweenLoci(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_1(self):
@@ -361,7 +361,7 @@ class TestBetweenLoci(TestCase):
             'person7':["C", "C"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_2(self):
@@ -379,7 +379,7 @@ class TestBetweenLoci(TestCase):
             'person7':["AA", ""]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_3(self):
@@ -388,7 +388,7 @@ class TestBetweenLoci(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, "TGTG")
     def test_query_in_tile_0_hits_start_tag(self):
@@ -406,7 +406,7 @@ class TestBetweenLoci(TestCase):
             'person7':["C", "TT"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_last_tile_in_path_hits_end_tag(self):
@@ -424,7 +424,7 @@ class TestBetweenLoci(TestCase):
             'person7':["GG", "GA"],
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tile_0_hits_start_and_end_tag(self):
@@ -442,7 +442,7 @@ class TestBetweenLoci(TestCase):
             'person7':["CGT", "TTGT"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tile_1_hits_start_and_end_tag(self):
@@ -460,7 +460,7 @@ class TestBetweenLoci(TestCase):
             'person7':["GGCT", "GGCT"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tile_2_hits_start_and_end_tag(self):
@@ -478,7 +478,7 @@ class TestBetweenLoci(TestCase):
             'person7':["CAAC", "CC"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tile_3_hits_start_and_end_tag(self):
@@ -496,7 +496,7 @@ class TestBetweenLoci(TestCase):
             'person7':["TTGTGG", "GTGTGA"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_0_and_1(self):
@@ -535,7 +535,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_1_and_2(self):
@@ -574,7 +574,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_1_and_2_wider_range(self):
@@ -613,7 +613,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_2_and_3(self):
@@ -652,7 +652,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_over_paths_simplest(self):
@@ -661,7 +661,7 @@ class TestBetweenLoci(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 if person_name == 'person1' and i == 0:
                     self.assertEqual(phase, 'G')
@@ -704,7 +704,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_1_2_and_3(self):
@@ -744,7 +744,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_2_3_and_next_path(self):
@@ -784,7 +784,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_0_1_2_and_3(self):
@@ -824,7 +824,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_1_2_3_and_next_path(self):
@@ -864,7 +864,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_0_1_2_3_and_next_path(self):
@@ -904,7 +904,7 @@ class TestBetweenLoci(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_entire_first_path_and_first_base_of_next_path(self):
@@ -943,7 +943,7 @@ class TestBetweenLoci(TestCase):
         }
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_different_chromosome_between(self):
@@ -952,7 +952,7 @@ class TestBetweenLoci(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, 'C')
 
@@ -991,7 +991,7 @@ class TestBetweenLociAssembly18(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_0_explicit_0_indexing(self):
@@ -1009,7 +1009,7 @@ class TestBetweenLociAssembly18(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_0_explicit_1_indexing(self):
@@ -1027,7 +1027,7 @@ class TestBetweenLociAssembly18(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_1(self):
@@ -1045,7 +1045,7 @@ class TestBetweenLociAssembly18(TestCase):
             'person7':["C", "C"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 print person_name, phase
                 self.assertEqual(phase, checking[person_name][i])
@@ -1064,7 +1064,7 @@ class TestBetweenLociAssembly18(TestCase):
             'person7':["AA", ""]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_3(self):
@@ -1073,7 +1073,7 @@ class TestBetweenLociAssembly18(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, "TGTG")
 
@@ -1196,7 +1196,7 @@ class TestAroundLocus(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_0_not_touching_tags(self):
@@ -1214,7 +1214,7 @@ class TestAroundLocus(TestCase):
             'person7':['G', 'G']
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_0_explicit_0_indexing(self):
@@ -1232,7 +1232,7 @@ class TestAroundLocus(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_0_explicit_1_indexing(self):
@@ -1250,7 +1250,7 @@ class TestAroundLocus(TestCase):
             'person7':["C", "T"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_1(self):
@@ -1268,7 +1268,7 @@ class TestAroundLocus(TestCase):
             'person7':["C", "C"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_2(self):
@@ -1286,7 +1286,7 @@ class TestAroundLocus(TestCase):
             'person7':["A", ""]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_only_tile_3(self):
@@ -1295,7 +1295,7 @@ class TestAroundLocus(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, "TGT")
     def test_query_in_tile_0_hits_start_tag(self):
@@ -1313,7 +1313,7 @@ class TestAroundLocus(TestCase):
             'person7':["GCG", "TTG"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_last_tile_in_path_hits_end_tag(self):
@@ -1331,7 +1331,7 @@ class TestAroundLocus(TestCase):
             'person7':["TGG", "TGA"],
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tile_0_hits_start_and_end_tag(self):
@@ -1349,7 +1349,7 @@ class TestAroundLocus(TestCase):
             'person7':["GGCGT", "GTTGT"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tile_1_hits_start_and_end_tag(self):
@@ -1367,7 +1367,7 @@ class TestAroundLocus(TestCase):
             'person7':["CGGCT", "CGGCT"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tile_2_hits_start_and_end_tag(self):
@@ -1385,7 +1385,7 @@ class TestAroundLocus(TestCase):
             'person7':["TCAAC", "TCCG"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tile_3_hits_start_and_end_tag(self):
@@ -1403,7 +1403,7 @@ class TestAroundLocus(TestCase):
             'person7':["TTTGTGG", "TGTGTGA"]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_0_and_1(self):
@@ -1442,7 +1442,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_1_and_2(self):
@@ -1481,7 +1481,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_2_and_3(self):
@@ -1520,7 +1520,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_over_paths_simplest(self):
@@ -1529,7 +1529,7 @@ class TestAroundLocus(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 if person_name == 'person1' and i == 0:
                     self.assertEqual(phase, 'G')
@@ -1572,7 +1572,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_1_2_and_3(self):
@@ -1612,7 +1612,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_2_3_and_next_path(self):
@@ -1652,7 +1652,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_0_1_2_and_3(self):
@@ -1692,7 +1692,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_1_2_3_and_next_path(self):
@@ -1732,7 +1732,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_in_tiles_0_1_2_3_and_next_path(self):
@@ -1772,7 +1772,7 @@ class TestAroundLocus(TestCase):
             ]
         }
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
     def test_query_entire_first_path_and_some_of_next_path(self):
@@ -1812,7 +1812,7 @@ class TestAroundLocus(TestCase):
         }
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
 
                 self.assertEqual(phase, checking[person_name][i])
@@ -1822,7 +1822,7 @@ class TestAroundLocus(TestCase):
         content = json.loads(response.content)
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, 'C')
     def test_query_force_get_next_path_on_the_fly(self):
@@ -1861,7 +1861,7 @@ class TestAroundLocus(TestCase):
         }
         self.assertEqual(len(content), len(population))
         for person in content:
-            person_name = person['human_name']
+            person_name = person['callset']
             for i, phase in enumerate(person['sequence']):
                 self.assertEqual(phase, checking[person_name][i])
 
