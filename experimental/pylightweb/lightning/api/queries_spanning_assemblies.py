@@ -188,14 +188,15 @@ def get_alignments(reference_seq, tile_variant_seq):
     alt_seq_file.close()
     p = subprocess.Popen(['~/lightning/experimental/align2vcf --ref ref.txt --seq seq.txt'], shell=True, stdout=subprocess.PIPE)
     for translation in p.stdout:
+        print translation.strip().split('\t')
         chr_name, start_int, ignore, ref_base, alt_base, ignore, ignore, end, ignore, ignore = translation.strip().split('\t')
-            trans_locus_start = translation.genome_variant.locus_start_int - start_locus_int
-            trans_locus_end = translation.genome_variant.locus_end_int - start_locus_int
+            #trans_locus_start = translation.genome_variant.locus_start_int - start_locus_int
+            #trans_locus_end = translation.genome_variant.locus_end_int - start_locus_int
             # we only need to add if the variant is an INDEL, but I'm adding all of them here since we iterate over all of them anyway
-            reference_to_tile_variant.append((trans_locus_start, translation.start, trans_locus_end, translation.end))
-        reference_to_tile_variant.sort()
+            #reference_to_tile_variant.append((trans_locus_start, translation.start, trans_locus_end, translation.end))
+        #reference_to_tile_variant.sort()
         #print reference_to_tile_variant
-        return reference_to_tile_variant
+        #return reference_to_tile_variant
 
 def get_bases_for_human(self, human_name, positions_queried, first_tile_position_int, last_tile_position_int, lantern_name_translator, locus_tile_variant_list):
     locus_tile_position_list = [int(var.tile_id) for var in locus_tile_variant_list]
