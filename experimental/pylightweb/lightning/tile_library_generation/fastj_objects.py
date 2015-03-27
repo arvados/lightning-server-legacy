@@ -127,7 +127,7 @@ class TileLibrary(object):
             self.library[trunc_tile_position].write_tile_library(out)
     def write_unpaired_cgf_strings(self, out):
         for trunc_tile_position in sorted(self.library.keys()):
-            self.library[trunc_tile_position].write_unpaired_cgf_strings(out):
+            self.library[trunc_tile_position].write_unpaired_cgf_strings(out)
 
 class TileLibraryAtPosition(object):
     __slots__ = ('path', 'position', 'locus', 'reference_seq', 'variants', 'unpaired_cgf_strings')
@@ -177,7 +177,7 @@ class TileLibraryAtPosition(object):
         assert stored_md5sum == md5sum, "Expects equal md5sums"
         path, version, step, var_value = basic_fns.convert_tile_variant_int_to_tile_hex_str(tile_variant_int)
         assert int(var_value, 16) == 0
-        assert path = self.path
+        assert path == self.path
         assert int(version+step,16) == self.position
         self.reference_seq = sequence
 
