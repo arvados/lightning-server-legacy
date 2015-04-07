@@ -1,2 +1,3 @@
-data
+/home/sguthrie/lightning/experimental/pylightweb/data/*
+/home/sguthrie/lightning/experimental/pylightweb/lightning/*
 .git

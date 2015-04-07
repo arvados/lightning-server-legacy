@@ -8,11 +8,9 @@ from django.shortcuts import render
 from django.http import Http404
 from django.core.urlresolvers import reverse
 
-from variant_query.forms import AroundLocusForm, BetweenLociForm
-from tile_library.models import TileLocusAnnotation, GenomeStatistic, TileVariant
-import tile_library.basic_functions as basic_fns
-import tile_library.functions as fns
-import tile_library.query_functions as query_fns
+from api_gui.forms import AroundLocusForm, BetweenLociForm
+from tile_library.constants import SUPPORTED_ASSEMBLY_CHOICES, CHR_CHOICES
+from tile_library.models import TileLocusAnnotation
 
 def send_internal_api_request(request, GET_dictionary, reverse_url_locator_string):
     GET_url_section = urllib.urlencode(GET_dictionary)
@@ -30,8 +28,8 @@ def around_locus_query_view(request):
         More advanced query specs:
             Population subset
     """
-    assembly_converter = dict(TileLocusAnnotation.SUPPORTED_ASSEMBLY_CHOICES)
-    chrom_converter = dict(TileLocusAnnotation.CHR_CHOICES)
+    assembly_converter = dict(SUPPORTED_ASSEMBLY_CHOICES)
+    chrom_converter = dict(CHR_CHOICES)
     possible_assemblies_int = TileLocusAnnotation.objects.order_by(
         'assembly').distinct('assembly').values_list('assembly', flat=True)
     possible_chromosomes_int = TileLocusAnnotation.objects.order_by(
@@ -57,7 +55,7 @@ def around_locus_query_view(request):
     else:
         form=AroundLocusForm(possible_assemblies, possible_chromosomes)
         response = None
-    return render(request, 'variant_query/index.html', {'form_name': "Population Sequence Around Locus ", 'form':form, 'time1':t3-t2, 'time2':t4-t3, 'response': response})
+    return render(request, 'api_gui/index.html', {'form_name': "Population Sequence Around Locus ", 'form':form, 'time1':t3-t2, 'time2':t4-t3, 'response': response})
 
 def between_loci_query_view(request):
     """
@@ -71,8 +69,8 @@ def between_loci_query_view(request):
             (Currently not implemented)
             Population subset
     """
-    assembly_converter = dict(TileLocusAnnotation.SUPPORTED_ASSEMBLY_CHOICES)
-    chrom_converter = dict(TileLocusAnnotation.CHR_CHOICES)
+    assembly_converter = dict(SUPPORTED_ASSEMBLY_CHOICES)
+    chrom_converter = dict(CHR_CHOICES)
     possible_assemblies_int = TileLocusAnnotation.objects.order_by(
         'assembly').distinct('assembly').values_list('assembly', flat=True)
     possible_chromosomes_int = TileLocusAnnotation.objects.order_by(
@@ -98,4 +96,4 @@ def between_loci_query_view(request):
     else:
         form=BetweenLociForm(possible_assemblies, possible_chromosomes)
         response = None
-    return render(request, 'variant_query/index.html', {'form_name': "Population Sequence Between Loci ",'form':form, 'time1':t3-t2, 'time2':t4-t3, 'response': response})
+    return render(request, 'api_gui/index.html', {'form_name': "Population Sequence Between Loci ",'form':form, 'time1':t3-t2, 'time2':t4-t3, 'response': response})
