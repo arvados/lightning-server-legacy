@@ -201,13 +201,11 @@ func (ts *TileSet) AddTile( tileId string, tileSeq string, meta string ) {
   baseId := ts.getBaseTileId( tileId )
   copyNum := ts.getCopyNumber( tileId )
 
-  sTag := strings.ToUpper( ts.getStartTag( tileSeq ) )
-  eTag := strings.ToUpper( ts.getEndTag( tileSeq ) )
-  //body := strings.ToLower( ts.getTileBody( tileSeq ) )
-  body := ts.getTileBody( tileSeq )
+  sTag := strings.ToLower( ts.getStartTag( tileSeq ) )
+  eTag := strings.ToLower( ts.getEndTag( tileSeq ) )
 
-  //ts.TagToTileId[ sTag ]   = tileId
-  //ts.TileIdToTag[ tileId ] = sTag
+  body := strings.ToLower( ts.getTileBody( tileSeq ) )
+
   ts.TagToTileId[ sTag ]   = baseId
   ts.TileIdToTag[ baseId ] = sTag
 
@@ -231,7 +229,7 @@ func (ts *TileSet) AddTile( tileId string, tileSeq string, meta string ) {
   header.StartTag  = sTag
   header.EndTag    = eTag
   header.N         = len(tileSeq)
-  header.CopyNum   = copyNum+1
+  //header.CopyNum   = copyNum+1
   header.Notes     = append(header.Notes, ts.TileCopyCollectionMap[ baseId ].MetaJson[ copyNum ].Notes... )
 
   ts.TileCopyCollectionMap[ baseId ].MetaJson[ copyNum ] = header
