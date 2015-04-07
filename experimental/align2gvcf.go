@@ -252,13 +252,10 @@ type SeqDiff struct {
 //
 func emit_gvcf( seqdiff *SeqDiff ) {
   chrom := g_chrom
-  //pos := seqdiff.Pos[0]
   pos := seqdiff.RefPos
   id := "."
   qual := "."
   filt := "."
-  //info := fmt.Sprintf("END=%d", seqdiff.Pos[0]+seqdiff.Len[0])
-  //info := fmt.Sprintf("END=%d", len(seqdiff.Ref[1:]))
   format := "."
 
   var ref_seq string
@@ -519,9 +516,6 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
   curdiff.Alt = _update_bp_str( curdiff.Alt, seq_alt, s, e )
 
   seq_diffs = append(seq_diffs, *curdiff )
-
-  //DEBUG
-  //for i:=0; i<len(seq_diffs); i++ { debug_print_seqdiff(seq_diffs[i]) }
 
   return seq_diffs, nil
 
