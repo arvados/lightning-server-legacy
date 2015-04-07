@@ -4,6 +4,8 @@ import "os"
 import "fmt"
 import "log"
 
+import "strings"
+import "strconv"
 
 import "github.com/biogo/biogo/align"
 import "github.com/biogo/biogo/alphabet"
@@ -20,10 +22,14 @@ var gProfileFile string = "align2vcf.cprof"
 var gMemProfileFile string = "align2vcf.mprof"
 var g_verbose bool = false
 var g_normalize_flag bool = true
+var g_output_format string = "gvcf"
 
 var g_chrom string = "Un"
 
 var g_align_type string = "nw"
+
+var GAP_PENALTY int = -5
+var ALIGN_MATRIX align.Linear
 
 type GVCFState struct {
   Start int
@@ -229,6 +235,8 @@ const (
 )
 
 type SeqDiff struct {
+  RefPos int
+  AltPos int
   Pos []int
   Len []int
   N int
@@ -244,11 +252,13 @@ type SeqDiff struct {
 //
 func emit_gvcf( seqdiff *SeqDiff ) {
   chrom := g_chrom
-  pos := seqdiff.Pos[0]
+  //pos := seqdiff.Pos[0]
+  pos := seqdiff.RefPos
   id := "."
   qual := "."
   filt := "."
-  info := fmt.Sprintf("END=%d", seqdiff.Pos[0]+seqdiff.Len[0])
+  //info := fmt.Sprintf("END=%d", seqdiff.Pos[0]+seqdiff.Len[0])
+  //info := fmt.Sprintf("END=%d", len(seqdiff.Ref[1:]))
   format := "."
 
   var ref_seq string
@@ -260,12 +270,16 @@ func emit_gvcf( seqdiff *SeqDiff ) {
   //
   samp := "."
 
+  end_ref_pos := 1
+
   switch seqdiff.Type {
   case NOCALL:
     if len(seqdiff.Ref) > 1 {
       ref_seq = string(seqdiff.Ref[1:2])
+      end_ref_pos = seqdiff.Len[0]
     } else {
       ref_seq = "."
+      end_ref_pos = 1
     }
     alt_seq = "<NON_REF>"
     pos++
@@ -274,6 +288,8 @@ func emit_gvcf( seqdiff *SeqDiff ) {
   case SUB:
     ref_seq = fmt.Sprintf("%s", seqdiff.Ref)
     alt_seq = fmt.Sprintf("%s,<NON_REF>", seqdiff.Alt)
+
+    end_ref_pos = len(ref_seq)
 
     if (seqdiff.Pos[0] > 0) {
       if len(ref_seq)>0 { ref_seq = ref_seq[1:] }
@@ -284,8 +300,11 @@ func emit_gvcf( seqdiff *SeqDiff ) {
     ref_seq = fmt.Sprintf("%s", seqdiff.Ref)
     alt_seq = fmt.Sprintf("%s,<NON_REF>", seqdiff.Alt)
 
+    end_ref_pos = len(ref_seq)
   default:
   }
+
+  info := fmt.Sprintf("END=%d", pos + end_ref_pos-1)
 
 
   fmt.Printf("%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
@@ -294,17 +313,28 @@ func emit_gvcf( seqdiff *SeqDiff ) {
 }
 
 func debug_print_seqdiff( seqdiff SeqDiff ) {
+  g_var_name_map = make( map[int]string )
+
+  g_var_name_map[NOCALL] = "nocall"
+  g_var_name_map[REF] = "ref"
+  g_var_name_map[SNP] = "snp"
+  g_var_name_map[SUB] = "sub"
+  g_var_name_map[INDEL] = "indel"
+
 
   zz := g_var_name_map[seqdiff.Type]
   if seqdiff.Type == SUB && seqdiff.Len[0] == 1 {
     zz = "snp"
   }
 
-  fmt.Printf("(%d) [%d+%d,%d+%d] ref(%s) alt(%s) type:%d(%s)\n",
+  fmt.Printf("(%d) [%d+%d,%d+%d] refpos:%d ref(%s), altpos:%d alt(%s) type:%d(%s)\n",
   seqdiff.N,
   seqdiff.Pos[0], seqdiff.Len[0],
   seqdiff.Pos[1], seqdiff.Len[1],
-  seqdiff.Ref, seqdiff.Alt,
+  seqdiff.RefPos,
+  seqdiff.Ref,
+  seqdiff.AltPos,
+  seqdiff.Alt,
   seqdiff.Type, zz )
 }
 
@@ -331,6 +361,16 @@ func _t_sub( x,y byte ) bool {
 }
 
 func _seqdiff_update( s *SeqDiff, typ int, x,y int, refseq,altseq []byte ) {
+
+  /*
+  if typ == REF {
+    s.RefPos += len(refseq)
+  } else {
+    if len(refseq) > 0 {
+      s.RefPos += len(refseq)-1
+    }
+  }
+  */
 
   s.Len[0] = x - s.Pos[0]
   s.Len[1] = y - s.Pos[1]
@@ -404,7 +444,7 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
   y := 0
 
   //curdiff := SeqDiff{ []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
-  curdiff := &SeqDiff{ []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
+  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
   prev_ref_byte := byte('.') ; _ = prev_ref_byte
   state := NOCALL
   new_state := state
@@ -433,11 +473,25 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
           s,e:=curdiff.Pos[0]-1,curdiff.Pos[0]+curdiff.Len[0]
           curdiff.Ref = _update_bp_str( curdiff.Ref, seq_ref, s, e )
 
+          ref_pos := curdiff.RefPos
+          if state == REF {
+            ref_pos += len(curdiff.Ref)
+          } else if len(curdiff.Ref)>0 {
+            ref_pos += len(curdiff.Ref)-1
+          }
+
           s,e = curdiff.Pos[1]-1,curdiff.Pos[1]+curdiff.Len[1]
           curdiff.Alt = _update_bp_str( curdiff.Alt, seq_alt, s, e )
 
+          alt_pos := curdiff.AltPos
+          if state == REF {
+            alt_pos += len(curdiff.Alt)
+          } else if len(curdiff.Alt)>0 {
+            alt_pos += len(curdiff.Alt)-1
+          }
+
           seq_diffs = append(seq_diffs, *curdiff)
-          curdiff = &SeqDiff{ []int{x,y}, []int{0,0}, 2, []byte(""), []byte(""), state }
+          curdiff = &SeqDiff{ ref_pos, alt_pos, []int{x,y}, []int{0,0}, 2, []byte(""), []byte(""), state }
 
         }
 
@@ -466,6 +520,9 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
 
   seq_diffs = append(seq_diffs, *curdiff )
 
+  //DEBUG
+  //for i:=0; i<len(seq_diffs); i++ { debug_print_seqdiff(seq_diffs[i]) }
+
   return seq_diffs, nil
 
 }
@@ -475,7 +532,7 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
 func corner_gap_case( ref, seqb string ) error {
   if (len(ref)==0) && (len(seqb)==0) { return nil }
 
-  curdiff := &SeqDiff{ []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), INDEL }
+  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), INDEL }
   curdiff.Pos[0] = 1
 
   if len(ref)==0 {
@@ -493,10 +550,10 @@ func corner_gap_case( ref, seqb string ) error {
 
 }
 
-func seq_align( ref, seqb string ) error {
+func seq_align( ref, seqb string ) ([]SeqDiff, error) {
 
   if (len(ref)==0) || (len(seqb)==0) {
-    return corner_gap_case( ref, seqb )
+    return nil, corner_gap_case( ref, seqb )
   }
 
   custom_alpha := alphabet.MustComplement( alphabet.NewComplementor( "-acgtnx", feat.DNA,
@@ -513,11 +570,11 @@ func seq_align( ref, seqb string ) error {
   var p  int
 
   if ok,p = custom_alpha.AllValid(fa_ref.Seq); !ok {
-    return fmt.Errorf("Invalid character in reference sequence (pos %d).  Must be one of [-actgn].", p)
+    return nil, fmt.Errorf("Invalid character in reference sequence (pos %d).  Must be one of [-actgn].", p)
   }
 
   if ok,p = custom_alpha.AllValid(fsa.Seq); !ok {
-    return fmt.Errorf("Invalid character in sequence (pos %d).  Must be one of [-actgn].", p)
+    return nil, fmt.Errorf("Invalid character in sequence (pos %d).  Must be one of [-actgn].", p)
   }
 
   var aln_seq_a []byte
@@ -528,30 +585,13 @@ func seq_align( ref, seqb string ) error {
   }
 
   if g_align_type == "fa" {
-    //       Query letter
-    //     -   A   C   G   T
-    // -   0  -1  -1  -1  -1
-    // A  -1   1  -1  -1  -1
-    // C  -1  -1   1  -1  -1
-    // G  -1  -1  -1   1  -1
-    // T  -1  -1  -1  -1   1
-    //
-    // Gap open: -5
     fitted := align.FittedAffine{
-        Matrix: align.Linear{
-            { 0, -1, -1, -1, -1, -1, -1},
-            {-1,  1, -1, -1, -1, -1, -1},
-            {-1, -1,  1, -1, -1, -1, -1},
-            {-1, -1, -1,  1, -1, -1, -1},
-            {-1, -1, -1, -1,  1, -1, -1},
-            {-1, -1, -1, -1, -1,  0, -1},
-            {-1, -1, -1, -1, -1, -1,  0},
-        },
-        GapOpen: -5,
+        Matrix: ALIGN_MATRIX,
+        GapOpen: GAP_PENALTY,
     }
 
     aln, err := fitted.Align(fa_ref, fsa)
-    if err!=nil { return err }
+    if err!=nil { return nil, err }
 
     fa := align.Format(fa_ref, fsa, aln, '-')
 
@@ -563,27 +603,12 @@ func seq_align( ref, seqb string ) error {
     //Needleman Walsh
 
     needle := align.NWAffine{
-        Matrix: align.Linear{
-            //{ 0, -1, -1, -1, -1 },
-            //{-1,  1, -1, -1, -1 },
-            //{-1, -1,  1, -1, -1 },
-            //{-1, -1, -1,  1, -1 },
-            //{-1, -1, -1, -1,  1 },
-
-            //-   a   c   g   t   n   x
-            { 0, -1, -1, -1, -1, -1, -1},
-            {-1,  1, -1, -1, -1, -1, -1},
-            {-1, -1,  1, -1, -1, -1, -1},
-            {-1, -1, -1,  1, -1, -1, -1},
-            {-1, -1, -1, -1,  1, -1, -1},
-            {-1, -1, -1, -1, -1,  0, -1},
-            {-1, -1, -1, -1, -1, -1,  0},
-        },
-        GapOpen: -5,
+        Matrix: ALIGN_MATRIX,
+        GapOpen: GAP_PENALTY,
     }
 
     aln_needle,ee := needle.Align( fa_ref, fsa )
-    if ee!=nil { return ee }
+    if ee!=nil { return nil, ee }
     fa_needle := align.Format( fa_ref, fsa, aln_needle, '-')
 
     // Stuff in anchor points at the beginning and end.
@@ -599,7 +624,7 @@ func seq_align( ref, seqb string ) error {
 
   n:=len(string(aln_seq_a))
   m:=len(string(aln_seq_b))
-  if n!=m { return fmt.Errorf("n %d != m %d", n, m) }
+  if n!=m { return nil, fmt.Errorf("n %d != m %d", n, m) }
 
   if g_normalize_flag {
     seq_pair_normalize( aln_seq_a, aln_seq_b )
@@ -612,9 +637,36 @@ func seq_align( ref, seqb string ) error {
   d,e := diff_from_aligned_seqs( aln_seq_a[1:n], aln_seq_b[1:n] )
   if e!=nil { log.Fatal(e) }
 
-  for i:=0; i<len(d); i++ { emit_gvcf( &d[i] ) }
+  if g_output_format == "compact" {
+    count := 0
 
-  return nil
+    // First emit nocalls
+    //
+    for i:=0; i<len(d); i++ {
+      if d[i].Type != NOCALL { continue }
+      if count>0 { fmt.Printf(",") }
+      fmt.Printf("n%d:%d", d[i].AltPos, d[i].Len[0])
+      count++
+    }
+
+    // then emit alt
+    //
+    for i:=0; i<len(d); i++ {
+      if (d[i].Type == NOCALL) || (d[i].Type == REF) { continue }
+      if count>0 { fmt.Printf(",") }
+      fmt.Printf("i%d:%d:%s", d[i].RefPos, d[i].Len[1], d[i].Alt[1:])
+      count++
+    }
+
+    fmt.Printf("\n")
+
+  } else if g_output_format == "test" {
+    return d, nil
+  } else {
+    for i:=0; i<len(d); i++ { emit_gvcf( &d[i] ) }
+  }
+
+  return d, nil
 
 }
 
@@ -898,6 +950,39 @@ func seqdiff_tests() {
 
 }
 
+func gvcf_tests() {
+  ta := []byte("acacacacaacacacacacacacgggac")
+  tb := []byte("acacacacacacggggacacacacacacac")
+
+  d, e := seq_align(string(ta),string(tb))
+  if e!=nil { fmt.Println( e ) }
+
+  test0 := []SeqDiff{ SeqDiff{ 0, 0, []int{0, 0}, []int{9,9}, 2, []byte("acacacaca"), []byte("acacacaca"), REF},
+                      SeqDiff{ 9, 9, []int{9, 9}, []int{1,1}, 2, []byte("a"), []byte("ac"), INDEL},
+                      SeqDiff{ 9, 10, []int{10, 10}, []int{2,2}, 2, []byte("ac"), []byte("cac"), REF},
+                      SeqDiff{ 11, 13, []int{12, 12}, []int{4,4}, 2, []byte("c"), []byte("cgggg"), INDEL},
+                      SeqDiff{ 11, 17, []int{16, 16}, []int{12,12}, 2, []byte("acacacacacac"), []byte("gacacacacacac"), REF},
+                      SeqDiff{ 23, 30, []int{28, 28}, []int{3,3}, 2, []byte("cggg"), []byte("c"), INDEL},
+                      SeqDiff{ 26, 30, []int{31, 31}, []int{3,3}, 2, []byte("gac$"), []byte("ac$"), REF},
+                    }
+
+  if len(test0) != len(d) { log.Fatal("failed test0: lengths do not match") }
+  for i:=0; i<len(test0); i++ {
+    if test0[i].Type != d[i].Type { log.Fatal("Failed on test0 element", i) }
+    if test0[i].RefPos != d[i].RefPos { log.Fatal("Failed on test0 element", i) }
+    if test0[i].AltPos != d[i].AltPos { log.Fatal("Failed on test0 element", i) }
+    if test0[i].Pos[0] != d[i].Pos[0] { log.Fatal("Failed on test0 element", i) }
+    if test0[i].Pos[1] != d[i].Pos[1] { log.Fatal("Failed on test0 element", i) }
+    if test0[i].Len[0] != d[i].Len[0] { log.Fatal("Failed on test0 element", i) }
+    if test0[i].Len[1] != d[i].Len[1] { log.Fatal("Failed on test0 element", i) }
+    if string(test0[i].Ref) != string(d[i].Ref) { log.Fatal("Failed on test0 element", i) }
+    if string(test0[i].Alt) != string(d[i].Alt) { log.Fatal("Failed on test0 element", i) }
+  }
+
+  //fmt.Printf("ok\n")
+
+}
+
 func is_simple_align( seqa, seqb []byte ) bool {
   n := len(seqa)
   if len(seqb) != n { return false; }
@@ -916,7 +1001,7 @@ func simple_seq_align( seq_ref, seq_alt []byte ) {
   seq_diffs := make( []SeqDiff, 0, 8 )
 
 
-  curdiff := &SeqDiff{ []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
+  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
   prev_ref_byte := byte('.') ; _ = prev_ref_byte
   state := NOCALL
   new_state := state
@@ -949,7 +1034,7 @@ func simple_seq_align( seq_ref, seq_alt []byte ) {
           curdiff.Alt = _update_bp_str( curdiff.Alt, seq_alt, s, e )
 
           seq_diffs = append(seq_diffs, *curdiff)
-          curdiff = &SeqDiff{ []int{i,i}, []int{0,0}, 2, []byte(""), []byte(""), state }
+          curdiff = &SeqDiff{ i, i, []int{i,i}, []int{0,0}, 2, []byte(""), []byte(""), state }
 
         }
       }
@@ -979,10 +1064,11 @@ func simple_seq_align( seq_ref, seq_alt []byte ) {
 
 func _main( c *cli.Context ) {
 
-  g_verbose = c.Bool("Verbose")
-  g_chrom = c.String("chrom")
-  g_normalize_flag = !c.Bool("no-normalize")
-  g_align_type = c.String("align-type")
+  g_verbose         = c.Bool("Verbose")
+  g_chrom           = c.String("chrom")
+  g_normalize_flag  = !c.Bool("no-normalize")
+  g_align_type      = c.String("align-type")
+  g_output_format   = c.String("output-format")
 
   if (g_align_type != "nw") && (g_align_type != "fa") {
     fmt.Printf("Invalid align-type\n")
@@ -990,7 +1076,53 @@ func _main( c *cli.Context ) {
     os.Exit(1)
   }
 
+  GAP_PENALTY = c.Int("gap-penalty")
+
+  str_score_matrix := c.String("score-matrix")
+  if len(str_score_matrix)!=0 {
+    score_str_val := strings.Split( str_score_matrix, "," )
+    if len(score_str_val) != 36 {
+      fmt.Fprintf(os.Stderr, "Invalid score matrix.  Must be 36 elements")
+      cli.ShowAppHelp(c)
+      os.Exit(1)
+    }
+
+    for i:=0; i<36; i++ {
+      var ee error
+      r := i/6
+      c := i%6
+      ALIGN_MATRIX[r][c],ee = strconv.Atoi(score_str_val[i])
+      if ee!=nil { log.Fatal(ee) }
+    }
+
+    for i:=0; i<6; i++ {
+      ALIGN_MATRIX[6][i] = ALIGN_MATRIX[5][i]
+      ALIGN_MATRIX[i][6] = ALIGN_MATRIX[i][5]
+    }
+    ALIGN_MATRIX[6][6] = ALIGN_MATRIX[5][5]
+  }
+
+  if g_verbose {
+    fmt.Printf("GAP_PENALTY: %d\n", GAP_PENALTY)
+    chmap := "-acgtnx"
+    fmt.Printf("  ")
+    for i:=0; i<7; i++ { fmt.Printf(" %2s", chmap[i:i+1]) }
+    fmt.Printf("\n")
+    for i:=0; i<7; i++ {
+      fmt.Printf("%2s", chmap[i:i+1])
+      for j:=0; j<7; j++ {
+        fmt.Printf(" %2d", ALIGN_MATRIX[i][j])
+      }
+      fmt.Printf("\n")
+    }
+    fmt.Printf("\n")
+  }
+
   if c.Bool("run-tests") {
+
+    gvcf_tests()
+    os.Exit(0)
+
     seqdiff_tests()
     normalize_tests()
     os.Exit(0)
@@ -1019,7 +1151,7 @@ func _main( c *cli.Context ) {
   if (is_simple_align(ref_seq, alt_seq)) {
     simple_seq_align(ref_seq, alt_seq)
   } else {
-    e := seq_align(seqa,seqb)
+    _,e := seq_align(seqa,seqb)
     if e!=nil { fmt.Println( e ) }
   }
 
@@ -1028,6 +1160,16 @@ func _main( c *cli.Context ) {
 }
 
 func main() {
+
+  ALIGN_MATRIX = align.Linear{
+            //-   a   c   g   t   n   x
+            { 0, -1, -1, -1, -1, -1, -1},
+            {-1,  1, -1, -1, -1,  0,  0},
+            {-1, -1,  1, -1, -1,  0,  0},
+            {-1, -1, -1,  1, -1,  0,  0},
+            {-1, -1, -1, -1,  1,  0,  0},
+            {-1,  0,  0,  0,  0,  0,  0},
+            {-1,  0,  0,  0,  0,  0,  0}, }
 
   app := cli.NewApp()
   app.Name  = "align2vcf"
@@ -1074,7 +1216,13 @@ func main() {
 
     cli.StringFlag{
       Name: "score-matrix, m",
-      Usage: "Score matrix as a comma separated integer list (no spaced, row major, 'gap,a,c,t,g')",
+      Usage: "Score matrix as a comma separated integer list (no spaced, row major, 'gap,a,c,t,g,n')",
+    },
+
+    cli.StringFlag{
+      Name: "output-format, F",
+      Value: "gvcf",
+      Usage: "Output format: gvcf,compact (defaults to 'gvcf')",
     },
 
     cli.BoolFlag{
