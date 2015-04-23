@@ -203,7 +203,6 @@ func seq_pair_normalize( seq_a, seq_b []byte ) error {
           l1 = _ldash( seq_b[0:l1] )
         }
 
-        //if seq_a[l0] == seq_b[l1] {
         if bp_eq(seq_a[l0], seq_b[l1]) {
           if seq_a[b0] == '-' {
             seq_a[b0], seq_a[l0] = seq_a[l0], seq_a[b0]
@@ -393,16 +392,6 @@ func _t_sub( x,y byte ) bool {
 
 func _seqdiff_update( s *SeqDiff, typ int, x,y int, refseq,altseq []byte ) {
 
-  /*
-  if typ == REF {
-    s.RefPos += len(refseq)
-  } else {
-    if len(refseq) > 0 {
-      s.RefPos += len(refseq)-1
-    }
-  }
-  */
-
   s.Len[0] = x - s.Pos[0]
   s.Len[1] = y - s.Pos[1]
   s.Ref = refseq
@@ -525,7 +514,6 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
           }
 
           seq_diffs = append(seq_diffs, *curdiff)
-          //curdiff = &SeqDiff{ref_pos, alt_pos, []int{x,y}, []int{0,0}, 2, []byte(""), []byte(""), state}
           curdiff = &SeqDiff{ref_pos, alt_pos, []int{x,y}, []int{0,0}, 2, []byte(""), []byte(""), state, prev_ref_byte, '.'}
 
         }
@@ -547,12 +535,7 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
 
   _seqdiff_update( curdiff, state, x, y, []byte(""), []byte("") )
 
-  //s,e:=curdiff.Pos[0]-1,curdiff.Pos[0]+curdiff.Len[0]
-  //curdiff.Ref = _update_bp_str( curdiff.Ref, seq_ref, s, e )
   curdiff.Ref = _update_bp_str(curdiff.Ref, seq_ref, curdiff.Pos[0], curdiff.Len[0])
-
-  //s,e = curdiff.Pos[1]-1,curdiff.Pos[1]+curdiff.Len[1]
-  //curdiff.Alt = _update_bp_str( curdiff.Alt, seq_alt, s, e )
   curdiff.Alt = _update_bp_str(curdiff.Alt, seq_alt, curdiff.Pos[1], curdiff.Len[1])
 
   seq_diffs = append(seq_diffs, *curdiff)
@@ -565,7 +548,6 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
 func corner_gap_case( ref, seqb string ) error {
   if (len(ref)==0) && (len(seqb)==0) { return nil }
 
-  //curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), INDEL }
   curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), INDEL, '.', '.' }
   curdiff.Pos[0] = 1
 
@@ -663,7 +645,6 @@ func seq_align( ref, seqb string ) ([]SeqDiff, error) {
   if g_normalize_flag {
 
     seq_pair_normalize( aln_seq_a[1:n], aln_seq_b[1:m] )
-    //seq_pair_normalize( aln_seq_a, aln_seq_b )
   }
 
   if g_verbose {
@@ -672,11 +653,6 @@ func seq_align( ref, seqb string ) ([]SeqDiff, error) {
 
   d,e := diff_from_aligned_seqs( aln_seq_a[1:n], aln_seq_b[1:n] )
   if e!=nil { log.Fatal(e) }
-
-  //DEBUG
-  for i:=0; i<len(d); i++ {
-    debug_print_seqdiff(d[i])
-  }
 
   if g_output_format == "compact" {
     count := 0
