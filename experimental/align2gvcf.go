@@ -28,6 +28,8 @@ var g_chrom string = "Un"
 
 var g_align_type string = "nw"
 
+var g_check_align bool = false
+
 var GAP_PENALTY int = -5
 var ALIGN_MATRIX align.Linear
 
@@ -235,14 +237,36 @@ const (
 )
 
 type SeqDiff struct {
+
+  // Position in reference
+  //
   RefPos int
+
+  // Position in alternat sequence
+  //
   AltPos int
+
+  // Position and length in aligned sequence
   Pos []int
   Len []int
+
+  // number of alleles total (2 for now)
   N int
+
+  // Reference sequence
+  //
   Ref []byte
+
+  // Alternate sequence
+  //
   Alt []byte
+
+  // Type of sequence difference (NOCALL, REF, SNP, SUB, INDEL)
+  //
   Type int
+
+  RefPrefix byte
+  RefSuffix byte
 }
 
 
@@ -283,19 +307,27 @@ func emit_gvcf( seqdiff *SeqDiff ) {
   case REF: return
   case SNP:
   case SUB:
-    ref_seq = fmt.Sprintf("%s", seqdiff.Ref)
-    alt_seq = fmt.Sprintf("%s,<NON_REF>", seqdiff.Alt)
+
+    if len(seqdiff.Ref)>1 {
+      ref_seq = fmt.Sprintf("%c%s", seqdiff.RefPrefix, seqdiff.Ref)
+      alt_seq = fmt.Sprintf("%c%s", seqdiff.RefPrefix, seqdiff.Alt)
+    } else {
+      ref_seq = fmt.Sprintf("%s", seqdiff.Ref)
+      alt_seq = fmt.Sprintf("%s", seqdiff.Alt)
+    }
 
     end_ref_pos = len(ref_seq)
 
-    if (seqdiff.Pos[0] > 0) {
-      if len(ref_seq)>0 { ref_seq = ref_seq[1:] }
-      if len(alt_seq)>0 { alt_seq = alt_seq[1:] }
-    }
     pos++
   case INDEL:
-    ref_seq = fmt.Sprintf("%s", seqdiff.Ref)
-    alt_seq = fmt.Sprintf("%s,<NON_REF>", seqdiff.Alt)
+
+    if seqdiff.RefPrefix != '.' {
+      ref_seq = fmt.Sprintf("%c%s", seqdiff.RefPrefix, seqdiff.Ref)
+      alt_seq = fmt.Sprintf("%c%s,<NON_REF>", seqdiff.RefPrefix, seqdiff.Alt)
+    } else {
+      ref_seq = fmt.Sprintf("%s%c", seqdiff.Ref, seqdiff.RefSuffix)
+      alt_seq = fmt.Sprintf("%s%c,<NON_REF>", seqdiff.Alt, seqdiff.RefSuffix)
+    }
 
     end_ref_pos = len(ref_seq)
   default:
@@ -324,12 +356,14 @@ func debug_print_seqdiff( seqdiff SeqDiff ) {
     zz = "snp"
   }
 
-  fmt.Printf("(%d) [%d+%d,%d+%d] refpos:%d ref(%s), altpos:%d alt(%s) type:%d(%s)\n",
+  fmt.Printf("(%d) [%d+%d,%d+%d] refpos:%d ref(%c!%s!%c), altpos:%d alt(%s) type:%d(%s)\n",
   seqdiff.N,
   seqdiff.Pos[0], seqdiff.Len[0],
   seqdiff.Pos[1], seqdiff.Len[1],
   seqdiff.RefPos,
+  seqdiff.RefPrefix,
   seqdiff.Ref,
+  seqdiff.RefSuffix,
   seqdiff.AltPos,
   seqdiff.Alt,
   seqdiff.Type, zz )
@@ -388,41 +422,36 @@ func _seqdiff_reset( s *SeqDiff, x,y int ) {
 
 func _transition( ref,alt byte ) (int) {
 
-  if        _t_nc( ref, alt )  { return NOCALL
-  } else if _t_ref( ref, alt ) { return REF
-  } else if _t_sub( ref, alt ) { return SUB
-  } else if _t_indel( ref, alt ) { return INDEL }
+  if _t_indel(ref, alt) { return INDEL
+  } else if _t_nc(ref, alt)  { return NOCALL
+  } else if _t_ref(ref, alt) { return REF
+  } else if _t_sub(ref, alt) { return SUB
+  } else if _t_indel(ref, alt) { return INDEL }
 
-  fmt.Printf("ERROR transition %v %v\n", ref, alt )
+  r := []byte{ ref }
+  a := []byte{ alt }
+
+  fmt.Printf("ERROR transition %s %s\n", r, a )
 
   return -1
 }
 
-
-func _update_bp_str( seq, par_seq  []byte, s, e int ) []byte {
+func _update_bp_str( seq, par_seq  []byte, s, n int ) []byte {
   if (s<0) { s=0 }
 
-  // If we're not in the special case of being at the
-  // beginning of the sequence...
-  //
-  if s>=0 {
-    seq = append( seq, par_seq[s:e]... )
-    p:=0
+  seq = append( seq, par_seq[s:s+n]... )
+  p:=0
 
-    // Remove '-' gap characters and resize slice.
-    //
-    for i:=0; i<len(seq); i++ {
-      if seq[i]=='-' { continue }
-      seq[p] = seq[i]
-      p++
-    }
-    seq = seq[0:p]
-    if len(seq) == 0 { seq = append(seq, '.') }
-  } else {
+  // Remove '-' gap characters and resize slice.
+  //
+  for i:=0; i<len(seq); i++ {
+    if seq[i]=='-' { continue }
+    seq[p] = seq[i]
+    p++
   }
+  seq = seq[0:p]
 
   return seq
-
 }
 
 func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
@@ -440,15 +469,26 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
   x := 0
   y := 0
 
-  //curdiff := SeqDiff{ []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
-  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
+  //curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
+  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL, '.', '.' }
   prev_ref_byte := byte('.') ; _ = prev_ref_byte
   state := NOCALL
   new_state := state
 
+  prev_ref_bp := []byte{ '-' }
+  next_ref_bp := []byte{ '-' }
+
+  _ = prev_ref_bp
+  _ = next_ref_bp
+
   for (x<n) && (y<n) {
 
     new_state = _transition( seq_ref[x], seq_alt[y] )
+
+    if new_state==REF {
+      prev_ref_byte = seq_ref[x]
+    }
+
     if new_state != state {
       _seqdiff_update( curdiff, state, x, y, []byte(""), []byte("") )
 
@@ -464,31 +504,29 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
           curdiff.Type = INDEL
         } else {
 
-          // (g)VCF wants the first REF base, so start at
-          // one position before.
+          // We keep everything in terms of the actual sequence.
           //
-          s,e:=curdiff.Pos[0]-1,curdiff.Pos[0]+curdiff.Len[0]
-          curdiff.Ref = _update_bp_str( curdiff.Ref, seq_ref, s, e )
+          curdiff.Ref = _update_bp_str(curdiff.Ref, seq_ref, curdiff.Pos[0], curdiff.Len[0])
+          ref_pos := curdiff.RefPos + len(curdiff.Ref)
 
-          ref_pos := curdiff.RefPos
-          if state == REF {
-            ref_pos += len(curdiff.Ref)
-          } else if len(curdiff.Ref)>0 {
-            ref_pos += len(curdiff.Ref)-1
-          }
+          curdiff.Alt = _update_bp_str(curdiff.Alt, seq_alt, curdiff.Pos[1], curdiff.Len[1])
+          alt_pos := curdiff.AltPos + len(curdiff.Alt)
 
-          s,e = curdiff.Pos[1]-1,curdiff.Pos[1]+curdiff.Len[1]
-          curdiff.Alt = _update_bp_str( curdiff.Alt, seq_alt, s, e )
-
-          alt_pos := curdiff.AltPos
-          if state == REF {
-            alt_pos += len(curdiff.Alt)
-          } else if len(curdiff.Alt)>0 {
-            alt_pos += len(curdiff.Alt)-1
+          // Scan till next ref character in the special case we
+          // have non-ref as the first variant.
+          //
+          if curdiff.Pos[0]==0 {
+            for ii:=x; ii<len(seq_ref); ii++ {
+              if seq_ref[ii] != '-' {
+                curdiff.RefSuffix = seq_ref[ii]
+                break
+              }
+            }
           }
 
           seq_diffs = append(seq_diffs, *curdiff)
-          curdiff = &SeqDiff{ ref_pos, alt_pos, []int{x,y}, []int{0,0}, 2, []byte(""), []byte(""), state }
+          //curdiff = &SeqDiff{ref_pos, alt_pos, []int{x,y}, []int{0,0}, 2, []byte(""), []byte(""), state}
+          curdiff = &SeqDiff{ref_pos, alt_pos, []int{x,y}, []int{0,0}, 2, []byte(""), []byte(""), state, prev_ref_byte, '.'}
 
         }
 
@@ -509,16 +547,17 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
 
   _seqdiff_update( curdiff, state, x, y, []byte(""), []byte("") )
 
-  s,e:=curdiff.Pos[0]-1,curdiff.Pos[0]+curdiff.Len[0]
-  curdiff.Ref = _update_bp_str( curdiff.Ref, seq_ref, s, e )
+  //s,e:=curdiff.Pos[0]-1,curdiff.Pos[0]+curdiff.Len[0]
+  //curdiff.Ref = _update_bp_str( curdiff.Ref, seq_ref, s, e )
+  curdiff.Ref = _update_bp_str(curdiff.Ref, seq_ref, curdiff.Pos[0], curdiff.Len[0])
 
-  s,e = curdiff.Pos[1]-1,curdiff.Pos[1]+curdiff.Len[1]
-  curdiff.Alt = _update_bp_str( curdiff.Alt, seq_alt, s, e )
+  //s,e = curdiff.Pos[1]-1,curdiff.Pos[1]+curdiff.Len[1]
+  //curdiff.Alt = _update_bp_str( curdiff.Alt, seq_alt, s, e )
+  curdiff.Alt = _update_bp_str(curdiff.Alt, seq_alt, curdiff.Pos[1], curdiff.Len[1])
 
-  seq_diffs = append(seq_diffs, *curdiff )
+  seq_diffs = append(seq_diffs, *curdiff)
 
   return seq_diffs, nil
-
 }
 
 // Corner case when one or both of the sequences is 0 length.
@@ -526,7 +565,8 @@ func diff_from_aligned_seqs( seq_ref, seq_alt []byte ) ( []SeqDiff, error ) {
 func corner_gap_case( ref, seqb string ) error {
   if (len(ref)==0) && (len(seqb)==0) { return nil }
 
-  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), INDEL }
+  //curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), INDEL }
+  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), INDEL, '.', '.' }
   curdiff.Pos[0] = 1
 
   if len(ref)==0 {
@@ -621,7 +661,9 @@ func seq_align( ref, seqb string ) ([]SeqDiff, error) {
   if n!=m { return nil, fmt.Errorf("n %d != m %d", n, m) }
 
   if g_normalize_flag {
-    seq_pair_normalize( aln_seq_a, aln_seq_b )
+
+    seq_pair_normalize( aln_seq_a[1:n], aln_seq_b[1:m] )
+    //seq_pair_normalize( aln_seq_a, aln_seq_b )
   }
 
   if g_verbose {
@@ -631,12 +673,67 @@ func seq_align( ref, seqb string ) ([]SeqDiff, error) {
   d,e := diff_from_aligned_seqs( aln_seq_a[1:n], aln_seq_b[1:n] )
   if e!=nil { log.Fatal(e) }
 
+  //DEBUG
+  for i:=0; i<len(d); i++ {
+    debug_print_seqdiff(d[i])
+  }
+
   if g_output_format == "compact" {
     count := 0
+
+    mm := make( map[int]string )
+    mm[NOCALL] = "nocall"
+    mm[REF] = "ref"
+    mm[SNP] = "snp"
+    mm[SUB] = "sub"
+    mm[INDEL] = "indel"
 
     // First emit nocalls
     //
     for i:=0; i<len(d); i++ {
+
+      // Nocalls can happen within an INDEL.  A nocall as a diff line
+      // in this context is thought of as a matching base pair position
+      // in the alt sequence as matched with ref.  If a nocall falls
+      // within an INDEL, we need to emit the nocall elements.
+      // Nocalls in a SUB or SNP should be broken out into their own
+      // NOCALL sequence diff elemnts so the only special case should
+      // be the INDEL.
+      //
+      if d[i].Type == INDEL {
+
+        nocall_s := 0
+        nocall_n := 0
+
+        for p:=0; p<len(d[i].Alt); p++ {
+
+          if d[i].Alt[p] == 'n' {
+            if nocall_n==0 { nocall_s=p }
+            nocall_n++
+            continue
+          }
+
+          if nocall_n>0 {
+            if count>0 { fmt.Printf(",") }
+            count++
+            fmt.Printf("n%d:%d", nocall_s+d[i].AltPos, nocall_n)
+            nocall_n=0
+          }
+
+          nocall_s=p
+        }
+
+        // Emit last nocall, if present
+        //
+        if nocall_n>0 {
+          if count>0 { fmt.Printf(",") }
+          count++
+          fmt.Printf("n%d:%d", nocall_s+d[i].AltPos, nocall_n)
+        }
+
+        continue
+      }
+
       if d[i].Type != NOCALL { continue }
       if count>0 { fmt.Printf(",") }
       fmt.Printf("n%d:%d", d[i].AltPos, d[i].Len[0])
@@ -648,7 +745,7 @@ func seq_align( ref, seqb string ) ([]SeqDiff, error) {
     for i:=0; i<len(d); i++ {
       if (d[i].Type == NOCALL) || (d[i].Type == REF) { continue }
       if count>0 { fmt.Printf(",") }
-      fmt.Printf("i%d:%d:%s", d[i].RefPos, d[i].Len[1], d[i].Alt[1:])
+      fmt.Printf("i%d:%d:%s", d[i].RefPos, len(d[i].Ref), d[i].Alt)
       count++
     }
 
@@ -951,13 +1048,13 @@ func gvcf_tests() {
   d, e := seq_align(string(ta),string(tb))
   if e!=nil { fmt.Println( e ) }
 
-  test0 := []SeqDiff{ SeqDiff{ 0, 0, []int{0, 0}, []int{9,9}, 2, []byte("acacacaca"), []byte("acacacaca"), REF},
-                      SeqDiff{ 9, 9, []int{9, 9}, []int{1,1}, 2, []byte("a"), []byte("ac"), INDEL},
-                      SeqDiff{ 9, 10, []int{10, 10}, []int{2,2}, 2, []byte("ac"), []byte("cac"), REF},
-                      SeqDiff{ 11, 13, []int{12, 12}, []int{4,4}, 2, []byte("c"), []byte("cgggg"), INDEL},
-                      SeqDiff{ 11, 17, []int{16, 16}, []int{12,12}, 2, []byte("acacacacacac"), []byte("gacacacacacac"), REF},
-                      SeqDiff{ 23, 30, []int{28, 28}, []int{3,3}, 2, []byte("cggg"), []byte("c"), INDEL},
-                      SeqDiff{ 26, 30, []int{31, 31}, []int{3,3}, 2, []byte("gac$"), []byte("ac$"), REF},
+  test0 := []SeqDiff{ SeqDiff{ 0, 0, []int{0, 0}, []int{9,9}, 2, []byte("acacacaca"), []byte("acacacaca"), REF, '.', '.'},
+                      SeqDiff{ 9, 9, []int{9, 9}, []int{1,1}, 2, []byte("a"), []byte("ac"), INDEL, '.', '.'},
+                      SeqDiff{ 9, 10, []int{10, 10}, []int{2,2}, 2, []byte("ac"), []byte("cac"), REF, '.', '.'},
+                      SeqDiff{ 11, 13, []int{12, 12}, []int{4,4}, 2, []byte("c"), []byte("cgggg"), INDEL, '.', '.'},
+                      SeqDiff{ 11, 17, []int{16, 16}, []int{12,12}, 2, []byte("acacacacacac"), []byte("gacacacacacac"), REF, '.', '.'},
+                      SeqDiff{ 23, 30, []int{28, 28}, []int{3,3}, 2, []byte("cggg"), []byte("c"), INDEL, '.', '.'},
+                      SeqDiff{ 26, 30, []int{31, 31}, []int{3,3}, 2, []byte("gac$"), []byte("ac$"), REF, '.', '.'},
                     }
 
   if len(test0) != len(d) { log.Fatal("failed test0: lengths do not match") }
@@ -972,6 +1069,36 @@ func gvcf_tests() {
     if string(test0[i].Ref) != string(d[i].Ref) { log.Fatal("Failed on test0 element", i) }
     if string(test0[i].Alt) != string(d[i].Alt) { log.Fatal("Failed on test0 element", i) }
   }
+
+  ta = []byte("catcatcatcat")
+  tb = []byte("catcatgatnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnncat")
+
+  d,e = seq_align(string(ta),string(tb))
+  if e!=nil { fmt.Println( e ) }
+
+  /*
+  test1 := []SeqDiff{ SeqDiff{ 0, 0, []int{0, 0}, []int{9,9}, 2, []byte("acacacaca"), []byte("acacacaca"), REF},
+                      SeqDiff{ 9, 9, []int{9, 9}, []int{1,1}, 2, []byte("a"), []byte("ac"), INDEL},
+                      SeqDiff{ 9, 10, []int{10, 10}, []int{2,2}, 2, []byte("ac"), []byte("cac"), REF},
+                      SeqDiff{ 11, 13, []int{12, 12}, []int{4,4}, 2, []byte("c"), []byte("cgggg"), INDEL},
+                      SeqDiff{ 11, 17, []int{16, 16}, []int{12,12}, 2, []byte("acacacacacac"), []byte("gacacacacacac"), REF},
+                      SeqDiff{ 23, 30, []int{28, 28}, []int{3,3}, 2, []byte("cggg"), []byte("c"), INDEL},
+                      SeqDiff{ 26, 30, []int{31, 31}, []int{3,3}, 2, []byte("gac$"), []byte("ac$"), REF},
+                    }
+
+  if len(test1) != len(d) { log.Fatal("failed test1: lengths do not match") }
+  for i:=0; i<len(test1); i++ {
+    if test1[i].Type != d[i].Type { log.Fatal("Failed on test1 element", i) }
+    if test1[i].RefPos != d[i].RefPos { log.Fatal("Failed on test1 element", i) }
+    if test1[i].AltPos != d[i].AltPos { log.Fatal("Failed on test1 element", i) }
+    if test1[i].Pos[0] != d[i].Pos[0] { log.Fatal("Failed on test1 element", i) }
+    if test1[i].Pos[1] != d[i].Pos[1] { log.Fatal("Failed on test1 element", i) }
+    if test1[i].Len[0] != d[i].Len[0] { log.Fatal("Failed on test1 element", i) }
+    if test1[i].Len[1] != d[i].Len[1] { log.Fatal("Failed on test1 element", i) }
+    if string(test1[i].Ref) != string(d[i].Ref) { log.Fatal("Failed on test1 element", i) }
+    if string(test1[i].Alt) != string(d[i].Alt) { log.Fatal("Failed on test1 element", i) }
+  }
+  */
 
   //fmt.Printf("ok\n")
 
@@ -995,7 +1122,7 @@ func simple_seq_align( seq_ref, seq_alt []byte ) {
   seq_diffs := make( []SeqDiff, 0, 8 )
 
 
-  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL }
+  curdiff := &SeqDiff{ 0, 0, []int{0,0}, []int{0,0}, 2, []byte(""), []byte(""), NOCALL, '.', '.' }
   prev_ref_byte := byte('.') ; _ = prev_ref_byte
   state := NOCALL
   new_state := state
@@ -1028,7 +1155,7 @@ func simple_seq_align( seq_ref, seq_alt []byte ) {
           curdiff.Alt = _update_bp_str( curdiff.Alt, seq_alt, s, e )
 
           seq_diffs = append(seq_diffs, *curdiff)
-          curdiff = &SeqDiff{ i, i, []int{i,i}, []int{0,0}, 2, []byte(""), []byte(""), state }
+          curdiff = &SeqDiff{ i, i, []int{i,i}, []int{0,0}, 2, []byte(""), []byte(""), state, '.', '.' }
 
         }
       }
@@ -1141,6 +1268,12 @@ func _main( c *cli.Context ) {
 
   ref_seq := []byte(seqa)
   alt_seq := []byte(seqb)
+
+  // special case when both sequences are 0
+  //
+  if (len(ref_seq)==len(alt_seq)) && len(ref_seq)==0 {
+    return
+  }
 
   if (is_simple_align(ref_seq, alt_seq)) {
     simple_seq_align(ref_seq, alt_seq)
