@@ -269,6 +269,83 @@ type SeqDiff struct {
 }
 
 
+func emit_compact(d []SeqDiff) {
+  count := 0
+
+  mm := make( map[int]string )
+  mm[NOCALL] = "nocall"
+  mm[REF] = "ref"
+  mm[SNP] = "snp"
+  mm[SUB] = "sub"
+  mm[INDEL] = "indel"
+
+  // First emit nocalls
+  //
+  for i:=0; i<len(d); i++ {
+
+    // Nocalls can happen within an INDEL.  A nocall as a diff line
+    // in this context is thought of as a matching base pair position
+    // in the alt sequence as matched with ref.  If a nocall falls
+    // within an INDEL, we need to emit the nocall elements.
+    // Nocalls in a SUB or SNP should be broken out into their own
+    // NOCALL sequence diff elemnts so the only special case should
+    // be the INDEL.
+    //
+    if d[i].Type == INDEL {
+
+      nocall_s := 0
+      nocall_n := 0
+
+      for p:=0; p<len(d[i].Alt); p++ {
+
+        if d[i].Alt[p] == 'n' {
+          if nocall_n==0 { nocall_s=p }
+          nocall_n++
+          continue
+        }
+
+        if nocall_n>0 {
+          if count>0 { fmt.Printf(",") }
+          count++
+          fmt.Printf("n%d:%d", nocall_s+d[i].AltPos, nocall_n)
+          nocall_n=0
+        }
+
+        nocall_s=p
+      }
+
+      // Emit last nocall, if present
+      //
+      if nocall_n>0 {
+        if count>0 { fmt.Printf(",") }
+        count++
+        fmt.Printf("n%d:%d", nocall_s+d[i].AltPos, nocall_n)
+      }
+
+      continue
+    }
+
+    if d[i].Type != NOCALL { continue }
+    if count>0 { fmt.Printf(",") }
+    fmt.Printf("n%d:%d", d[i].AltPos, d[i].Len[0])
+    count++
+  }
+
+  // then emit alt
+  //
+  for i:=0; i<len(d); i++ {
+    if (d[i].Type == NOCALL) || (d[i].Type == REF) { continue }
+    if count>0 { fmt.Printf(",") }
+    fmt.Printf("i%d:%d:%s", d[i].RefPos, len(d[i].Ref), d[i].Alt)
+    count++
+  }
+
+  fmt.Printf("\n")
+
+}
+
+
+
 // Essentially gVCF emits non-ref lines, which include
 // alts.  Non ref lines that are low-quality are emited
 // with a bare '<NON_REF>' Alt sequnence.
@@ -323,9 +400,12 @@ func emit_gvcf( seqdiff *SeqDiff ) {
     if seqdiff.RefPrefix != '.' {
       ref_seq = fmt.Sprintf("%c%s", seqdiff.RefPrefix, seqdiff.Ref)
       alt_seq = fmt.Sprintf("%c%s,<NON_REF>", seqdiff.RefPrefix, seqdiff.Alt)
-    } else {
+    } else if seqdiff.RefSuffix != '.' {
       ref_seq = fmt.Sprintf("%s%c", seqdiff.Ref, seqdiff.RefSuffix)
       alt_seq = fmt.Sprintf("%s%c,<NON_REF>", seqdiff.Alt, seqdiff.RefSuffix)
+    } else {
+      ref_seq = fmt.Sprintf("%s", seqdiff.Ref)
+      alt_seq = fmt.Sprintf("%s,<NON_REF>", seqdiff.Alt)
     }
 
     end_ref_pos = len(ref_seq)
@@ -561,7 +641,12 @@ func corner_gap_case( ref, seqb string ) error {
     curdiff.Len[0] = len(ref)
   }
 
-  emit_gvcf( curdiff )
+  if g_output_format == "compact" {
+    z := []SeqDiff{ *curdiff }
+    emit_compact(z)
+  } else {
+    emit_gvcf( curdiff )
+  }
   return nil
 
 }
@@ -655,6 +740,10 @@ func seq_align( ref, seqb string ) ([]SeqDiff, error) {
   if e!=nil { log.Fatal(e) }
 
   if g_output_format == "compact" {
+
+    emit_compact(d)
+
+    /*
     count := 0
 
     mm := make( map[int]string )
@@ -726,6 +815,8 @@ func seq_align( ref, seqb string ) ([]SeqDiff, error) {
     }
 
     fmt.Printf("\n")
+
+    */
 
   } else if g_output_format == "test" {
     return d, nil
