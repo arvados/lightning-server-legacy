@@ -1912,9 +1912,13 @@ func _main( c *cli.Context ) {
 
   }
 
+  // Take care of final nocall run, if it exists
+  //
+  gss0.processREF( finalTileSet, referenceTileSet, chromFa, gss0.endPos+1, 0 )
   gss0.AddTile( finalTileSet, referenceTileSet )
 
   if g_variantPolicy != "REGEX" {
+    gss1.processREF( finalTileSet, referenceTileSet, chromFa, gss1.endPos+1, 0 )
     gss1.AddTile( finalTileSet, referenceTileSet )
   }
 
