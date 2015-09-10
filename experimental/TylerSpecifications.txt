@@ -1,0 +1,29 @@
+h1. Tyler is a FASTA --> Tiling service
+
+We have decided that it creates problems by extracting the FASTA sequences away from their context. Without aligning the sequences, partial tiles become incredibly common, as do poorly sequenced regions. Given that this use case is not very common and is strictly less powerful than BLAST, the only reason to implement Tyler is if it is an easier task than aligning FASTQ to Tiles or aligning called genomes (VCF, GFF, etc) to Tiles. We have decided this is not the case, so until the FASTA --> Tiling service is requested, this is not going to be implemented.
+
+h1. Documentation
+
+h3. Scope 
+
+Tyler should be a program that users run on their laptops. It should take 1 minute to tile an entire human genome on a laptop (where the limiting time factor is the hard-drive read speed limit). It requires a tag set to initialize, takes FASTA sequences as input, and returns the tiling of the FASTA sequences.
+
+h3. Set up
+
+Tyler should be set up with a tag set. This tag set should be standardized, containing the tag sequences along with annotations (such as chromosome identifiers and paths). Our current tag set is input to the FASTJ generator as a bigwig file. It is probable that using a bigwig file is less than ideal, and we should develop a standard for tag set inputs (and in addition, give each tag set a unique identifier based on its content).
+
+h3. Input and Output
+
+Once Tyler has been set up, it should take a well-sequenced FASTA sequence (no n's) and return the unique tile identifier(s) associated with that FASTA sequence. These tile identifiers should include a flag indicating whether the tile is partial (includes only one tag), its position, tag(s), and length.
+
+h3. Errors and User Warnings
+
+* If the input FASTA sequence has n's, Tyler should throw an error to the user.
+* If the input FASTA sequence does not include any tags, Tyler should throw an error to the user.
+
+It is not Tyler's job to notice uncontiguous tags, which we predict will likely occur in cancer genomes and large rearrangements. Noticing uncontinuous tags is left to software running Tyler or to a more advanced Tyler (Tyler 2.0).
+
+h3. Additional notes
+
+For completion and to be useful to users, Tyler requires an additional service (probably Sprite), that can recognize its output. This service, when given the output from Tyler, should return the raw sequence, annotations, HGVS names, etc. This service will be much heavier in terms of information needed to run it, and so it should probably be exposed to the public via a website. 
+
