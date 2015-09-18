@@ -1,0 +1,234 @@
+Lightning v0.1.0 Data Structures Specifications
+================================================
+
+.. _version-map-data-structure:
+
+VersionMap
+-----------
+
+    A way to convert between tag set version MD5 hash digests (portable data hashes)
+    and tag set version integers, which are used by the server as a shorthand.
+    A dictionary keyed by version integers. The values associated with each tag
+    set version integer is the MD5 hash digest of the tag set and path definition.
+    The MD5 hash digest is also the portable data hash of the collection used as
+    the tag set input for the pipeline.
+
+    ::
+
+        {
+          <int> : <string>,
+          <int> : <string>,
+          ...
+        }
+
+        { version-int : version-md5sum, version-int : version-md5sum, ... }
+
+
+.. _tile-position-data-structure:
+
+TilePosition
+-------------
+
+    A compact representation of a tile position. A string of 3 period-separated
+    integers (in base 16). The first integer is the tag set version integer,
+    the second is the path number, the third is the step.
+
+    '<int>.<int>.<int>'
+
+    Version.Path.Step
+
+.. _tile-position-range-data-structure:
+
+TilePositionRange
+------------------
+
+    A compact representation of a range of tile positions. A string of 3 period-separated
+    integers (in base 16) followed by a hyphen and another integer in base 16. The
+    first integer is the tag set version integer, the second is the path integer,
+    the third is the first step integer, which is the step to start retrieving
+    from (inclusive and 0-indexed). The integer following the hyphen indicates the
+    step to stop retrieving from (**exclusive** and 0-indexed).
+
+    '<int>.<int>.<int>-<int>'
+
+    Version.Path.StartStep-EndStep
+
+    StartStep is inclusive and 0-indexed
+
+    EndStep is exclusive and 0-indexed
+
+
+.. _tile-variant-data-structure:
+
+TileVariant
+------------
+
+    A compact representation of a tile variant. A string of 3 period-separated
+    integers (in base 16), followed by another period and one string. The first
+    integer is the tag set version integer, the second is the path integer, the
+    third is the step integer, and the fourth is the MD5 hash digest of the tile
+    variant sequence.
+
+    '<int>.<int>.<int>.<string>'
+
+    Version.Path.Step.VariantMD5SUM
+
+
+NotTileVariant
+---------------
+
+    Used to build TileVariantClause_ only. When used, it indicates a selection on
+    the specimens that do not have that tile variant. A TileVariant_ (in base 16),
+    preceded by a tilda.
+
+    '~<int>.<int>.<int>.<string>'
+
+    Version.Path.Step.VariantMD5SUM
+
+
+ClauseEntry
+-------------
+    Used as a builder for the clauses for SATs. Items may be of type TileVariant_
+    or NotTileVariant_. If the item is of type TileVariant_, the ClauseEntry_
+    evaluates to true if that TileVariant_ exists in the population. If the item
+    is of type NotTileVariant_, the ClauseEntry_ evaluates to true if the TileVariant_
+    following the tilda does *not* exist in the population.
+
+    <TileVariant_> | <NotTileVariant_>
+
+TileVariantClause
+------------------
+
+    The 'OR' list of SAT (Boolean Satisfiability Problem). Ensuring the validity
+    of the clause is a task placed on the client. A list of length 1 or more. Each
+    item in the list is of type ClauseEntry_ and is checked against each phase
+    independently of the other items. The TileVariantClause_ evaluates to true if
+    *any* of the clauses evaluate to true.
+
+    [ <ClauseEntry_>, <ClauseEntry_>, ... ]
+
+    Examples using default behavior:
+
+    [ 0.0.0. ``md5sum1`` , ~0.0.1. ``md5sum2`` ] will evaluate to True for any genomes
+    in the population that have tile variant ``md5sum1`` at TilePosition_ 0.0.0 on
+    at least one of their phases and/or do not have tile variant ``md5sum2`` at
+    TilePosition_ 0.0.1 on at least one of their phases.
+
+
+TileVariantLogic
+-----------------
+
+    The 'AND' list of SAT (Boolean Satisfiability problem). Ensuring the validity
+    of the clause is a task placed on the client. A list of one or more
+    TileVariantClause_'s. By default, each TileVariantClause_ is evaluated against
+    each phase independently of the other TileVariantClause_'s.
+
+    [<TileVariantClause_>, <TileVariantClause_>, ... ]
+
+
+    Examples:
+
+    [ [ 0.0.0. ``md5sum1`` , ~0.0.1. ``md5sum2`` ] ] will evaluate to True for any
+    genomes in the population that have tile variant ``md5sum1`` at TilePosition_
+    0.0.0 on at least one of their phases and/or do not have variant ``md5sum2``
+    at TilePosition_ 0.0.1 on at least one of their phases.
+
+    [ [ 0.0.0. ``md5sum1`` ], [0.0.1. ``md5sum2`` ] ] will evaluate to True for any
+    genomes in the population that have tile variant ``md5sum1`` at TilePosition_
+    0.0.0 on at least one of their phases *and* do not have variant ``md5sum2``
+    at TilePosition_ 0.0.1 on at least one of their phases.
+
+.. _tile-variant-detail-data-structure:
+
+TileVariantDetail
+------------------
+
+    The metadata information associated with one tile variant. Dictionary containing
+    the keys 'tag-length', 'start-tag', 'end-tag', 'is-start-of-path', 'is-end-of-path',
+    'sequence', 'md5sum', 'length', 'number-of-positions-spanned', 'population-frequency',
+    'population-total'.
+
+    {
+
+        'tag-length' : <int> TAG_LENGTH,
+
+        'start-tag': <string> matching regex ^[acgt]{TAG_LENGTH}$|^$,
+
+        'end-tag': <string> matching regex ^[acgt]{TAG_LENGTH}$|^$,
+
+        'is-start-of-path': <boolean>,
+
+        'is-end-of-path': <boolean>,
+
+        'sequence' : <string> matching regex [acgtn]{TAG_LENGTH,}
+
+        'md5sum': <string> (the MD5 hash digest of 'sequence'),
+
+        'length': <int> (the length of 'sequence'),
+
+        'number-of-positions-spanned': <int> (gte 1),
+
+        'population-frequency': <int>,
+
+        'population-total': <int>
+
+    }
+
+.. _locus-data-structure:
+
+Locus
+------
+
+    A description of an assembly locus. List of 2 strings followed by 3 integers.
+    The first string is the assembly name and the second string is the chromosome
+    name. The first integer (at the third position) is 0, and indicates that the
+    following 2 integers are 0-indexed. The second integer is the *inclusive*
+    beginning of the loci range. The third integer is the exclusive end of the
+    range. All integers are expected to be greater than or equal to 0.
+
+    [<string>, <string>, 0, <int>, <int>]
+
+    [ assembly-name, chromosome-name, 0, beginning, ending ]
+
+
+gVCFLine
+---------
+
+    Representation of gVCF line as a list.
+    List of 2 integers, followed by 2 strings. The
+    first integer is the chromosome integer and the second integer is the position.
+    The next string is the reference sequence, and the final string is the alternate
+    sequence. The reference sequence can be a period. The alternate sequence can
+    include commas.
+
+    [<int>, <int>, <string>, <string>, <string>]
+
+    [ #CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO ]
+
+    [ chromosome, position, identifier, reference bases, alt-sequence ]
+
+
+
+VCFLine
+--------
+
+    Representation of VCF line. List of 1 string, followed by 1 integer, followed
+    by 2 strings. The first string is the chromosome. The integer is the position.
+    The next string is the reference sequence, and the final string is the alternate
+    sequence.
+
+    [ chromosome, position, ref-sequence, alt-sequence ]
+
+
+CMPTuple
+---------
+
+    An integer comparison.
+
+    ( <CMP-fn>, <int>) OR ('range', <int>, <int>) where the first int is the beginning of the range, the second int is the exclusive end of the range
+
+
+CMPFunction
+------------
+
+    ENUM( 'eq', 'lt' , 'lte', 'gt', 'gte')

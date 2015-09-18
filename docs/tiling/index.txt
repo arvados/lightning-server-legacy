@@ -1,0 +1,17 @@
+Tiling Overview
+================
+
+Lightning is made possible by the process of ``tiling``, which takes advantage of
+the high degree of redundancy in a population of genomes. Tiling partitions genomes
+into ``tiles``: overlapping, variable-length sequences that begin and end with unique
+k-mers, termed ``tags``. This document is an overview of our tiling implementation,
+along with the crunch scripts and pipeline templates available for tiling genome
+inputs.
+
+We currently accept GFF files and Complete Genomics CGI-var files as inputs.
+
+.. todo::
+    * Document PASTA/FASTA
+    * Write basic instructions for writing one's own conversion of file to a tiling
+      (As I understand it, one must write a conversion between that file format
+      and PASTA, then probably add a pipeline template component).

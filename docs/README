@@ -1,0 +1,17 @@
+The documentation in this tree is in plain text fields and can be viewed using
+your favorite text file viewer.
+
+It uses ReST (reStructuredText) [1] and the Sphinx documentation system [2].
+
+To create an HTML version of these docs:
+
+* Install Sphinx (which can be done using python by running ``pip install Sphinx``)
+
+* In docs/, run ``make html`` (or ``make.bat html`` on Windows) at a shell prompt
+
+The documentation can be viewed using a web browser by opening _build/html/index.html
+
+%TODO: once site runs documentation, link to it here
+
+[1] http://docutils.sourceforge.net/rst.html
+[2] http://sphinx-doc.org/

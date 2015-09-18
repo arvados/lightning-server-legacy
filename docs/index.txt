@@ -1,0 +1,67 @@
+.. Lightning documentation master file, created by
+   sphinx-quickstart on Tue Sep 15 18:29:51 2015.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to Lightning's documentation!
+=====================================
+
+Contents:
+
+.. toctree::
+    :maxdepth: 2
+
+    intro/index
+    tiling/index
+    cgf/index
+    lantern/index
+    tile_library/index
+    annotile/index
+    api/data_structures
+    api/index
+    sdks/index
+    sprite/index
+
+
+.. note::
+    Please keep in mind Lightning is under development, as is its documentation.
+    Feel free to file bugs or documentation errors at https://dev.arvados.org/projects/lightning.
+
+.. todo::
+    Make sure https://dev.arvados.org/projects/lightning is public and a well-behaved
+    redmine account.
+
+For an introduction, basic information about using Lightning, and Lightning's design
+document, see :doc:`intro/index`.
+
+For a description of the process of tiling (the abstraction of genomic sequences
+that makes Lightning possible) and the functions and pipelines we provide for tiling
+genomes, see :doc:`tiling/index`.
+
+For a description of our representation of tiled genomes (Compact Genome Format),
+see :doc:`cgf/index`.
+
+For a description of our in-memory database for tiled genomes (Lantern), including
+the REST API it supports, see :doc:`lantern/index`.
+
+For a description of our in-memory database for tile variants (the tile library),
+see :doc:`tile_library/index`.
+
+For a description of Annotile, the way we support annotations of tile variants, how
+to import annotation software, and how to add human-generated annotations, see
+:doc:`annotile/index`.
+
+For a description of Lightning APIs, see :doc:`api/index`.
+
+For a description of Lightning Software Development Kits, see :doc:`sdks/index`.
+
+Finally, for a description of the web browser application that runs on Lightning
+(Sprite), see :doc:`sprite/index`.
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

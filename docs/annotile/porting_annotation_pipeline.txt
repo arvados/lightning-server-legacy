@@ -1,0 +1,27 @@
+Adding an Annotation Pipeline to Annotile
+==========================================
+
+Build a component for the `annotate_tile_variants` pipeline. This is likely to
+require implementing a crunch script and creating a docker image.
+
+Automated Annotation Pipelines
+-------------------------------
+
+If the annotation pipeline you wish to port cannot use a VCF file (aligned against
+GRCh37) as input, you will also need to implement a component to generate the
+required input for your annotation pipeline. Use the `create-vcf-per-tile` component
+as an example.
+
+The components you implement must output a collection with a directory named
+`annotile_input`.
+
+.. todo::
+    After implementing annotile, document the output format requirements
+
+User-added Annotations
+-----------------------
+
+User added annotations can be converted into a component in the `annotate_tile_variants`
+pipeline by hard-coding annotations applying to specific tile variants. A component
+which does this already is linked to a Sprite user-added annotations app. Use this
+component and application as an example.

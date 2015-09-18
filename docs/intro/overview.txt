@@ -1,0 +1,122 @@
+Lightning at a Glance
+=======================
+
+Lightning is software designed to enable fast queries and machine learning on genomic data.
+The genomic data we currently focus on are human whole genomes that are aligned and are
+called by external software, then imported into Lightning. From there, Lighting:
+
+* Stores quality information
+* Stores phased and unphased genomes
+* Allows fast retrieval of called sequences from regions of interest
+* Defines flexible queries:
+
+  * Filters by subsets of the population
+  * And/or by specific regions of interest
+
+* Normalizes standard called genome files (such as VCF and gVCF), such that each
+  variant is expressed in the same way
+* Incorporates new data fast and painlessly
+* Stores annotations from ClinVar and annotation pipelines, such as CAVA
+
+Lightning is made possible by the process of ``tiling``, which takes advantage of
+the high degree of redundancy in a population of genomes. Tiling partitions genomes
+into ``tiles``: overlapping, variable-length sequences that begin and end with unique
+k-mers, termed ``tags``. Once a genome has been tiled, the sequences for each tile
+are stored in a tile library. These sequences may be annotated by using ``Annotile``.
+The tiled genomes are stored in ``Compact Genome Format (CGF)`` files. Genomes
+stored as CGF files are loaded into ``Lantern``, which is our in-memory database
+designed to respond to queries quickly. Finally, ``Sprite`` is a web browser
+application for interacting with Lightning.
+
+.. note::
+    Stated another way, Lightning's basic method is to consider short snippets of
+    genomic sequences as the basic building block of genomes. These short snippets
+    are of variable length, but are mostly in the range of 250 base pairs long.
+    Splitting genomes into short segments allows for savings by only storing a
+    single copy of redundant sequences.
+
+    Each genome is partitioned into these these short read segments. From all
+    `tiles` in a population, a `tile library` can be constructed. Tiles are chosen
+    to have 24mer tags on either end that overlap with neighboring tiles. `Tags`
+    are chosen with with some uniqueness constraint on them and provide convenient
+    anchor points to differentiate tiles from one another.
+
+    Currently, all tags are chosen to be at least 2 edit distance away
+    from each other. The tag set is fixed and acts as anchor points to partition
+    future sample genomic sequences wishing to be analyzed.
+
+    The hope is that tiles, along with information on the population used to generate
+    them, can also be used to aid in read placement.
+
+    Because most genomic sequences are redundant, duplicate tiles need not be stored
+    in a population of genomic sequences. At each tile position, multiple tile
+    variants are stored representing the variation in a population for that tile.
+    Given a partitioned genomic sequence and a tile library, a compact representation
+    of a genome can be constructed by storing the variant numbers contiguously.
+
+
+Components
+-----------
+
+* :doc:`Tiling <../tiling/index>`
+* :doc:`Compact Genome Format (CGF) <../cgf/index>`
+* :doc:`Lantern <../lantern/index>`
+* :doc:`Tile Library <../tile_library/index>`
+* :doc:`Annotile <../annotile/index>`
+* :doc:`Sprite <../sprite/index>`
+* :doc:`Software development kits <../sdks/index>`
+* :doc:`API <../api/index>`
+
+Motivation
+-----------
+
+We developed Lightning in response to the difficulty and time-consuming nature of
+merging VCFs, querying subsets of a population, finding poorly sequenced regions,
+and similar issues. After using various ad-hoc solutions, we eventually stepped back
+and committed time and effort to developing a more sensible and sustainable solution.
+We hope it will be useful to the broader research community and welcome your feedback.
+
+Usage
+-------
+
+We host a Lightning instance for public whole genomes, including 502 genomes from
+the 1000 Genomes Project and 178 genomes from the Harvard Personal Genome Project.
+Here, the public can interact with Lightning using Sprite.
+
+.. todo::
+    Decide where the public lightning instance will be
+
+Currently, Lightning assumes it has access to an Arvados cluster. For a user to
+run their own instance of Lightning on their data, they must set up an Arvados cluster
+and import their data into it. From there, they should follow the instructions in
+:doc:`Importing Genomes <importing_genomes>` to add new genomes. To add new annotations,
+they should go to :doc:`Annotile <../annotile/index>`.
+
+
+Further research
+-----------------
+
+Lightning is currently in its infancy. This state means Lightning has many use cases
+and future directions that can be explored, some of which are listed here.
+
+* Implement Lightning Servers for multiple species
+* Include RNA sequences in Lightning
+
+.. todo::
+    Keep filling out list
+
+Contibutors
+-------------
+
+* Abram Connelly
+* Sarah (Sally) Guthrie
+* Jiayong Li
+* Nancy Ouyang
+* Alexander (Sasha) Wait Zaranek
+
+Contact
+---------
+lightning@curoverse.com
+
+.. todo::
+    Make sure this email is live

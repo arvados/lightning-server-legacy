@@ -1,0 +1,63 @@
+Annotile: Annotating Tile Variants
+===================================
+
+.. toctree::
+    porting_annotation_pipeline
+
+Annotating genomes is an essential piece of bioinformatic workflows. Annotations
+are produced by many sources, including programs and users, and we want to ensure
+Lightning supports the addition of all these annotations to tile variants, can add
+software-produced annotations to new tile variants automatically, and can respond
+to queries about which tile variants have which annotations or which annotations
+apply to particular tile variants.
+
+Despite the importance of annotations in bioinformatics, Lightning is not meant
+to be an annotation database - it is not meant to support complex queries on
+types of annotations, source of annotations, date of generation or modification,
+or keywords. These types of queries and annotation storage should be done by add-ons,
+which can be added to Sprite using django apps or can be added to one's own application
+interacting with Lightning.
+
+
+How does Annotile Work?
+------------------------
+Lightning associates each tile variant with its ``variant value``, which is our
+term for the MD5 hash digest of its sequence. These ``variant values`` can be
+associated with metadata about that tile variant. Annotile is simply a many-to-many
+database, which associates variant values to user-specified annotations identifiers.
+
+.. warning::
+    Lightning v0.1.0 does not support annotating tiles with poorly sequenced regions.
+    These require more complex tile variant representations and are thus left to
+    future versions.
+
+Annotile is populated by running the pipeline template `annotate_tile_variants`.
+Each component in `annotate_tile_variants` runs annotation software on each tile
+variant, producing detailed annotation information for the annotation app and
+information for loading into Annotile.
+
+For details about porting an annotation pipeline or adding user-written annotations,
+see :doc:`porting_annotation_pipeline`.
+
+Annotile also provides querying capabilities, allowing a user to find which annotations
+are associated with which tile variants and vice versa. For specific details about
+annotation querying, see `../api/index`.
+
+
+Storing Annotation Details
+----------------------------
+
+:doc:`Sprite <../sprite/index>` has a basic app for storing and visualizing specific
+annotations, but it is not the only option for storing and querying annotations,
+since we are designing Lightning to be able to support new annotation databases.
+A user can build a django app to plug into Sprite on their Lightning
+instance, or a user can build their own application in their language of choice
+to work similarly to Sprite, then plug their annotation database into that.
+
+
+Future Annotile Functionality
+------------------------------
+
+Future functionality is expected to focus on Annotile's querying capabilities,
+and will probably include a direct querying function from genomes to annotations
+and vice versa.

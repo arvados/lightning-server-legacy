@@ -1,0 +1,8 @@
+Installation
+=============
+
+Since Lightning is in development, our installation process has not yet been
+determined, implemented, or documented. 
+
+.. todo::
+    Create a good installation process and document it

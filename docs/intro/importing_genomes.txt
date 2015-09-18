@@ -1,0 +1,10 @@
+Importing a Genome
+===================
+
+Importing a genome is difficult. We'll probably do it using pipelines. Have one
+pipeline in pipeline_templates that is run when someone uploads a genome.
+
+.. todo::
+    Implement a better process for importing a genome
+    Document the process
+    

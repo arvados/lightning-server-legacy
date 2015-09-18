@@ -1,0 +1,87 @@
+Lightning Design Doc
+=====================
+
+**Goal**: Specify Lightning v0.1.0 in enough detail that it can be implemented and tested.
+
+
+Lightning v0.1.0 Features
+---------------------------
+
+Features here are expected to only work for well-sequenced tile variants. Poorly
+sequenced tile variants/partial tile variants should return a null value.
+
+* Stores 1 byte of quality information for all bases (well sequenced versus poorly
+  sequenced)
+* Stores human genomes assuming phasing from called genome input
+* Retrieves well-sequenced subsequences from population (subsequences identified by tile position)
+
+  * Subsequences may be in the form of bases
+  * Subsequences may be in the form of tiles
+
+* Allows filtering
+
+  * by population subsets (named by id)
+  * by regions of interest (named by tile)
+  * by tile variant (named by md5sum, only well-sequenced tiles)
+  * by combinations of the above
+
+* Provides translation between tile positions and reference locations (GRCh37,
+  GRCh38)
+* Tiles genomes provided in GFF and gVCF formats
+* Can convert tiled genomes to GFF and/or gVCF
+* One pipeline is required to add a new genome
+* Stores annotations from ClinVar and annotation pipelines, such as CAVA
+* Retrieves annotations for one or multiple tile variants (identified by tile
+  variant identifier)
+* Retrieves tile variants with one or multiple annotations (identified by
+  annotation identifier)
+
+Lightning v0.1.0 Benchmarking Goals
+------------------------------------
+
+* Uses up to 70 MB per human genome
+* Retrieves the sequences of 50 contiguous tiles from 100 human genomes in 5 seconds
+* Retrieves the 50 contiguous tiles from 100 human genomes in less than a second
+* Filtering on above query with any option does not change the observable time
+* Tiling genomes from GFF/gVCF takes 1 hour per genome
+* Annotates the tile library for 100 human genomes in 2 hours
+* Filtering on annotations or tile variants for tile library of 100 genomes takes
+  less than 1 second
+
+Lightning v0.1.0 Usage
+-----------------------
+
+Lightning v0.1.0 should be run by Curoverse and should include 178 whole genomes
+from the Personal Genome Project and 502 whole genomes from the 1000 Genomes Project.
+The tile library should be annotated with CAVA, ClinVar, and ExAC data. The public
+should be able to retrieve well-sequenced subsequences from this population, filter
+on them by population subsets, by regions of interest, by tile variant, and/or by
+annotations.
+
+Users should be able to upload whole genomes, with the understanding that this
+Lightning instance is public. These newly added genomes should be added to the
+tile library, new sequences should be annotated with CAVA, ClinVar, and ExAC
+annotations, and these genomes should be added to those we can filter on.
+
+Lightning v0.1.0 API
+---------------------
+See :doc:`Lightning v0.1.0 API Specifications <../api/index>` for API details.
+
+Future Versions Lightning Features
+-----------------------------------
+
+* Support partial tile variants for features detailed in v0.1.0
+* Stores unphased and phased human genomes, including phase groups for features
+  detailed in v0.1.0
+* Provides translation between tiles and alternate reference locations
+* Compare multiple genomes with each other
+
+
+
+Future Versions Lightning Usage
+--------------------------------
+
+Users should set up an Arvados cluster. From there, they should be able to run
+Sprite, which will allow them to import their data without making it public. From
+there, users should be able to use Sprite identically to the v0.1.0 Lightning
+instance.

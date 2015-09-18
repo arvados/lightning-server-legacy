@@ -1,0 +1,14 @@
+Getting started
+=================
+
+Welcome to Lightning! This documentation section is most relevant for first time
+users. :doc:`overview` provides an overview of Lighting: its uses and components.
+How-to guides and tutorials are expected to be placed here as the project grows.
+
+.. toctree::
+    :maxdepth: 1
+
+    overview
+    importing_genomes
+    design_doc
+    install

@@ -1,0 +1,9 @@
+Sprite
+========
+
+Sprite is a django web application that provides visualizations and easy interaction
+with Lightning, as well as preliminary phenotype and tile variant annotation databases.
+
+.. todo::
+    * Specify phenotype database
+    * Specify annotation database(s)

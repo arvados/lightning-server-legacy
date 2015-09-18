@@ -1,0 +1,10 @@
+Tile Library
+=============
+
+The tile library is our in-memory database that stores tile variants and their
+information. Tile variants are associated with their sequence, MD5 hash digest,
+tile position, and other meta-information. The tile library stores this information
+compactly while enabling queries on it.
+
+.. todo::
+    Describe/specify the queries the Tile Library supports

@@ -1,0 +1,10 @@
+Lantern Specifications
+=======================
+
+Lantern is our in-memory database which stores individual tiled genome sequences. It
+allows us to make very fast comparisons between genomes and filter on genome sequences.
+Since it is contained in random access memory (RAM), queries are very fast.
+
+.. todo::
+
+    Document Lantern and the REST APIs used to interact with Lantern

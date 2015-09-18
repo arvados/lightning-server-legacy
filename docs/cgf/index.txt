@@ -1,0 +1,9 @@
+Compact Genome File (CGF) Format
+=================================
+
+Compact Genome File Format is our preliminary format that stores tiled genomes
+compactly. 
+
+.. todo::
+
+    Document details about CGF format
