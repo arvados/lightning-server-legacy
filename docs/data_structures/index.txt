@@ -77,7 +77,7 @@ TileVariant
 NotTileVariant
 ---------------
 
-    Used to build TileVariantClause_ only. When used, it indicates a selection on
+    Only used to build TileVariantClause_. When used, it indicates a selection on
     the specimens that do not have that tile variant. A TileVariant_ (in base 16),
     preceded by a tilda.
 
@@ -88,7 +88,7 @@ NotTileVariant
 
 ClauseEntry
 -------------
-    Used as a builder for the clauses for SATs. Items may be of type TileVariant_
+    Used as a builder for TileVariantClause_'s. Items may be of type TileVariant_
     or NotTileVariant_. If the item is of type TileVariant_, the ClauseEntry_
     evaluates to true if that TileVariant_ exists in the population. If the item
     is of type NotTileVariant_, the ClauseEntry_ evaluates to true if the TileVariant_
@@ -189,36 +189,6 @@ Locus
     [<string>, <string>, 0, <int>, <int>]
 
     [ assembly-name, chromosome-name, 0, beginning, ending ]
-
-
-gVCFLine
----------
-
-    Representation of gVCF line as a list.
-    List of 2 integers, followed by 2 strings. The
-    first integer is the chromosome integer and the second integer is the position.
-    The next string is the reference sequence, and the final string is the alternate
-    sequence. The reference sequence can be a period. The alternate sequence can
-    include commas.
-
-    [<int>, <int>, <string>, <string>, <string>]
-
-    [ #CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO ]
-
-    [ chromosome, position, identifier, reference bases, alt-sequence ]
-
-
-
-VCFLine
---------
-
-    Representation of VCF line. List of 1 string, followed by 1 integer, followed
-    by 2 strings. The first string is the chromosome. The integer is the position.
-    The next string is the reference sequence, and the final string is the alternate
-    sequence.
-
-    [ chromosome, position, ref-sequence, alt-sequence ]
-
 
 CMPTuple
 ---------

@@ -9,7 +9,7 @@ Welcome to Lightning's documentation!
 Contents:
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     intro/index
     tiling/index
@@ -17,7 +17,7 @@ Contents:
     lantern/index
     tile_library/index
     annotile/index
-    api/data_structures
+    data_structures/index
     api/index
     sdks/index
     sprite/index
@@ -50,6 +50,9 @@ see :doc:`tile_library/index`.
 For a description of Annotile, the way we support annotations of tile variants, how
 to import annotation software, and how to add human-generated annotations, see
 :doc:`annotile/index`.
+
+For a description of Lightning Data Structures, used for interaction with the
+Lightning APIs, see :doc:`data_structures/index`.
 
 For a description of Lightning APIs, see :doc:`api/index`.
 

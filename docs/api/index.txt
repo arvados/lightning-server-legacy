@@ -1,7 +1,7 @@
 Lightning v0.1.0 API Specifications
 ====================================
 
-We highly recommend reading the :doc:`data_structures` before diving into the API.
+We highly recommend reading :doc:`../data_structures/index` before diving into the API.
 
 Components:
 
