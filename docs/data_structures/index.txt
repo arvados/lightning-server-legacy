@@ -1,4 +1,4 @@
-Lightning v0.1.0 Data Structures Specifications
+Data Structures Specifications
 ================================================
 
 .. _version-map-data-structure:
@@ -21,7 +21,11 @@ VersionMap
           ...
         }
 
-        { version-int : version-md5sum, version-int : version-md5sum, ... }
+        {
+          version-int : version-md5sum,
+          version-int : version-md5sum,
+          ...
+        }
 
 
 .. _tile-position-data-structure:
@@ -33,9 +37,11 @@ TilePosition
     integers (in base 16). The first integer is the tag set version integer,
     the second is the path number, the third is the step.
 
-    '<int>.<int>.<int>'
+    ::
 
-    Version.Path.Step
+        '<int>.<int>.<int>'
+
+        Version.Path.Step
 
 .. _tile-position-range-data-structure:
 
@@ -49,13 +55,13 @@ TilePositionRange
     from (inclusive and 0-indexed). The integer following the hyphen indicates the
     step to stop retrieving from (**exclusive** and 0-indexed).
 
-    '<int>.<int>.<int>-<int>'
+    ::
 
-    Version.Path.StartStep-EndStep
+        '<int>.<int>.<int>-<int>'
 
-    StartStep is inclusive and 0-indexed
-
-    EndStep is exclusive and 0-indexed
+        Version.Path.StartStep-EndStep
+            StartStep: inclusive, 0-indexed
+            EndStep: exclusive, 0-indexed
 
 
 .. _tile-variant-data-structure:
@@ -69,10 +75,13 @@ TileVariant
     third is the step integer, and the fourth is the MD5 hash digest of the tile
     variant sequence.
 
-    '<int>.<int>.<int>.<string>'
+    ::
 
-    Version.Path.Step.VariantMD5SUM
+        '<int>.<int>.<int>.<string>'
 
+        Version.Path.Step.VariantMD5SUM
+
+.. _not-tile-variant-data-structure:
 
 NotTileVariant
 ---------------
@@ -81,10 +90,13 @@ NotTileVariant
     the specimens that do not have that tile variant. A TileVariant_ (in base 16),
     preceded by a tilda.
 
-    '~<int>.<int>.<int>.<string>'
+    ::
 
-    Version.Path.Step.VariantMD5SUM
+        '~<int>.<int>.<int>.<string>'
 
+        Version.Path.Step.VariantMD5SUM
+
+.. _clause-entry-data-structure:
 
 ClauseEntry
 -------------
@@ -94,7 +106,11 @@ ClauseEntry
     is of type NotTileVariant_, the ClauseEntry_ evaluates to true if the TileVariant_
     following the tilda does *not* exist in the population.
 
-    <TileVariant_> | <NotTileVariant_>
+    ::
+
+        <TileVariant> | <NotTileVariant>
+
+.. _tile-variant-clause-data-structure:
 
 TileVariantClause
 ------------------
@@ -105,15 +121,18 @@ TileVariantClause
     independently of the other items. The TileVariantClause_ evaluates to true if
     *any* of the clauses evaluate to true.
 
-    [ <ClauseEntry_>, <ClauseEntry_>, ... ]
+    ::
 
-    Examples using default behavior:
+        [ <ClauseEntry>, <ClauseEntry>, ... ]
+
+    Example using default behavior:
 
     [ 0.0.0. ``md5sum1`` , ~0.0.1. ``md5sum2`` ] will evaluate to True for any genomes
     in the population that have tile variant ``md5sum1`` at TilePosition_ 0.0.0 on
     at least one of their phases and/or do not have tile variant ``md5sum2`` at
     TilePosition_ 0.0.1 on at least one of their phases.
 
+.. _tile-variant-logic-data-structure:
 
 TileVariantLogic
 -----------------
@@ -123,7 +142,9 @@ TileVariantLogic
     TileVariantClause_'s. By default, each TileVariantClause_ is evaluated against
     each phase independently of the other TileVariantClause_'s.
 
-    [<TileVariantClause_>, <TileVariantClause_>, ... ]
+    ::
+
+        [<TileVariantClause>, <TileVariantClause>, ... ]
 
 
     Examples:
@@ -141,38 +162,65 @@ TileVariantLogic
 .. _tile-variant-detail-data-structure:
 
 TileVariantDetail
-------------------
+-------------------
 
-    The metadata information associated with one tile variant. Dictionary containing
-    the keys 'tag-length', 'start-tag', 'end-tag', 'is-start-of-path', 'is-end-of-path',
-    'sequence', 'md5sum', 'length', 'number-of-positions-spanned', 'population-frequency',
-    'population-total'.
+    The metadata information associated with one well sequenced tile variant.
+    Dictionary containing the keys:
 
-    {
+    * ``tag-length``: The length of the tags.
+    * ``start-tag``: The sequence of the start tag. Must be of length 0 (if the tile
+      is at the start of the path) or the length specified by `tag-length`. Cannot
+      have n's.
+    * ``end-tag``: The sequence of the end tag. Must be of length 0 (if the tile
+      is at the end of the path) or the length specified by `tag-length`. Cannot
+      have n's.
+    * ```is-start-of-path``:  A boolean indicating whether the tile is at the start
+      of the path.
+    * ```is-end-of-path``: A boolean indicating whether the tile is at the end of the
+      path.
+    * ``sequence``: The sequence of the tile. Cannot include n's (since the tile variant
+      must be well-sequenced).
+    * ``md5sum``: The md5sum of the tile sequence.
+    * ``length``: The length of the tile sequence.
+    * ``number-of-positions-spanned``: The number of tile positions this tile variant
+      spans. Must be greater or equal to 1.
+    * ``population-frequency``: The percentage of the population that contains this
+      tile variant. Each phase counts as 1 entry in the population.
+    * ``population-total``: The number of phases that contain a well sequenced tile
+      at this tile position. Each phase counts as 1 entry in the population.
 
-        'tag-length' : <int> TAG_LENGTH,
+    ::
 
-        'start-tag': <string> matching regex ^[acgt]{TAG_LENGTH}$|^$,
+        {
+            'tag-length': <int>,
+            'start-tag': <string>,
+            'end-tag': <string>,
+            'is-start-of-path': <boolean>,
+            'is-end-of-path': <boolean>,
+            'sequence' : <string>,
+            'md5sum': <string>,
+            'length': <int>,
+            'number-of-positions-spanned': <int>,
+            'population-frequency': <float>,
+            'population-total': <int>
+        }
 
-        'end-tag': <string> matching regex ^[acgt]{TAG_LENGTH}$|^$,
 
-        'is-start-of-path': <boolean>,
+    Validations for each key are as follows:
 
-        'is-end-of-path': <boolean>,
+    ::
 
-        'sequence' : <string> matching regex [acgtn]{TAG_LENGTH,}
+      TileVariantDetail['tag-length'] >= 1
+      TAG_LENGTH = TileVariantDetail['tag-length']
+      TileVariantDetail['start-tag'] matches '^[acgt]{TAG_LENGTH}$|^$'
+      TileVariantDetail['end-tag'] matches '^[acgt]{TAG_LENGTH}$|^$'
+      TileVariantDetail['sequence'] matches '[acgt]'
+      TileVariantDetail['md5sum'] == MD5_hash_digest(TileVariantDetail['sequence'])
+      TileVariantDetail['length'] == len(TileVariantDetail['sequence'])
+      TileVariantDetail['number-of-positions-spanned'] >= 1
+      0 <= TileVariantDetail['population-frequency'] <= 1
+      TileVariantDetail['population-total'] >= 0
 
-        'md5sum': <string> (the MD5 hash digest of 'sequence'),
-
-        'length': <int> (the length of 'sequence'),
-
-        'number-of-positions-spanned': <int> (gte 1),
-
-        'population-frequency': <int>,
-
-        'population-total': <int>
-
-    }
 
 .. _locus-data-structure:
 
@@ -190,6 +238,8 @@ Locus
 
     [ assembly-name, chromosome-name, 0, beginning, ending ]
 
+.. _CMP-tuple-data-structure:
+
 CMPTuple
 ---------
 
@@ -197,6 +247,7 @@ CMPTuple
 
     ( <CMP-fn>, <int>) OR ('range', <int>, <int>) where the first int is the beginning of the range, the second int is the exclusive end of the range
 
+.. _CMP-function-data-structure:
 
 CMPFunction
 ------------
@@ -204,8 +255,8 @@ CMPFunction
     ENUM( 'eq', 'lt' , 'lte', 'gt', 'gte')
 
 
-In-depth VCF Data Structures Specifications
---------------------------------------------
+VCF Data Structures Specifications
+-------------------------------------
 
 gVCFBlock
 ^^^^^^^^^^^
@@ -215,117 +266,127 @@ gVCFBlock
     first entry must be 0, and the last entry must be 2147483647 (the largest
     unsigned integer representable in 32 bits).
 
-::
+    ::
 
-    [0, <int>, ..., 2147483647]
+        [0, <int>, ..., 2147483647]
 
 gVCFMetaData
 ^^^^^^^^^^^^^^
     Representation of a gVCF Header. JSON-formatted with keys:
-    * 'fileformat', whose value indicates the format of the VCFLine's returned by
-    the Lightning server
-    * 'fileDate', the current date, format (YYYYMMDD)
-    * 'source', the Lightning server producing the VCF MetaData
-    * 'assembly', the location of the reference fasta file used to generate the
+
+    * ``fileformat``, whose value indicates the format of the VCFLine's returned by
+      the Lightning server
+    * ``fileDate``, the current date, format (YYYYMMDD)
+    * ``source``, the Lightning server producing the VCF MetaData
+    * ``assembly``, the location of the reference fasta file used to generate the
       VCFLines. Currently portabledata hash
-    * 'info', used to indicate the end of a VCFLine.
-    * 'format', for genotype fields
-    * 'alt', used to refer to non-reference alternate alleles.
-    * [optional] 'gvcfblock', for information about splitting gVCF blocks
+    * ``info``, used to indicate the end of a VCFLine.
+    * ``format``, for genotype fields
+    * ``alt``, used to refer to non-reference alternate alleles.
+    * [optional] ``gvcfblock``, for information about splitting gVCF blocks
 
-::
+    ::
 
-    {
-      'fileformat':'VCFc4.2',
-      'fileDate':<int>,
-      'source':'Lightningv0.1.0',
-      'assembly':<string>,
-      'info': {
-          'ID': 'END',
-          'Number':1,
-          'Type':Integer,
-          'Description':'Stop position of the interval'
-      },
-      'format': {
-          'ID': 'GT',
-          'Number':1,
-          'Type':'String',
-          'Description':'Genotype'
-      },
-      'alt': {
-          'ID': 'NOT_REF',
-          'Description':'Represents any possible alternative allele at this location'
-      },
-      'gvcfblock': gVCFBlock_,
-    }
+        {
+            'fileformat':'VCFc4.2',
+            'fileDate':<int>,
+            'source':'Lightningv0.1.0',
+            'assembly':<string>,
+            'info': [
+              {
+                'ID': 'END',
+                'Number':1,
+                'Type':Integer,
+                'Description':'Stop position of the interval'
+              }
+            ],
+            'format': [
+              {
+                'ID': 'GT',
+                'Number':1,
+                'Type':'String',
+                'Description':'Genotype'
+              }
+            ],
+            'alt': [
+              {
+                'ID': 'NOT_REF',
+                'Description':'Represents any possible alternative allele at this location'
+              }
+            ],
+            'gvcfblock': gVCFBlock_,
+        }
 
 VCFMetaData
 ^^^^^^^^^^^^^
     Representation of a VCF Header. JSON-formatted with keys:
-    * 'fileformat', whose value indicates the format of the VCFLine's returned by
-    the Lightning server
-    * 'fileDate', the current date, format (YYYYMMDD)
-    * 'source', the Lightning server producing the VCF MetaData
-    * 'assembly', the location of the reference fasta file used to generate the
+
+    * ``fileformat``, whose value indicates the format of the VCFLine's returned by
+      the Lightning server
+    * ``fileDate``, the current date, format (YYYYMMDD)
+    * ``source``, the Lightning server producing the VCF MetaData
+    * ``assembly``, the location of the reference fasta file used to generate the
       VCFLines. Currently portabledata hash
-    * 'format', for genotype fields
+    * ``format``, for genotype fields
 
-::
+    ::
 
-    {
-      'fileformat':'VCFc4.2',
-      'fileDate':<int>,
-      'source':'Lightningv0.1.0',
-      'assembly':<string>,
-      'format': {
-        'ID': 'GT',
-        'Number':1,
-        'Type':'String',
-        'Description':'Genotype'
-      }
-    }
+        {
+          'fileformat':'VCFc4.2',
+          'fileDate':<int>,
+          'source':'Lightningv0.1.0',
+          'assembly':<string>,
+          'format': [
+            {
+              'ID': 'GT',
+              'Number':1,
+              'Type':'String',
+              'Description':'Genotype'
+            }
+          ]
+        }
 
 VCFSampleFormatData
 ^^^^^^^^^^^^^^^^^^^^
     JSON-formatted format field format for a VCF or gVCF file. Used for Genotype
     fields. Keys:
 
-    * 'sample-name', the name of the sample, normally defined by the column header
-    * 'GT', the genotype of the sample
+    * ``sample-name``, the name of the sample, normally defined by the column header
+    * ``GT``, the genotype of the sample
 
-::
+    ::
 
-    {
-      'sample-name': <string>,
-      'GT':<string>
-    }
+        {
+          'sample-name': <string>,
+          'GT':<string>
+        }
 
 VCFLine
 ^^^^^^^^^
     Representation of VCF line. Keys:
 
-    * chrom: Chromosome. An identifier from the reference genome or an
+    * ``chrom``: Chromosome. An identifier from the reference genome or an
       angle-bracketed ID String (<ID>) pointing to a contig in the assembly file
-      (the file pointed to by 'assembly' in VCFMetaData_). The colon symbol (:)
+      (the file pointed to by ``assembly`` in VCFMetaData_). The colon symbol (:)
       must be absent from all chromosome names to avoid parsing errors when dealing
       with breakends.  (String, no white-space permitted).
-    * pos: Position. The reference position, 1-indexed. Telomeres are indicated
+    * ``pos``: Position. The reference position, 1-indexed. Telomeres are indicated
       by using positions 0 or N+1, where N is the length of the corresponding
       chromosome or contig. (Integer).
-    * ref: Reference base(s). Each base must be one of A,C,G,T,N (case insensitive).
-      Multiple bases are permitted. The value matching the 'pos' key refers to the
+    * ``ref``: Reference base(s). Each base must be one of A,C,G,T,N (case insensitive).
+      Multiple bases are permitted. The value matching the ``pos`` key refers to the
       position of the first base in this string. For simple insertions and deletions
-      in which either the 'ref' or one of the 'alt' alleles would otherwise be
-      null/empty, the 'ref' and 'alt' values must include the base before the event
-      (which must be reflected in the 'pos' field), unless the event occurs at
+      in which either the ``ref`` or one of the ``alt`` alleles would otherwise be
+      null/empty, the ``ref`` and ``alt`` values must include the base before the event
+      (which must be reflected in the ``pos`` field), unless the event occurs at
       position 1 on the contig in which case it must include the base after the
       event; this padding base is not required (although it is permitted) for
       variations such as complex substitutions or other events where all alleles
-      have at least one base represented in their strings. If any of the 'alt'
+      have at least one base represented in their strings. If any of the ``alt``
       alleles is a symbolic allele (an angle-bracketed ID String <ID>), then the
-      padding base is required and 'pos' denotes the coordinate of the base preceding
+      padding base is required and ``pos`` denotes the coordinate of the base preceding
       the polymorphism. (String)
-    * alt: Alternate base(s). List of alternate non-reference alleles called on
+    * ``alt``: Alternate base(s). List of alternate non-reference alleles called on
       at least one of the samples. Options are strings made up of the bases
       A,C,G,T,N,*, (case insensitive) or an angle-bracketed ID String (<ID>) or
       a breakend replacement string as described in the VCFv4.2 section on
@@ -333,7 +394,7 @@ VCFLine
       due to a upstream deletion.  If there are no alternative alleles, the list
       should be empty. (String; no whitespace, commas, or angle-brackets are
       permitted in the ID String itself).
-    * filter: Filter status. A list of length 1 with value `PASS` if this position
+    * ``filter``: Filter status. A list of length 1 with value `PASS` if this position
       has passed all filters (if a call is made at this position). Otherwise, if
       the site has not passed all filters, a list of codes for filters that fail.
       [`q10`, `s50`] might indicate that at this site the quality is below 10 and
@@ -341,16 +402,16 @@ VCFLine
       `0` is reserved and should not be used as a filter string. If filters have
       not been applied, then the list should be empty. (List of strings with no
       white-space or semi-colons permitted)
-    * format: Genotype information (JSON-formatted). Key is 'GT'. Values are a
+    * ``format``: Genotype information (JSON-formatted). Key is 'GT'. Values are a
       list of strings with no white-space, semi-colons, commas or equals-signs.
 
-::
+    ::
 
-    {
-      'chrom':<string>,
-      'pos':<int>,
-      'ref':<string>,
-      'alt':[<string>, ...],
-      'filter':[<string>, ...],
-      'format': [VCFSampleFormatData_, ...]
-    }
+        {
+          'chrom':<string>,
+          'pos':<int>,
+          'ref':<string>,
+          'alt':[<string>, ...],
+          'filter':[<string>, ...],
+          'format': [VCFSampleFormatData_, ...]
+        }

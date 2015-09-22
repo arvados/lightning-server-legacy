@@ -1,8 +1,116 @@
-Lightning v0.1.1 Data Structures Specifications
+Data Structures Specifications, v0.1.1
 ================================================
 
-In-depth VCF Data Structures Specifications
---------------------------------------------
+VersionMap
+-----------
+    (No changes, see :ref:`version-map-data-structure`.)
+
+TilePosition
+-------------
+    (No changes, see :ref:`tile-position-data-structure`.)
+
+TilePositionRange
+------------------
+    (No changes, see :ref:`tile-position-range-data-structure`.)
+
+TileVariant
+------------
+    (No changes, see :ref:`tile-variant-data-structure`.)
+
+NotTileVariant
+---------------
+    (No changes, see :ref:`not-tile-variant-data-structure`.)
+
+ClauseEntry
+-------------
+    (No changes, see :ref:`clause-entry-data-structure`.)
+
+TileVariantClause
+------------------
+    (No changes, see :ref:`tile-variant-clause-data-structure`.)
+
+TileVariantLogic
+-----------------
+    (No changes, see :ref:`tile-variant-logic-data-structure`)
+
+TileVariantDetail
+-----------------
+    ..todo::
+        Specify md5sum for poorly sequenced tiles
+        Different frequencies for more information - how many are well sequenced?
+        How many are there, regardless of sequencing? Etc
+
+    The metadata information associated with one tile variant.
+    Dictionary containing the keys:
+
+    * ``tag-length``: The length of the tags.
+    * ``start-tag``: The sequence of the start tag. Must be of length 0 (if the tile
+      is at the start of the path) or the length specified by `tag-length`. Cannot
+      have n's.
+    * ``end-tag``: The sequence of the end tag. Must be of length 0 (if the tile
+      is at the end of the path) or the length specified by `tag-length`. Cannot
+      have n's.
+    * ``is-start-of-path``:  A boolean indicating whether the tile is at the start
+      of the path.
+    * ``is-end-of-path``: A boolean indicating whether the tile is at the end of the
+      path.
+    * ``sequence``: The sequence of the tile. May include n's.
+    * ``md5sum``: TODO.
+    * ``length``: The length of the tile sequence.
+    * ``number-of-positions-spanned``: The number of tile positions this tile variant
+      spans. Must be greater or equal to 1.
+    * ``population-frequency``: The percentage of the population that contains this
+      tile variant. Each phase counts as 1 entry in the population.
+    * ``population-total``: The number of phases that contain a tile
+      at this tile position. Each phase counts as 1 entry in the population.
+
+    ::
+
+        {
+            'tag-length': <int>,
+            'start-tag': <string>,
+            'end-tag': <string>,
+            'is-start-of-path': <boolean>,
+            'is-end-of-path': <boolean>,
+            'sequence' : <string>,
+            'md5sum': <string>,
+            'length': <int>,
+            'number-of-positions-spanned': <int>,
+            'population-frequency': <float>,
+            'population-total': <int>
+        }
+
+
+    Validations for each key are as follows:
+
+    ::
+
+      TileVariantDetail['tag-length'] >= 1
+      TAG_LENGTH = TileVariantDetail['tag-length']
+      TileVariantDetail['start-tag'] matches '^[acgt]{TAG_LENGTH}$|^$'
+      TileVariantDetail['end-tag'] matches '^[acgt]{TAG_LENGTH}$|^$'
+      TileVariantDetail['sequence'] matches '[acgtn]'
+      TileVariantDetail['md5sum'] == MD5_hash_digest(TileVariantDetail['sequence'])
+      TileVariantDetail['length'] == len(TileVariantDetail['sequence'])
+      TileVariantDetail['number-of-positions-spanned'] >= 1
+      0 <= TileVariantDetail['population-frequency'] <= 1
+      TileVariantDetail['population-total'] >= 0
+
+Locus
+------
+    (No changes, see :ref:`locus-data-structure`)
+
+CMPTuple
+---------
+    (No changes, see :ref:`CMP-tuple-data-structure`)
+
+CMPFunction
+------------
+    (No changes, see :ref:`CMP-function-data-structure`)
+
+
+VCF Data Structures Specifications
+------------------------------------
 
 VCFInfoField
 ^^^^^^^^^^^^^^
@@ -24,28 +132,28 @@ VCFInfoField
     If the 'Type' is equal to 'Flag', the INFO field does not contain a Value entry
     and the number should be 0.
 
-::
+    ::
 
-    {
-      'ID': <string>,
-      'Number':<int>|'A'|'R'|'G'|'.',
-      'Type':<string>,
-      'Description':<string>,
-      'Source':<string>,
-      'Version':<string>
-    }
+        {
+            'ID': <string>,
+            'Number':<int>|'A'|'R'|'G'|'.',
+            'Type':<string>,
+            'Description':<string>,
+            'Source':<string>,
+            'Version':<string>
+        }
 
 VCFFilterField
 ^^^^^^^^^^^^^^^^
     JSON-formatted filter field format for a VCF or gVCF file. Keys that are not
     defined here may be included. Required keys are 'ID' and 'Description'.
 
-::
+    ::
 
-    {
-      'ID': <string>,
-      'Description':<string>
-    }
+        {
+          'ID': <string>,
+          'Description':<string>
+        }
 
 VCFFormatField
 ^^^^^^^^^^^^^^^^
@@ -62,31 +170,50 @@ VCFFormatField
     * 'Type', options are 'Integer', 'Float', 'Character', and 'String'
     * 'Description'
 
-::
+    ::
 
-    {
-      'ID': <string>,
-      'Number':<int>|'A'|'R'|'G'|'.',
-      'Type':<string>,
-      'Description':<string>
-    }
+        {
+          'ID': <string>,
+          'Number':<int>|'A'|'R'|'G'|'.',
+          'Type':<string>,
+          'Description':<string>
+        }
 
 VCFSampleFormatData
 ^^^^^^^^^^^^^^^^^^^^
     JSON-formatted format field format for a VCF or gVCF file. Used for Genotype
-    fields. Keys are taken from the 'ID' of VCFFormatField_'s returned by
-    VCFMetaData_['format']. One key is required:
+    fields. Keys are the values associated with the 'ID' of VCFFormatField_'s
+    returned by VCFMetaData_['format']. Values are a list of strings with no
+    white-space, semi-colons, commas or equals-signs. Useful predefined keys include:
+
+      * GT : genotype, encoded as allele values separated by either of / (unphased)
+        or | (phased). The allele values are 0 for the reference allele (what is
+        in the 'ref' field), 1 for the first allele listed in 'alt', 2 for the
+        second allele in 'alt' and so on. If a call cannot be made for a sample
+        at a given locus, ‘.’ should be specified for each missing allele in the
+        GT field.
+      * PS : phase set (Non-negative 32-bit Integer). A phase set is defined as
+        a set of phased genotypes to which this genotype belongs. Phased genotypes
+        for an individual that are on the same chromosome and have the same PS
+        value are in the same phased set. A phase set specifies multi-marker
+        haplotypes for the phased genotypes in the set. All phased genotypes that
+        do not contain a PS subfield are assumed to belong to the same phased set.
+        If the genotype in the GT field is unphased, the corresponding PS field
+        is ignored. The recommended convention is to use the position of the first
+        variant in the set as the PS identifier (although this is not required).
+
+    One additional key (not defined in VCFMetaData_['format']) is required:
 
     * 'sample-name', the name of the sample, normally defined by the column header
 
-::
+    ::
 
-    {
-      'sample-name': <string>,
-      <string>:<string>,
-      <string>:<string>,
-      ...
-    }
+        {
+          'sample-name': <string>,
+          <string>:[<string>, ...],
+          <string>:[<string>, ...],
+          ...
+        }
 
 VCFAlternativeAlleleField
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,12 +238,12 @@ VCFAlternativeAlleleField
     * DEL:ME, deletion of a mobile element relative to the reference
     * INS:ME, insertion of a mobile element relative to the reference
 
-::
+    ::
 
-    {
-      'ID': <string>,
-      'Description':<string>
-    }
+        {
+          'ID': <string>,
+          'Description':<string>
+        }
 
 VCFContigField
 ^^^^^^^^^^^^^^^^
@@ -124,13 +251,13 @@ VCFContigField
     defined here may be included. Required keys are 'ID' and 'Description', and
     'URL'. 'URL' points to the location of the contig.
 
-::
+    ::
 
-    {
-      'ID': <string>,
-      'Description':<string>,
-      'URL':<string>
-    }
+        {
+          'ID': <string>,
+          'Description':<string>,
+          'URL':<string>
+        }
 
 VCFSampleField
 ^^^^^^^^^^^^^^^^
@@ -138,95 +265,94 @@ VCFSampleField
     to genome mappings. This is the only info given by VCFv4.2. I believe the length
     of 'Genomes', 'Mixture', and 'Description' must be the same.
 
-::
+    ::
 
-    {
-      'ID': <string>,
-      'Genomes':[<string>, ...],
-      'Mixture':[<string>, ...],
-      'Description':[<string>, ...]
-    }
+        {
+          'ID': <string>,
+          'Genomes':[<string>, ...],
+          'Mixture':[<string>, ...],
+          'Description':[<string>, ...]
+        }
 
 VCFMetaData
 ^^^^^^^^^^^^^
-
     Representation of a VCF Header. JSON-formatted with keys:
-    * 'fileformat', whose value indicates the format of the VCFLine's returned by
-    the Lightning server
-    * 'fileDate', the current date, format (YYYYMMDD)
-    * 'source', the Lightning server producing the VCF MetaData
-    * 'reference', the location of the reference fasta file used to generate the
-      VCFLines
-    * 'assembly', same as 'reference'
-    * [optional] 'info', for information field formats
-    * [optional] 'filter', for filters that have been applied to the data
-    * [optional] 'format', for genotype fields
-    * [optional] 'alt', for symbolizing imprecise structural variants
-    * [optional] 'contig', for pointing to sequence contigs
-    * [optional] 'sample', for defining sample to genome mappings
-    * [optional] 'pedigree', for defining relationships between genomes. Can be a
-      list of name:genome or a url pointing to a pedigree database
 
-::
+    * ``fileformat``, whose value indicates the format of the VCFLine's returned
+      by the Lightning server
+    * ``fileDate``, the current date, format (YYYYMMDD)
+    * ``source``, the Lightning server producing the VCF MetaData
+    * ``reference``, the location of the reference fasta file used to generate
+      the VCFLines
+    * ``assembly``, same as ``reference``
+    * [optional] ``info``, for information field formats
+    * [optional] ``filter``, for filters that have been applied to the data
+    * [optional] ``format``, for genotype fields
+    * [optional] ``alt``, for symbolizing imprecise structural variants
+    * [optional] ``contig``, for pointing to sequence contigs
+    * [optional] ``sample``, for defining sample to genome mappings
+    * [optional] ``pedigree``, for defining relationships between genomes. Can
+      be a list of name:genome or a url pointing to a pedigree database
 
-    {
-      'fileformat':<string>,
-      'fileDate':<int>,
-      'source':<string>,
-      'reference':<string>,
-      'assembly':<string>,
-      'info': [VCFInfoField_, ...],
-      'filter': [VCFFilterField_, ...],
-      'format': [VCFFormatField_, ...],
-      'alt': [VCFAlternativeAlleleField_, ...],
-      'contig': [VCFContigField_, ...],
-      'sample': [VCFSampleField_, ...],
-      'pedigree': [{<string>:<string>}, ...] OR <string>
-    }
+    ::
+
+        {
+          'fileformat':<string>,
+          'fileDate':<int>,
+          'source':<string>,
+          'reference':<string>,
+          'assembly':<string>,
+          'info': [VCFInfoField_, ...],
+          'filter': [VCFFilterField_, ...],
+          'format': [VCFFormatField_, ...],
+          'alt': [VCFAlternativeAlleleField_, ...],
+          'contig': [VCFContigField_, ...],
+          'sample': [VCFSampleField_, ...],
+          'pedigree': [{<string>:<string>}, ...] OR <string>
+        }
 
     Example:
 
-::
+    ::
 
-    {
-      'fileformat':'VCFv4.2',
-      'fileDate':20150921,
-      'source':'Lightningv0.1.0',
-      'reference':'1adbd1bd00358fe6ff2303ec8f3169ce+83454',
-      'assembly':'1adbd1bd00358fe6ff2303ec8f3169ce+83454'
-    }
+        {
+          'fileformat':'VCFv4.2',
+          'fileDate':20150921,
+          'source':'Lightningv0.1.0',
+          'reference':'1adbd1bd00358fe6ff2303ec8f3169ce+83454',
+          'assembly':'1adbd1bd00358fe6ff2303ec8f3169ce+83454'
+        }
 
 VCFLine
 ^^^^^^^^^
-
     Representation of VCF line. The info field maps the IDs from VCFInfoField_'s
     defined in VCFMetaData_. Required keys:
 
-    * chrom: Chromosome. An identifier from the reference genome or an
+    * ``chrom``: Chromosome. An identifier from the reference genome or an
       angle-bracketed ID String (<ID>) pointing to a contig in the assembly file
-      (the file pointed to by 'assembly' in VCFMetaData_). The colon symbol (:)
+      (the file pointed to by ``assembly`` in VCFMetaData_). The colon symbol (:)
       must be absent from all chromosome names to avoid parsing errors when dealing
       with breakends.  (String, no white-space permitted).
-    * pos: Position. The reference position, 1-indexed. Telomeres are indicated
+    * ``pos``: Position. The reference position, 1-indexed. Telomeres are indicated
       by using positions 0 or N+1, where N is the length of the corresponding
       chromosome or contig. (Integer).
-    * id: Identifier. List of unique identifiers if available. If there is no
+    * ``id``: Identifier. List of unique identifiers if available. If there is no
       identifier available, then the list is empty. (List of strings, no white-space
       or semi-colons permitted
-    * ref: Reference base(s). Each base must be one of A,C,G,T,N (case insensitive).
-      Multiple bases are permitted. The value matching the 'pos' key refers to the
+    * ``ref``: Reference base(s). Each base must be one of A,C,G,T,N (case insensitive).
+      Multiple bases are permitted. The value matching the ``pos`` key refers to the
       position of the first base in this string. For simple insertions and deletions
-      in which either the 'ref' or one of the 'alt' alleles would otherwise be
-      null/empty, the 'ref' and 'alt' values must include the base before the event
-      (which must be reflected in the 'pos' field), unless the event occurs at
+      in which either the ``ref`` or one of the ``alt`` alleles would otherwise be
+      null/empty, the ``ref`` and ``alt`` values must include the base before the event
+      (which must be reflected in the ``pos`` field), unless the event occurs at
       position 1 on the contig in which case it must include the base after the
       event; this padding base is not required (although it is permitted) for
       variations such as complex substitutions or other events where all alleles
-      have at least one base represented in their strings. If any of the 'alt'
+      have at least one base represented in their strings. If any of the ``alt``
       alleles is a symbolic allele (an angle-bracketed ID String <ID>), then the
-      padding base is required and 'pos' denotes the coordinate of the base preceding
+      padding base is required and ``pos`` denotes the coordinate of the base preceding
       the polymorphism. (String)
-    * alt: Alternate base(s). List of alternate non-reference alleles called on
+    * ``alt``: Alternate base(s). List of alternate non-reference alleles called on
       at least one of the samples. Options are strings made up of the bases
       A,C,G,T,N,*, (case insensitive) or an angle-bracketed ID String (<ID>) or
       a breakend replacement string as described in the VCFv4.2 section on
@@ -234,11 +360,11 @@ VCFLine
       due to a upstream deletion.  If there are no alternative alleles, the list
       should be empty. (String; no whitespace, commas, or angle-brackets are
       permitted in the ID String itself).
-    * qual: Quality. Phred-scaled quality score for the assertion made in ALT.
-      -10*log10(prob[call in alt is wrong]). If alt is empty, then this is
+    * ``qual``: Quality. Phred-scaled quality score for the assertion made in ALT.
+      -10*log10(prob[call in alt is wrong]). If ``alt`` is empty, then this is
       -10*log10(prob[variant]), otherwise, this is -10*log10(prob[no variant]).
       If this is unknown, return None.
-    * filter: Filter status. A list of length 1 with value `PASS` if this position
+    * ``filter``: Filter status. A list of length 1 with value `PASS` if this position
       has passed all filters (if a call is made at this position). Otherwise, if
       the site has not passed all filters, a list of codes for filters that fail.
       [`q10`, `s50`] might indicate that at this site the quality is below 10 and
@@ -246,31 +372,12 @@ VCFLine
       `0` is reserved and should not be used as a filter string. If filters have
       not been applied, then the list should be empty. (List of strings with no
       white-space or semi-colons permitted)
-    * info: Additional information (JSON-formatted). Keys are the values associated
+    * ``info``: Additional information (JSON-formatted). Keys are the values associated
       with the 'ID' key in the VCFInfoField_'s of VCFMetaData_['info']. Values are
       a list of strings with no white-space, semi-colons, commas or equals-signs.
       List may be empty for Flag info keys.
-    * [optional] format: Genotype information (JSON-formatted). Given if 'format'
-      is defined in VCFMetaData_. Keys are the values associated with the 'ID' key
-      in the VCFFormatField_'s of VCFMetaData_['format']. Values are a list of
-      strings with no white-space, semi-colons, commas or equals-signs. Useful
-      predifined keys include:
-
-      * GT : genotype, encoded as allele values separated by either of / (unphased)
-        or | (phased). The allele values are 0 for the reference allele (what is
-        in the 'ref' field), 1 for the first allele listed in 'alt', 2 for the
-        second allele in 'alt' and so on. If a call cannot be made for a sample
-        at a given locus, ‘.’ should be specified for each missing allele in the
-        GT field.
-      * PS : phase set (Non-negative 32-bit Integer). A phase set is defined as
-        a set of phased genotypes to which this genotype belongs. Phased genotypes
-        for an individual that are on the same chromosome and have the same PS
-        value are in the same phased set. A phase set specifies multi-marker
-        haplotypes for the phased genotypes in the set. All phased genotypes that
-        do not contain a PS subfield are assumed to belong to the same phased set.
-        If the genotype in the GT field is unphased, the corresponding PS field
-        is ignored. The recommended convention is to use the position of the first
-        variant in the set as the PS identifier (although this is not required).
+    * [optional] ``format``: Genotype information (List of VCFSampleFormatData_).
+      Given if 'format' is defined in VCFMetaData_.
 
 ::
 
@@ -287,12 +394,7 @@ VCFLine
         <string>:[<string>, ...],
         ...
       },
-      'format': {
-        <string>:[<string>, ...],
-        <string>:[<string>, ...],
-        ...
-      }
-
+      'format': [VCFSampleFormatData, ...]
     }
 
 gVCFBlock
@@ -303,63 +405,63 @@ gVCFBlock
     first entry must be 0, and the last entry must be 2147483647 (the largest
     unsigned integer representable in 32 bits).
 
-::
+    ::
 
-    [0, <int>, ..., 2147483647]
+        [0, <int>, ..., 2147483647]
 
 gVCFMetaData
 ^^^^^^^^^^^^^^
-
     Representation of a gVCF Header. JSON-formatted with keys:
-    * 'fileformat', whose value indicates the format of the VCFLine's returned by
+
+    * ``fileformat``, whose value indicates the format of the VCFLine's returned by
       the Lightning server
-    * 'fileDate', the current date, format (YYYYMMDD)
-    * 'source', the Lightning server producing the VCF MetaData
-    * 'reference', the location of the reference fasta file used to generate the
+    * ``fileDate``, the current date, format (YYYYMMDD)
+    * ``source``, the Lightning server producing the VCF MetaData
+    * ``reference``, the location of the reference fasta file used to generate the
       VCFLines
-    * 'assembly', same as 'reference'
-    * 'alt', for symbolizing imprecise structural variants. Includes 'NOT_REF'
+    * ``assembly``, same as ``reference``
+    * ``alt``, for symbolizing imprecise structural variants. Includes 'NOT_REF'
       for the non-reference alternate allele.
-    * 'info', for information field formats. Includes 'END', which is used to
+    * ``info``, for information field formats. Includes 'END', which is used to
       indicate the end of a VCFLine.
-    * [optional] 'gvcfblock', for information about splitting gVCF blocks
-    * [optional] 'filter', for filters that have been applied to the data
-    * [optional] 'format', for genotype fields
-    * [optional] 'contig', for pointing to sequence contigs
-    * [optional] 'sample', for defining sample to genome mappings
-    * [optional] 'pedigree', for defining relationships between genomes. Can be a
+    * [optional] ``gvcfblock``, for information about splitting gVCF blocks
+    * [optional] ``filter``, for filters that have been applied to the data
+    * [optional] ``format``, for genotype fields
+    * [optional] ``contig``, for pointing to sequence contigs
+    * [optional] ``sample``, for defining sample to genome mappings
+    * [optional] ``pedigree``, for defining relationships between genomes. Can be a
       list of name:genome or a url pointing to a pedigree database
 
-::
+    ::
 
-    {
-      'fileformat':<string>,
-      'fileDate':<int>,
-      'source':<string>,
-      'reference':<string>,
-      'assembly':<string>,
-      'info': [
         {
-          'ID': 'END',
-          'Number':1,
-          'Type':Integer,
-          'Description':'Stop position of the interval'
-        },
-        VCFInfoField_,
-        ...
-      ],
-      'alt': [
-        {
-          'ID': 'NOT_REF',
-          'Description':'Represents any possible alternative allele at this location'
-        },
-        VCFAlternativeAlleleField_,
-        ...
-      ],
-      'gvcfblock': gVCFBlock_,'
-      'filter': [VCFFilterField_, ...],
-      'format': [VCFFormatField_, ...],
-      'contig': [VCFContigField_, ...],
-      'sample': [VCFSampleField_, ...],
-      'pedigree': [{<string>:<string>}, ...] OR <string>
-    }
+          'fileformat':<string>,
+          'fileDate':<int>,
+          'source':<string>,
+          'reference':<string>,
+          'assembly':<string>,
+          'info': [
+            {
+              'ID': 'END',
+              'Number':1,
+              'Type':Integer,
+              'Description':'Stop position of the interval'
+            },
+            VCFInfoField_,
+            ...
+          ],
+          'alt': [
+            {
+              'ID': 'NOT_REF',
+              'Description':'Represents any possible alternative allele at this location'
+            },
+            VCFAlternativeAlleleField_,
+            ...
+          ],
+          'gvcfblock': gVCFBlock_,'
+          'filter': [VCFFilterField_, ...],
+          'format': [VCFFormatField_, ...],
+          'contig': [VCFContigField_, ...],
+          'sample': [VCFSampleField_, ...],
+          'pedigree': [{<string>:<string>}, ...] OR <string>
+        }
