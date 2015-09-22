@@ -71,6 +71,23 @@ VCFFormatField
       'Description':<string>
     }
 
+VCFSampleFormatData
+^^^^^^^^^^^^^^^^^^^^
+    JSON-formatted format field format for a VCF or gVCF file. Used for Genotype
+    fields. Keys are taken from the 'ID' of VCFFormatField_'s returned by
+    VCFMetaData_['format']. One key is required:
+
+    * 'sample-name', the name of the sample, normally defined by the column header
+
+::
+
+    {
+      'sample-name': <string>,
+      <string>:<string>,
+      <string>:<string>,
+      ...
+    }
+
 VCFAlternativeAlleleField
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     JSON-formatted alternative allele field format for a VCF or gVCF file. Used to
@@ -139,7 +156,7 @@ VCFMetaData
     * 'fileDate', the current date, format (YYYYMMDD)
     * 'source', the Lightning server producing the VCF MetaData
     * 'reference', the location of the reference fasta file used to generate the
-    VCFLines
+      VCFLines
     * 'assembly', same as 'reference'
     * [optional] 'info', for information field formats
     * [optional] 'filter', for filters that have been applied to the data
@@ -148,7 +165,7 @@ VCFMetaData
     * [optional] 'contig', for pointing to sequence contigs
     * [optional] 'sample', for defining sample to genome mappings
     * [optional] 'pedigree', for defining relationships between genomes. Can be a
-    list of name:genome or a url pointing to a pedigree database
+      list of name:genome or a url pointing to a pedigree database
 
 ::
 
@@ -221,12 +238,39 @@ VCFLine
       -10*log10(prob[call in alt is wrong]). If alt is empty, then this is
       -10*log10(prob[variant]), otherwise, this is -10*log10(prob[no variant]).
       If this is unknown, return None.
-    * filter: Filter status. PASS if this position has passed all filters (if a
-      call is made at this position). Otherwise, if the site has not passed all
-      filters, a semicolon-separated list of codes for filters that fail.  e.g. `q10;s50` might
-      indicate that at this site the quality is below 10 and the number of samples with data is below 50% of the total
-      number of samples.  `0` is reserved and should not be used as a filter String.  If filters have not been applied,
-      then this field should be set to the missing value.  (String, no white-space or semi-colons permitted)
+    * filter: Filter status. A list of length 1 with value `PASS` if this position
+      has passed all filters (if a call is made at this position). Otherwise, if
+      the site has not passed all filters, a list of codes for filters that fail.
+      [`q10`, `s50`] might indicate that at this site the quality is below 10 and
+      the number of samples with data is below 50% of the total number of samples.
+      `0` is reserved and should not be used as a filter string. If filters have
+      not been applied, then the list should be empty. (List of strings with no
+      white-space or semi-colons permitted)
+    * info: Additional information (JSON-formatted). Keys are the values associated
+      with the 'ID' key in the VCFInfoField_'s of VCFMetaData_['info']. Values are
+      a list of strings with no white-space, semi-colons, commas or equals-signs.
+      List may be empty for Flag info keys.
+    * [optional] format: Genotype information (JSON-formatted). Given if 'format'
+      is defined in VCFMetaData_. Keys are the values associated with the 'ID' key
+      in the VCFFormatField_'s of VCFMetaData_['format']. Values are a list of
+      strings with no white-space, semi-colons, commas or equals-signs. Useful
+      predifined keys include:
+
+      * GT : genotype, encoded as allele values separated by either of / (unphased)
+        or | (phased). The allele values are 0 for the reference allele (what is
+        in the 'ref' field), 1 for the first allele listed in 'alt', 2 for the
+        second allele in 'alt' and so on. If a call cannot be made for a sample
+        at a given locus, ‘.’ should be specified for each missing allele in the
+        GT field.
+      * PS : phase set (Non-negative 32-bit Integer). A phase set is defined as
+        a set of phased genotypes to which this genotype belongs. Phased genotypes
+        for an individual that are on the same chromosome and have the same PS
+        value are in the same phased set. A phase set specifies multi-marker
+        haplotypes for the phased genotypes in the set. All phased genotypes that
+        do not contain a PS subfield are assumed to belong to the same phased set.
+        If the genotype in the GT field is unphased, the corresponding PS field
+        is ignored. The recommended convention is to use the position of the first
+        variant in the set as the PS identifier (although this is not required).
 
 ::
 
@@ -237,32 +281,85 @@ VCFLine
       'ref':<string>,
       'alt':[<string>, ...],
       'qual':<float>|None,
-      'filter':<string>,
-      'info':[{<string>:<string>}, ...]
+      'filter':[<string>, ...],
+      'info': {
+        <string>:[<string>, ...],
+        <string>:[<string>, ...],
+        ...
+      },
+      'format': {
+        <string>:[<string>, ...],
+        <string>:[<string>, ...],
+        ...
+      }
+
     }
 
+gVCFBlock
+^^^^^^^^^^^
+    Genotype quality ranges used for banding. List of integers (length greater
+    than or equal to 2). Each pair of integers creates a minGQ (inclusive) and
+    maxGQ (exclusive) pair for a gVCFBlock. Must be strictly increasing, the
+    first entry must be 0, and the last entry must be 2147483647 (the largest
+    unsigned integer representable in 32 bits).
+
+::
+
+    [0, <int>, ..., 2147483647]
 
 gVCFMetaData
 ^^^^^^^^^^^^^^
-Testing
 
+    Representation of a gVCF Header. JSON-formatted with keys:
+    * 'fileformat', whose value indicates the format of the VCFLine's returned by
+      the Lightning server
+    * 'fileDate', the current date, format (YYYYMMDD)
+    * 'source', the Lightning server producing the VCF MetaData
+    * 'reference', the location of the reference fasta file used to generate the
+      VCFLines
+    * 'assembly', same as 'reference'
+    * 'alt', for symbolizing imprecise structural variants. Includes 'NOT_REF'
+      for the non-reference alternate allele.
+    * 'info', for information field formats. Includes 'END', which is used to
+      indicate the end of a VCFLine.
+    * [optional] 'gvcfblock', for information about splitting gVCF blocks
+    * [optional] 'filter', for filters that have been applied to the data
+    * [optional] 'format', for genotype fields
+    * [optional] 'contig', for pointing to sequence contigs
+    * [optional] 'sample', for defining sample to genome mappings
+    * [optional] 'pedigree', for defining relationships between genomes. Can be a
+      list of name:genome or a url pointing to a pedigree database
 
-gVCFHeader
-^^^^^^^^^^^^
-Testing
+::
 
-gVCFLine
-^^^^^^^^^
-
-    Representation of gVCF line as a list.
-    List of 2 integers, followed by 2 strings. The
-    first integer is the chromosome integer and the second integer is the position.
-    The next string is the reference sequence, and the final string is the alternate
-    sequence. The reference sequence can be a period. The alternate sequence can
-    include commas.
-
-    [<int>, <int>, <string>, <string>, <string>]
-
-    [ #CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO ]
-
-    [ chromosome, position, identifier, reference bases, alt-sequence ]
+    {
+      'fileformat':<string>,
+      'fileDate':<int>,
+      'source':<string>,
+      'reference':<string>,
+      'assembly':<string>,
+      'info': [
+        {
+          'ID': 'END',
+          'Number':1,
+          'Type':Integer,
+          'Description':'Stop position of the interval'
+        },
+        VCFInfoField_,
+        ...
+      ],
+      'alt': [
+        {
+          'ID': 'NOT_REF',
+          'Description':'Represents any possible alternative allele at this location'
+        },
+        VCFAlternativeAlleleField_,
+        ...
+      ],
+      'gvcfblock': gVCFBlock_,'
+      'filter': [VCFFilterField_, ...],
+      'format': [VCFFormatField_, ...],
+      'contig': [VCFContigField_, ...],
+      'sample': [VCFSampleField_, ...],
+      'pedigree': [{<string>:<string>}, ...] OR <string>
+    }

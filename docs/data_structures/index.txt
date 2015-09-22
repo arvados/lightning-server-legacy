@@ -202,3 +202,155 @@ CMPFunction
 ------------
 
     ENUM( 'eq', 'lt' , 'lte', 'gt', 'gte')
+
+
+In-depth VCF Data Structures Specifications
+--------------------------------------------
+
+gVCFBlock
+^^^^^^^^^^^
+    Genotype quality ranges used for banding. List of integers (length greater
+    than or equal to 2). Each pair of integers creates a minGQ (inclusive) and
+    maxGQ (exclusive) pair for a gVCFBlock. Must be strictly increasing, the
+    first entry must be 0, and the last entry must be 2147483647 (the largest
+    unsigned integer representable in 32 bits).
+
+::
+
+    [0, <int>, ..., 2147483647]
+
+gVCFMetaData
+^^^^^^^^^^^^^^
+    Representation of a gVCF Header. JSON-formatted with keys:
+    * 'fileformat', whose value indicates the format of the VCFLine's returned by
+    the Lightning server
+    * 'fileDate', the current date, format (YYYYMMDD)
+    * 'source', the Lightning server producing the VCF MetaData
+    * 'assembly', the location of the reference fasta file used to generate the
+      VCFLines. Currently portabledata hash
+    * 'info', used to indicate the end of a VCFLine.
+    * 'format', for genotype fields
+    * 'alt', used to refer to non-reference alternate alleles.
+    * [optional] 'gvcfblock', for information about splitting gVCF blocks
+
+::
+
+    {
+      'fileformat':'VCFc4.2',
+      'fileDate':<int>,
+      'source':'Lightningv0.1.0',
+      'assembly':<string>,
+      'info': {
+          'ID': 'END',
+          'Number':1,
+          'Type':Integer,
+          'Description':'Stop position of the interval'
+      },
+      'format': {
+          'ID': 'GT',
+          'Number':1,
+          'Type':'String',
+          'Description':'Genotype'
+      },
+      'alt': {
+          'ID': 'NOT_REF',
+          'Description':'Represents any possible alternative allele at this location'
+      },
+      'gvcfblock': gVCFBlock_,
+    }
+
+VCFMetaData
+^^^^^^^^^^^^^
+    Representation of a VCF Header. JSON-formatted with keys:
+    * 'fileformat', whose value indicates the format of the VCFLine's returned by
+    the Lightning server
+    * 'fileDate', the current date, format (YYYYMMDD)
+    * 'source', the Lightning server producing the VCF MetaData
+    * 'assembly', the location of the reference fasta file used to generate the
+      VCFLines. Currently portabledata hash
+    * 'format', for genotype fields
+
+::
+
+    {
+      'fileformat':'VCFc4.2',
+      'fileDate':<int>,
+      'source':'Lightningv0.1.0',
+      'assembly':<string>,
+      'format': {
+        'ID': 'GT',
+        'Number':1,
+        'Type':'String',
+        'Description':'Genotype'
+      }
+    }
+
+VCFSampleFormatData
+^^^^^^^^^^^^^^^^^^^^
+    JSON-formatted format field format for a VCF or gVCF file. Used for Genotype
+    fields. Keys:
+
+    * 'sample-name', the name of the sample, normally defined by the column header
+    * 'GT', the genotype of the sample
+
+::
+
+    {
+      'sample-name': <string>,
+      'GT':<string>
+    }
+
+VCFLine
+^^^^^^^^^
+    Representation of VCF line. Keys:
+
+    * chrom: Chromosome. An identifier from the reference genome or an
+      angle-bracketed ID String (<ID>) pointing to a contig in the assembly file
+      (the file pointed to by 'assembly' in VCFMetaData_). The colon symbol (:)
+      must be absent from all chromosome names to avoid parsing errors when dealing
+      with breakends.  (String, no white-space permitted).
+    * pos: Position. The reference position, 1-indexed. Telomeres are indicated
+      by using positions 0 or N+1, where N is the length of the corresponding
+      chromosome or contig. (Integer).
+    * ref: Reference base(s). Each base must be one of A,C,G,T,N (case insensitive).
+      Multiple bases are permitted. The value matching the 'pos' key refers to the
+      position of the first base in this string. For simple insertions and deletions
+      in which either the 'ref' or one of the 'alt' alleles would otherwise be
+      null/empty, the 'ref' and 'alt' values must include the base before the event
+      (which must be reflected in the 'pos' field), unless the event occurs at
+      position 1 on the contig in which case it must include the base after the
+      event; this padding base is not required (although it is permitted) for
+      variations such as complex substitutions or other events where all alleles
+      have at least one base represented in their strings. If any of the 'alt'
+      alleles is a symbolic allele (an angle-bracketed ID String <ID>), then the
+      padding base is required and 'pos' denotes the coordinate of the base preceding
+      the polymorphism. (String)
+    * alt: Alternate base(s). List of alternate non-reference alleles called on
+      at least one of the samples. Options are strings made up of the bases
+      A,C,G,T,N,*, (case insensitive) or an angle-bracketed ID String (<ID>) or
+      a breakend replacement string as described in the VCFv4.2 section on
+      breakends. The `*` allele is reserved to indicate that the allele is missing
+      due to a upstream deletion.  If there are no alternative alleles, the list
+      should be empty. (String; no whitespace, commas, or angle-brackets are
+      permitted in the ID String itself).
+    * filter: Filter status. A list of length 1 with value `PASS` if this position
+      has passed all filters (if a call is made at this position). Otherwise, if
+      the site has not passed all filters, a list of codes for filters that fail.
+      [`q10`, `s50`] might indicate that at this site the quality is below 10 and
+      the number of samples with data is below 50% of the total number of samples.
+      `0` is reserved and should not be used as a filter string. If filters have
+      not been applied, then the list should be empty. (List of strings with no
+      white-space or semi-colons permitted)
+    * format: Genotype information (JSON-formatted). Key is 'GT'. Values are a
+      list of strings with no white-space, semi-colons, commas or equals-signs.
+
+::
+
+    {
+      'chrom':<string>,
+      'pos':<int>,
+      'ref':<string>,
+      'alt':[<string>, ...],
+      'filter':[<string>, ...],
+      'format': [VCFSampleFormatData_, ...]
+    }
