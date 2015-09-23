@@ -1,0 +1,9 @@
+Reasoning Behind the API
+=========================
+
+API design! Here are some explanations!
+
+.. todo::
+
+    Document API explanations
+    
