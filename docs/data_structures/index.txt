@@ -227,32 +227,56 @@ TileVariantDetail
 Locus
 ------
 
-    A description of an assembly locus. List of 2 strings followed by 3 integers.
-    The first string is the assembly name and the second string is the chromosome
-    name. The first integer (at the third position) is 0, and indicates that the
-    following 2 integers are 0-indexed. The second integer is the *inclusive*
-    beginning of the loci range. The third integer is the exclusive end of the
-    range. All integers are expected to be greater than or equal to 0.
+    A description of an assembly locus (JSON-formatted). Keys:
 
-    [<string>, <string>, 0, <int>, <int>]
+    * ``assembly-name``: the assembly name (string)
+    * ``assembly-pdh``: the portable data hash referencing the collection
+      of FASTA files for this assembly (string)
+    * ``chromosome-name``: the chromosome name (string)
+    * ``indexing``: Indicates the indexing of ``start-position`` and ``end-position``.
+      (hard-coded to 0).
+    * ``start-position``: start position; the inclusive beginning of the loci range.
+      Must be greater than 0 and less than ``end-position``. Inclusive. (Integer)
+    * ``end-position``: end position; the exclusive end of the loci range. Must be
+      greater than ``start-position`` and less than or equal to the length of the
+      chromosome in the specified assembly.
 
-    [ assembly-name, chromosome-name, 0, beginning, ending ]
+    ::
+
+        {
+          'assembly-name': <string>,
+          'assembly-pdh': <string>,
+          'chromosome-name': <string>,
+          'indexing': 0,
+          'start-position': <int>,
+          'end-position': <int>
+        }
+
+.. _CMP-function-data-structure:
+
+CMPFunction
+------------
+    List of supported comparison functions.
+
+    ::
+
+      ENUM( 'eq', 'lt' , 'lte', 'gt', 'gte')
 
 .. _CMP-tuple-data-structure:
 
 CMPTuple
 ---------
 
-    An integer comparison.
+    Representation of an integer comparison - used for filtering queries. Also
+    includes a range comparison. For the range comparison, the first integer is
+    the inclusive beginning of the range, the second int is the exclusive end of
+    the range.
 
-    ( <CMP-fn>, <int>) OR ('range', <int>, <int>) where the first int is the beginning of the range, the second int is the exclusive end of the range
+    ::
 
-.. _CMP-function-data-structure:
-
-CMPFunction
-------------
-
-    ENUM( 'eq', 'lt' , 'lte', 'gt', 'gte')
+      ( <CMP-fn>, <int>)
+      OR
+      ('range', <int>, <int>)
 
 
 VCF Data Structures Specifications
