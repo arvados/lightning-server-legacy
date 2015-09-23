@@ -274,9 +274,9 @@ CMPTuple
 
     ::
 
-      ( <CMP-fn>, <int>)
+      ( <CMP-fn>, <float>)
       OR
-      ('range', <int>, <int>)
+      ('range', <float>, <float>)
 
 
 VCF Data Structures Specifications
