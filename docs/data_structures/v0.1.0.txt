@@ -185,7 +185,9 @@ TileVariantDetail
     * ``number-of-positions-spanned``: The number of tile positions this tile variant
       spans. Must be greater or equal to 1.
     * ``population-frequency``: The percentage of the population that contains this
-      tile variant. Each phase counts as 1 entry in the population.
+      tile variant. Each well-sequenced phase counts as 1 entry in the population.
+    * ``population-count``: The number of well-sequenced phases that contain this
+      tile variant.
     * ``population-total``: The number of phases that contain a well sequenced tile
       at this tile position. Each phase counts as 1 entry in the population.
 
@@ -202,6 +204,7 @@ TileVariantDetail
             'length': <int>,
             'number-of-positions-spanned': <int>,
             'population-frequency': <float>,
+            'population-count': <int>,
             'population-total': <int>
         }
 
