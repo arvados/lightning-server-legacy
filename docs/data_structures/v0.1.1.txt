@@ -35,7 +35,7 @@ TileVariantLogic
 
 TileVariantDetail
 -----------------
-    ..todo::
+    .. todo::
         Specify md5sum for poorly sequenced tiles
         Different frequencies for more information - how many are well sequenced?
         How many are there, regardless of sequencing? Etc
@@ -45,10 +45,10 @@ TileVariantDetail
 
     * ``tag-length``: The length of the tags.
     * ``start-tag``: The sequence of the start tag. Must be of length 0 (if the tile
-      is at the start of the path) or the length specified by `tag-length`. Cannot
+      is at the start of the path) or the length specified by ``tag-length``. Cannot
       have n's.
     * ``end-tag``: The sequence of the end tag. Must be of length 0 (if the tile
-      is at the end of the path) or the length specified by `tag-length`. Cannot
+      is at the end of the path) or the length specified by ``tag-length``. Cannot
       have n's.
     * ``is-start-of-path``:  A boolean indicating whether the tile is at the start
       of the path.
@@ -117,15 +117,15 @@ VCFInfoField
     JSON-formatted information field format for a VCF or gVCF file. Keys that are
     not defined here may be included. Required keys are:
 
-    * 'ID'
+    * 'ID', the name of the info field.
     * 'Number', indicates the number of values that can be included with the
       INFO field. If the field has one value per alternate allele, the value
       should be 'A'. If the field has one value for each possible allele (including
       the reference'), the value should be 'R'. If the field has one value for each
       possible genotype, the value should be 'G'. If the number of possible values
       varies, is unknown, or is unbounded, the value should be '.'.
-    * 'Type', options are 'Integer', 'Float', 'Flag', 'Character', and 'String'
-    * 'Description'
+    * 'Type', options are 'Integer', 'Float', 'Flag', 'Character', and 'String'.
+    * 'Description', the description of the info field.
     * [optional] 'Source'
     * [optional] 'Version'
 
@@ -179,42 +179,6 @@ VCFFormatField
           'Description':<string>
         }
 
-VCFSampleFormatData
-^^^^^^^^^^^^^^^^^^^^
-    JSON-formatted format field format for a VCF or gVCF file. Used for Genotype
-    fields. Keys are the values associated with the 'ID' of VCFFormatField_'s
-    returned by VCFMetaData_['format']. Values are a list of strings with no
-    white-space, semi-colons, commas or equals-signs. Useful predefined keys include:
-
-      * GT : genotype, encoded as allele values separated by either of / (unphased)
-        or | (phased). The allele values are 0 for the reference allele (what is
-        in the 'ref' field), 1 for the first allele listed in 'alt', 2 for the
-        second allele in 'alt' and so on. If a call cannot be made for a sample
-        at a given locus, ‘.’ should be specified for each missing allele in the
-        GT field.
-      * PS : phase set (Non-negative 32-bit Integer). A phase set is defined as
-        a set of phased genotypes to which this genotype belongs. Phased genotypes
-        for an individual that are on the same chromosome and have the same PS
-        value are in the same phased set. A phase set specifies multi-marker
-        haplotypes for the phased genotypes in the set. All phased genotypes that
-        do not contain a PS subfield are assumed to belong to the same phased set.
-        If the genotype in the GT field is unphased, the corresponding PS field
-        is ignored. The recommended convention is to use the position of the first
-        variant in the set as the PS identifier (although this is not required).
-
-    One additional key (not defined in VCFMetaData_['format']) is required:
-
-    * 'sample-name', the name of the sample, normally defined by the column header
-
-    ::
-
-        {
-          'sample-name': <string>,
-          <string>:[<string>, ...],
-          <string>:[<string>, ...],
-          ...
-        }
-
 VCFAlternativeAlleleField
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     JSON-formatted alternative allele field format for a VCF or gVCF file. Used to
@@ -262,8 +226,8 @@ VCFContigField
 VCFSampleField
 ^^^^^^^^^^^^^^^^
     JSON-formatted sample field format for a VCF or gVCF file. Used to define sample
-    to genome mappings. This is the only info given by VCFv4.2. I believe the length
-    of 'Genomes', 'Mixture', and 'Description' must be the same.
+    to genome mappings. This is the only info given by the VCFv4.2 specifications.
+    I believe the length of 'Genomes', 'Mixture', and 'Description' must be the same.
 
     ::
 
@@ -321,6 +285,45 @@ VCFMetaData
           'source':'Lightningv0.1.0',
           'reference':'1adbd1bd00358fe6ff2303ec8f3169ce+83454',
           'assembly':'1adbd1bd00358fe6ff2303ec8f3169ce+83454'
+        }
+
+VCFSampleFormatData
+^^^^^^^^^^^^^^^^^^^^
+    JSON-formatted format field entry for a VCF or gVCF line. Used for Genotype
+    fields of specific samples (identified by the ``sample-name`` key below).
+    Further keys are the values associated with the 'ID' of VCFFormatField_'s
+    returned by VCFMetaData_ ['format']. Values are a list of strings with no
+    white-space, semi-colons, commas or equals-signs. Useful predefined keys include:
+
+      * GT : genotype.  The values associated with this key are strings of allele
+        values for the specified sample in ``sample-name``. The alleles are separated
+        by / (for unphased) or | (for phased). The allele values are 0 for the
+        reference allele (which is in the ``ref`` field of the VCFLine_),
+        1 for the first allele listed in the ``alt`` field of the VCFLine_, 2 for
+        the second allele in the ``alt`` field of the VCFLine_ and so on. If a call
+        cannot be made for a sample at a given locus, `.` should be specified for
+        each missing allele in the GT field.
+      * PS : phase set. The values associated with this key are non-negative
+        32-bit integers indicating the phase set this genotype belongs to. A phase
+        set is a set of phased genotypes. Phased genotypes for an individual sample
+        that are on the same chromosome and have the same PS value are in the same
+        phased set. A phase set specifies multi-marker haplotypes for the phased
+        genotypes in the set. All phased genotypes that do not contain a PS subfield
+        are assumed to belong to the same phased set. If the genotype in the GT
+        field is unphased, the corresponding PS field is ignored.
+
+    One additional key (not defined in VCFMetaData_ ['format']) is required:
+
+    * ``sample-name``, the name of the sample, which is normally defined by the
+      column header in a VCF file.
+
+    ::
+
+        {
+          'sample-name': <string>,
+          <string>:[<string>, ...],
+          <string>:[<string>, ...],
+          ...
         }
 
 VCFLine
