@@ -9,15 +9,24 @@ processing.
 .. todo::
     Design and document batch processing
 
-  /tile-variants
+
+/tile-variants
     /filter : returns information about the requested tile variants, accepts request
               containing a list of tile variants
     /loci : returns locus information about the requested tile variants, accepts
             request containing a list of tile variants
 
-  /assemblies : returns a list of loaded loci (valid locations) for all assemblies
+/assemblies : returns a list of loaded loci (valid locations) for all assemblies
     /tiles : returns tile variants subsequences and list of positions touching the
              loci, requires request containing loci
+
+/annotiles
+    /filter-annotations : given a request of tile variants and filters, returns
+                          the annotations applying to those tile variants according
+                          to the filters.
+    /filter-tile-variants : given a request of annotation identifiers and filters,
+                            returns the tile variants with those annotations that
+                            satisfy the filters.
 
 POST /tile-variants/filter
 ---------------------------

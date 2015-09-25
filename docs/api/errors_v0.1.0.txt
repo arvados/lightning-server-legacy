@@ -1,0 +1,7 @@
+Lightning Errors
+=================
+
+UnknownAssembly
+----------------
+  Used when user requests an assembly that is not loaded into the Lightning
+  instance
