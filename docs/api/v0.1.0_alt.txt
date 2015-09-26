@@ -1,5 +1,5 @@
-Lightning v0.1.0 API Specifications
-====================================
+Alternate Lightning v0.1.0 API Specifications
+==============================================
 
 We highly recommend reading :doc:`../data_structures/v0.1.0` before diving into
 this API. These API only support well-sequenced tile variants
@@ -7,56 +7,67 @@ this API. These API only support well-sequenced tile variants
 Lightning Server Namespace
 ---------------------------
 
+..
+  Though tile positions include their tag set integer, they make little intuitive
+  sense when compared with tile positions from another tag set. Thus the
+  partitioning of the tile library namespace.
+
+  We want to allow a user to iterate over all tile positions and tile variants
+  without needing to iterate over the paths
+
 ::
 
   /status : returns the API version running on the server
   /tile-library
-    /tag-versions : returns the tag set version information for all versions
-                    supported by the server.
-    /{tag-set-int} : given the tag set version integer, returns a dictionary
-                     keyed by path integer with a value of the number of steps
-      /{path-int} : given the tag set version integer and the path integer, returns
-                    a dictionary keyed by step integer with a value of the number
-                    of variants
-        /{step-int} : given the tag set version integer, path integer, and step
-                      integers, returns a list of tuples:
-                      (md5sum of sequence, frequency, total population size)
-          /{variant-md5sum} : given the tag set version integer, path integer,
-                              step integer, and the md5sum of the tile variant,
-                              returns details about the tile variant
-            /locus : given the tag set version integer, path integer, step integer,
-                     and the md5sum of the tile variant, and optional query
-                     parameters containing assembly information, returns locus
-                     information about the tile variant.
-            /subsequence: given the tag set version integer, path integer, step
-                          integer, the md5sum of the tile variant, and query
-                          parameters containing locus information, returns the
-                          subsequence of the tile variant
-            /annotations: given the tag set version integer, path integer, step
-                          integer, the md5sum of the tile variant, and a request
-                          containing locus information, returns the subsequence
-                          of the tile variant
-  /annotiles : returns a list of annotation identifiers loaded into the Lightning
-               instance
+    /tag-sets : returns the tag set version information for all versions
+                supported by this Lighting server instance.
+      /{tag-set-identifier} : given the tag set version identifier, returns
+                              information about that tag set.
+        /paths : given the tag set version integer, returns the paths in that
+                 tag set.
+          /{path-int} : given the tag set version identifier and the path integer,
+                        returns information about that path.
+        /tile-positions : given the tag set version identifier, returns the tile
+                          positions in that tag set.
+          /{tile-position-id} : given the tag set version identifier and tile
+                                position identifier, returns information about
+                                that tile position.
+            /locus : given the tag set version identifier, tile position identifier,
+                     and optional query parameters containing assembly information,
+                     returns locus information about the tile position.
+        /tile-variants : given a tag set version identifier, returns the tile
+                         variants in that tag set in this Lightning server instance.
+          /{tile-variant-id} : given the tag set version identifier and tile variant
+                               identifier, returns details about the tile variant.
+            /locus : given the tag set version identifier, tile variant identifier,
+                     and optional query parameters containing assembly information,
+                     returns locus information about the tile variant.
+            /subsequence: given the tag set version identifier, tile variant
+                          identifier, and query parameters containing locus
+                          information, returns the subsequence of the tile variant
+            /annotations: given the tag set version identifier and tile variant
+                          identifier, returns the annotation identifiers applying
+                          to that tile variant.
+  /annotations : returns a list of annotation identifiers loaded into the Lightning
+                 instance.
     /{annotation-id} : given an annotation id, returns the tile variants associated
                        with that annotation.
-  /callsets : returns a list of all genome names
-    /{callset-name} : returns details about the callset
-      /gvcf : returns a list of gVCF lines, requires request containing locus or
-              loci to return
-      /vcf : returns a list of VCF lines, requires request containing locus or
-             loci to return.
-    /filters : returns valid filters
-    /filter-phase-insensitive : returns a list of callsets matching filters,
-                                accepts request containing filters and subsection
-                                of the callsets to run query on.
-    /filter-phase-sensitive : returns a dictionary of callsets mapped to the
-                              integers of their phases matching filters, accepts
-                              request containing filters and subsection of the
-                              callsets to run query on.
-    /tile-variants : returns tile variants for subsection of callsets over positions
-                     given, requires request containing callsets and positions
-  /assemblies : returns a list of loaded loci (valid locations) for all assemblies
+  /callsets : returns a list of all genome names, termed callsets, loaded into this
+              Lightning server instance.
+    /{callset-name} : given the callset name, returns details about the callset.
+      /gvcf : given the callset name and locus query parameters, returns a list
+              of gVCF lines.
+      /vcf : given the callset name and locus query parameters, returns a list of
+             VCF lines.
+      /tile-variants : given the callset name and tile position query parameters,
+                       returns the tile variants the callset has at the given tile
+                       position.
+  /assemblies : returns the available assemblies
+    /{assembly-id} : returns the details about the assembly, including a list of
+                     loaded loci (valid locations) on the Lightning server instance.
+  /searches : returns a list of searches that have been performed
+    /{search-id} : returns the specific search and the answer of the search
+
 
 GET /status
 ------------
@@ -74,51 +85,94 @@ GET /status
 
         { 'api-version' : 0.1.0 }
 
-GET /tile-library/tag-versions
--------------------------------
-    Request used to get the mapping between the tag set integers and reproducible
-    tag set identifiers that may be used by any server. Does not require any query
-    parameters. Returns the tag set version integers (in base 16) on the server
-    along with their unique identifiers. These identifiers are based on information
-    about the tag set and the path dividers. Response body is of type
-    Version Map Data Structure.
+GET /tile-library/tag-sets
+----------------------------
+    Request used to get the available tag sets on this Lightning instance. Does
+    not require any query parameters. Returns a list of tag set unique identifiers
+    (portable data hashes of the collection containing the tag set). This collection
+    contains information about the tag set and the path dividers.
 
     **Response body:** ::
 
-        <VersionMap>
-
+        [<string>, ...]
 
     **Example response:** ::
 
-        {
-            0 : 'd87075c41962489cb9ce7d63da1d7841',
-            1 : '047ae54fba97385716acd2c552fae763'
-        }
+        ['d87075c41962489cb9ce7d63da1d7841', '047ae54fba97385716acd2c552fae763']
 
-GET /tile-library/{tag-set-int}
---------------------------------
-    Request used to get information about specific tag set given the tag set
-    integer (in base 16). Does not require any query parameters. Returns a
-    dictionary with path and step information for the given tag set version integer.
-    The returned dictionary contains keys that are path integers (in base 16),
-    whose values are the number of steps (in base 16) in that path.
+GET /tile-library/tag-sets/{tag-set-identifier}
+------------------------------------------------
+    Request used to get information about the given tag set identifier. Does not
+    require any query parameters.
 
     **Response body:** ::
 
         {
-            <int> : <int>,
-            <int> : <int>,
-            ...
+          'tag-set-identifier' : <string>,
+          'tag-set-integer': <int> (base 16)
         }
 
     **Example response:** ::
 
         {
-            000 : 1533,
-            001 : 2d41,
-            002 : 1bc8,
-            ...
+          'tag-set-identifier' : 'd87075c41962489cb9ce7d63da1d7841',
+          'tag-set-integer' : 00
         }
+
+GET /tile-library/tag-sets/{tag-set-identifier}/paths
+-------------------------------------------------------
+    Request used to get the available paths for a specific tag set on this
+    Lightning server instance. Tag set is specified using the tag set identifier
+    in the uri. Does not require any query parameters. Returns a
+    list of path integers (in base 16).
+
+    **Response body:** ::
+
+        [<int>, ...]
+
+    **Example response for a BRCA Lightning Instance:** ::
+
+        [247, 2c5]
+
+
+GET /tile-library/tag-sets/{tag-set-identifier}/paths/{path-int}
+-----------------------------------------------------------------
+    Request used to get information about a specific path for a specific tag set
+    on this Lightning server instance. Tag set is specified using the tag set
+    identifier in the uri. The path is identified using the path integer, written
+    in base 16 in the uri. Does not require any query parameters. Returns a
+    dictionary with path information for the specified path and tag set.
+
+    **Response body:** ::
+
+        {
+            'path' : <int> (base 16),
+            'num-positions' : <int> (base 10)
+        }
+
+    **Example response:** ::
+
+        {
+            'path' : 2c4,
+            'num-steps' : 9274
+        }
+
+GET /tile-library/tag-sets/{tag-set-identifier}/tile-positions
+---------------------------------------------------------------
+    Request used to get the available tile positions for a specific tag set on
+    this Lightning server instance. Tag set is specified using the tag set identifier
+    in the uri. Does not require any query parameters. In the future, might support
+    query parameters filtering on information about the tile (like its path).
+    Returns a list of tile position identifiers (:ref:`tile-position-data-structure`).
+
+    **Response body:** ::
+
+        [<int>, ...]
+
+    **Example response for a BRCA Lightning Instance:** ::
+
+        ['00.247.', 2c5]
+
 
 GET /tile-library/{tag-set-int}/{path-int}
 -------------------------------------------
@@ -274,7 +328,7 @@ GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}/locus
         ]
 
 GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}/subsequence
------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
     Request used to get a subsequence of a particular tile variant given an
     assembly locus (using query parameters), the variant identifier (md5sum),
     the step integer (in base 16), the path integer (in base 16), and the tag
@@ -324,7 +378,7 @@ GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}/subsequen
         }
 
 GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}/annotations
------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
     Request used to get the annotations associated with a particular tile variant
     given the variant identifier (md5sum), the step integer (in base 16), the
     path integer (in base 16), and the tag set integer (in base 16). Does not
@@ -341,7 +395,7 @@ GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}/annotatio
         [ 'annotation1', 'annotation3']
 
 GET /annotiles
----------------
+----------------
     Request used to get all the annotations loaded into this Lightning server
     instance. Does not require any query parameters.
 

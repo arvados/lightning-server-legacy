@@ -1,33 +1,6 @@
 Data Structures Specifications, v0.1.0
 ================================================
 
-.. _version-map-data-structure:
-
-VersionMap
------------
-
-    A way to convert between tag set version MD5 hash digests (portable data hashes)
-    and tag set version integers, which are used by the server as a shorthand.
-    A dictionary keyed by version integers. The values associated with each tag
-    set version integer is the MD5 hash digest of the tag set and path definition.
-    The MD5 hash digest is also the portable data hash of the collection used as
-    the tag set input for the pipeline.
-
-    ::
-
-        {
-          <int> : <string>,
-          <int> : <string>,
-          ...
-        }
-
-        {
-          version-int : version-md5sum,
-          version-int : version-md5sum,
-          ...
-        }
-
-
 .. _tile-position-data-structure:
 
 TilePosition

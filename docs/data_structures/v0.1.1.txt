@@ -1,10 +1,6 @@
 Data Structures Specifications, v0.1.1
 ================================================
 
-VersionMap
------------
-    (No changes, see :ref:`version-map-data-structure`.)
-
 TilePosition
 -------------
     (No changes, see :ref:`tile-position-data-structure`.)
