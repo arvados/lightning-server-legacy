@@ -1,6 +1,17 @@
 Data Structures Specifications, v0.1.0
 ================================================
 
+.. _arvados-uuid-data-structure:
+
+ArvadosUUID
+------------
+
+    The UUID of an Arvados object.
+
+    ::
+
+        '<string>-<string>-<string>'
+
 .. _tile-position-data-structure:
 
 TilePosition
@@ -140,6 +151,7 @@ TileVariantDetail
     The metadata information associated with one well sequenced tile variant.
     Dictionary containing the keys:
 
+    * ``tile-variant``: The TileVariant_ identifier.
     * ``tag-length``: The length of the tags.
     * ``start-tag``: The sequence of the start tag. Must be of length 0 (if the tile
       is at the start of the path) or the length specified by ``tag-length``. Cannot
@@ -277,6 +289,8 @@ CMPTuple
 VCF Data Structures Specifications
 -------------------------------------
 
+.. _gVCF-block-data-structure:
+
 gVCFBlock
 ^^^^^^^^^^^
     Genotype quality ranges used for banding. List of integers (length greater
@@ -288,6 +302,8 @@ gVCFBlock
     ::
 
         [0, <int>, ..., 2147483647]
+
+.. _gVCF-metadata-data-structure:
 
 gVCFMetaData
 ^^^^^^^^^^^^^^
@@ -333,8 +349,10 @@ gVCFMetaData
                 'Description':'Represents any possible alternative allele at this location'
               }
             ],
-            'gvcfblock': gVCFBlock_,
+            'gvcfblock': gVCFBlock_
         }
+
+.. _VCF-metadata-data-structure:
 
 VCFMetaData
 ^^^^^^^^^^^^^
@@ -380,6 +398,8 @@ VCFSampleFormatData
           'GT':<string>
         }
 
+.. _VCF-line-data-structure:
+
 VCFLine
 ^^^^^^^^^
     Representation of VCF line. Keys:
@@ -420,7 +440,7 @@ VCFLine
       the number of samples with data is below 50% of the total number of samples.
       `0` is reserved and should not be used as a filter string. If filters have
       not been applied, then the list should be empty. (List of strings with no
-      white-space or semi-colons permitted)
+      white-space or semi-colons permitted).
     * ``format``: Genotype information (JSON-formatted). Key is 'GT'. Values are a
       list of strings with no white-space, semi-colons, commas or equals-signs.
 
@@ -433,4 +453,27 @@ VCFLine
           'alt':[<string>, ...],
           'filter':[<string>, ...],
           'format': [VCFSampleFormatData_, ...]
+        }
+
+.. _gVCF-line-data-structure:
+
+gVCFLine
+^^^^^^^^^^
+    Representation of gVCF line. Keys are the same as VCFLine_ with one additional
+    key:
+
+    * ``info``: Additional information (dictionary, optional) to indicate when
+      a gVCF block ends. Only 1 valid key exists in this version: "END". Values
+      are a list of integers. The list must be of length 1.
+
+    ::
+
+        {
+          'chrom':<string>,
+          'pos':<int>,
+          'ref':<string>,
+          'alt':[<string>, ...],
+          'filter':[<string>, ...],
+          'format': [VCFSampleFormatData_, ...],
+          'info':{"END":[<int>]}
         }

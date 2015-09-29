@@ -4,7 +4,14 @@ Importing a Genome
 Importing a genome is difficult. We'll probably do it using pipelines. Have one
 pipeline in pipeline_templates that is run when someone uploads a genome.
 
+We acknowledge that phenotypes or meta-information about each genome is
+vital for interpreting results. However, the breadth of available phenotype
+databases and the number of possible pieces of information makes using Lightning
+as a phenotype database infeasible. Sprite provides a preliminary phenotype database,
+which includes information about whether each genome (or set of calls, also known
+as a callset) is a reference. Additionally, it stores whether the phases are well
+known, as well as the sex and the ethnicity.
+
 .. todo::
     Implement a better process for importing a genome
     Document the process
-    
