@@ -1,0 +1,658 @@
+Lightning v0.1.0 API Specifications
+====================================
+
+We highly recommend reading :doc:`../data_structures/v0.1.0` before diving into
+this API. These API only support well-sequenced tile variants
+
+Lightning Server Namespace
+---------------------------
+
+::
+
+  /status : returns the API version running on the server
+  /tile-library
+    /tag-versions : returns the tag set version information for all versions
+                    supported by the server.
+    /{tag-set-int} : given the tag set version integer, returns a dictionary
+                     keyed by path integer with a value of the number of steps
+      /{path-int} : given the tag set version integer and the path integer, returns
+                    a dictionary keyed by step integer with a value of the number
+                    of variants
+        /{step-int} : given the tag set version integer, path integer, and step
+                      integers, returns a list of tuples:
+                      (md5sum of sequence, frequency, total population size)
+          /{variant-md5sum} : given the tag set version integer, path integer,
+                              step integer, and the md5sum of the tile variant,
+                              returns details about the tile variant
+            /locus : given the tag set version integer, path integer, step integer,
+                     and the md5sum of the tile variant, and optional query
+                     parameters containing assembly information, returns locus
+                     information about the tile variant.
+            /subsequence: given the tag set version integer, path integer, step
+                          integer, the md5sum of the tile variant, and query
+                          parameters containing locus information, returns the
+                          subsequence of the tile variant
+            /annotations: given the tag set version integer, path integer, step
+                          integer, the md5sum of the tile variant, and a request
+                          containing locus information, returns the subsequence
+                          of the tile variant
+  /annotiles : returns a list of annotation identifiers loaded into the Lightning
+               instance
+    /{annotation-id} : given an annotation id, returns the tile variants associated
+                       with that annotation.
+  /callsets : returns a list of all genome names
+    /{callset-name} : returns details about the callset
+      /gvcf : returns a list of gVCF lines, requires request containing locus or
+              loci to return
+      /vcf : returns a list of VCF lines, requires request containing locus or
+             loci to return.
+    /filters : returns valid filters
+    /filter-phase-insensitive : returns a list of callsets matching filters,
+                                accepts request containing filters and subsection
+                                of the callsets to run query on.
+    /filter-phase-sensitive : returns a dictionary of callsets mapped to the
+                              integers of their phases matching filters, accepts
+                              request containing filters and subsection of the
+                              callsets to run query on.
+    /tile-variants : returns tile variants for subsection of callsets over positions
+                     given, requires request containing callsets and positions
+  /assemblies : returns a list of loaded loci (valid locations) for all assemblies
+
+GET /status
+------------
+    Request used to obtain the status of the Lightning server instance, which
+    currently only includes the API version the server is running. Does not
+    require any query parameters.
+
+    **Response body:** ::
+
+        {
+          'api-version': <int>.<int>.<int>
+        }
+
+    **Example response:** ::
+
+        { 'api-version' : 0.1.0 }
+
+GET /tile-library/tag-versions
+-------------------------------
+    Request used to get the mapping between the tag set integers and reproducible
+    tag set identifiers that may be used by any server. Does not require any query
+    parameters. Returns the tag set version integers (in base 16) on the server
+    along with their unique identifiers. These identifiers are based on information
+    about the tag set and the path dividers. Response body is of type
+    Version Map Data Structure.
+
+    **Response body:** ::
+
+        <VersionMap>
+
+
+    **Example response:** ::
+
+        {
+            0 : 'd87075c41962489cb9ce7d63da1d7841',
+            1 : '047ae54fba97385716acd2c552fae763'
+        }
+
+GET /tile-library/{tag-set-int}
+--------------------------------
+    Request used to get information about specific tag set given the tag set
+    integer (in base 16). Does not require any query parameters. Returns a
+    dictionary with path and step information for the given tag set version integer.
+    The returned dictionary contains keys that are path integers (in base 16),
+    whose values are the number of steps (in base 16) in that path.
+
+    **Response body:** ::
+
+        {
+            <int> : <int>,
+            <int> : <int>,
+            ...
+        }
+
+    **Example response:** ::
+
+        {
+            000 : 1533,
+            001 : 2d41,
+            002 : 1bc8,
+            ...
+        }
+
+GET /tile-library/{tag-set-int}/{path-int}
+-------------------------------------------
+    Request used to get information about a path given the path integer (in base
+    16) and specific tag set integer (in base 16). Does not require any query
+    parameters. Returns a dictionary with step information for the path. The
+    returned dictionary contains keys that are step integers (in base 16), and a
+    dictionary containing the number of total tile variants (in base **10**)
+    and the number of well-sequenced tile variants (in base **10**) at that step.
+
+    **Response body:** ::
+
+        {
+            <int> : {
+              'total': <int>,
+              'well-sequenced': <int>
+            },
+            <int> : {
+              'total': <int>,
+              'well-sequenced': <int>
+            },
+            ...
+        }
+
+    **Example Response:** ::
+
+        {
+            0000 : {
+              'total': 300,
+              'well-sequenced': 17
+            },
+            0001 : {
+              'total': 30,
+              'well-sequenced': 17
+            },
+            ...
+        }
+
+GET /tile-library/{tag-set-int}/{path-int}/{step-int}
+------------------------------------------------------
+    Request used to get information about a step given the step integer (in
+    base 16), the path integer (in base 16), and the tag set integer (in base
+    16). Does not require any query parameters. Returns the information about a
+    :ref:`tile-position-data-structure` as a dictionary. Keys include:
+
+    * ``total-population``: the total number of genomes (in base 10) with a tile
+      variant at the given tile positions
+    * ``tile-variants``: list of well-sequenced tile variants at that tile
+      position. Each entry in the list is a dictionary with keys ``md5sum`` (
+      the MD5 hash digest of the tile variant sequence) and ``population`` (the
+      number of genomes that have that tile variant).
+
+    **Response body:** ::
+
+        {
+            'total-population' : <int>,
+            'tile-variants' : [
+                {'md5sum': <string>, 'population':<int>},
+                {'md5sum': <string>, 'population':<int>},
+                ...
+            ]
+        }
+
+    **Example Response:** ::
+
+        {
+            'total-population' : 300,
+            'tile-variants': [
+                {
+                  'md5sum':'b41f90f866ccd3158842824117f0cf1d',
+                  'population':150
+                },
+                {
+                  'md5sum':'bad36610c021a66bffc5460ae0256c59',
+                  'population':150
+                }
+            ]
+        }
+
+GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}
+-----------------------------------------------------------------------
+    Request used to get information about a tile variant given the variant identifier
+    (md5sum), the step integer (in base 16), the path integer (in base 16), and
+    the tag set integer (in base 16). Does not require any query parameters.
+    Returns details about a :ref:`tile-variant-data-structure` as a
+    :ref:`tile-variant-detail-data-structure`.
+
+    **Response body:** ::
+
+        <TileVariantDetail>
+
+    **Example response:** ::
+
+        {
+            'tag-length': 24,
+            'start-tag': 'ggagaactgtgctccgccttcaga',
+            'end-tag': 'acacatgctagcgcgtcggggtgg',
+            'is-start-of-path': False,
+            'is-end-of-path': False,
+            'sequence' : 'ggagaactgtgctccgccttcagagtaccaccgaaatctgtgcagaggacaacgcagctccgccctcgcggtgctctccgggtctgtgctgaggagaacgcaactccgccgttgcaaaggcgcgccgcgccggcgcaggcgcagagaggcgcgccgcgccggcgcaggcgcagagaggcgcgccgcgccggcgcaggcgcagagaggcgcgccgcgccggcgcaggcgcagagaggcgcgccgcgccggcgcaggcgcagagaggcgcgccgcgccggcgcaggcgcagacacatgctagcgcgtcggggtgg',
+            'md5sum': 'b41f90f866ccd3158842824117f0cf1d',
+            'length': 313,
+            'number-of-positions-spanned': 1,
+            'population-frequency': 0.5,
+            'population-count': 150,
+            'population-total': 300
+        }
+
+GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}/locus
+-----------------------------------------------------------------------------
+    Request used to get information about the loci a particular tile variant
+    covers given the variant identifier (md5sum), the step integer (in base 16),
+    the path integer (in base 16), and the tag set integer (in base 16). Query
+    parameters 'assembly-name' and 'assembly-pdh' may be used to specify which
+    assembly should be retrieved (these parameters are based from the
+    :ref:`assembly-data-structure` Data structure). If no query parameters are
+    provided, all assemblies available for the provided tile variant are returned.
+    Returns a list of :ref:`locus-data-structure`.
+
+    **GET Query Parameters:**
+
+        =================  =========  =========
+        Parameter name     Type       Notes
+        =================  =========  =========
+        ``assembly-name``  <string>   Optional
+        ``assembly-pdh``   <string>   Optional
+        =================  =========  =========
+
+    **Response body:** ::
+
+        [<Locus>, ...]
+
+    **Example Query Parameters:**
+
+        =================  ========================================
+        Parameter name     Value
+        =================  ========================================
+        ``assembly-name``  'hg19'
+        ``assembly-pdh``   'dad94936d4144f5e0a289244d8be93e9+5735'
+        =================  ========================================
+
+    **Example response body:** ::
+
+        [
+          {
+            'assembly-name': 'hg19',
+            'assembly-pdh': 'dad94936d4144f5e0a289244d8be93e9+5735',
+            'chromosome-name': '1',
+            'indexing': 0,
+            'start-position': 10534,
+            'end-position': 10847
+          }
+        ]
+
+GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}/subsequence
+-----------------------------------------------------------------------------------
+    Request used to get a subsequence of a particular tile variant given an
+    assembly locus (using query parameters), the variant identifier (md5sum),
+    the step integer (in base 16), the path integer (in base 16), and the tag
+    set integer (in base 16). Query parameters follow the :ref:`locus-data-structure`
+    data structure. These query parameters are required. The response is a
+    dictionary with one key: ``sequence``.
+
+    If the :ref:`locus-data-structure` provided touches a locus outside of the
+    tile variant, the API should return an error.
+
+    **GET Query Parameters:**
+
+        ===================  =========
+        Parameter name       Type
+        ===================  =========
+        ``assembly-name``    <string>
+        ``assembly-pdh``     <string>
+        ``chromosome-name``  <string>
+        ``indexing``         <int>
+        ``start-position``   <int>
+        ``end-position``     <int>
+        ===================  =========
+
+    **Response body:** ::
+
+        {
+          'sequence': <string>
+        }
+
+    **Example Query Parameters:**
+
+        ===================  ========================================
+        Parameter name       Value
+        ===================  ========================================
+        ``assembly-name``    'hg19'
+        ``assembly-pdh``     'dad94936d4144f5e0a289244d8be93e9+5735'
+        ``chromosome-name``  '1'
+        ``indexing``         0
+        ``start-position``   10534
+        ``end-position``     10540
+        ===================  ========================================
+
+    **Example response body:** ::
+
+        {
+          'sequence': 'ggaga'
+        }
+
+GET /tile-library/{tag-set-int}/{path-int}/{step-int}/{variant-md5sum}/annotations
+-----------------------------------------------------------------------------------
+    Request used to get the annotations associated with a particular tile variant
+    given the variant identifier (md5sum), the step integer (in base 16), the
+    path integer (in base 16), and the tag set integer (in base 16). Does not
+    require any query parameters. The response is a list of annotation identifiers.
+    If no annotation identifiers exist that are associated with that tile variant,
+    returns an empty list.
+
+    **Response body:** ::
+
+        [ <string>, <string>, ...]
+
+    **Example response body:** ::
+
+        [ 'annotation1', 'annotation3']
+
+GET /annotiles
+---------------
+    Request used to get all the annotations loaded into this Lightning server
+    instance. Does not require any query parameters.
+
+    **Response body:** ::
+
+        [ 'annotation0', 'annotation1', 'annotation2', 'annotation3']
+
+GET /annotiles/{annotation-id}
+-------------------------------
+    Request used to determine which tile variants (:ref:`tile-variant-data-structure`)
+    are associated with a particular annotation identifier. Does not require any
+    query parameters.
+
+    **Response body:** ::
+
+        [<TileVariant>, ...]
+
+    **Example response body:** ::
+
+        ['00.000.0001.b41f90f866ccd3158842824117f0cf1d']
+
+GET /callsets
+--------------
+    Request used to determine which callsets (called genomes) are loaded into this
+    Lightning server instance. Returns a list of the names of the callsets. Does
+    not require any query parameters.
+
+    **Response body:** ::
+
+        [<string>, <string>, ... ]
+
+    **Example response body:** ::
+
+        ['human1-complete-genomics', 'human1-illumina', 'human2', 'assembly-hg19' ]
+
+GET /callsets/{callset-name}
+-----------------------------
+Request used to find details about the callset.
+Returns dictionary containing details about the callset. If the callset name is
+the name of an assembly or reference, the key 'is-reference' is in the response
+body. If the callset is a non-reference sequence, the keys will not include
+'is-reference', but other keys indicating phenotype may be present.
+
+**Reference/assembly response body:** ::
+
+    {
+        'name' : <string>,
+        'is-reference': <string>
+    }
+
+**Non-reference callset response body:** ::
+
+    {
+        'name': <string>,
+       <string> : <string>,
+       <string> : <string>,
+       ...
+    }
+
+**Example 1:** ::
+
+    GET /callsets/assembly-hg19
+    Response body: {
+        'name' : 'assembly-hg19',
+        'is-reference': 'hg19'
+    }
+
+**Example 2:** ::
+
+    GET /callsets/human1-illumina
+    Response body: {
+        'name' : 'human1-illumina',
+        'phases-known': 'false',
+        'sex': 'female',
+        'ethnicity': 'Caucasian'
+    }
+
+GET /callsets/{callset-name}/gvcf (acts like a POST)
+-----------------------------------------------------
+.. todo::
+    Is this a POST or a GET? Stopped intensive editing here
+
+Requires a request containing information about the loci to return. Returns a list
+of gVCF lines for the callset at these loci.
+
+**Request body:** ::
+
+    {
+        'loci' : [ <Locus>, <Locus>, ... ] OR { <string> : <Locus>, <string> : <Locus>, ... }
+    }
+
+**Response body:** ::
+
+    {
+        (<string>, <Locus>) OR <Locus> : [
+            <gVCF-line>,
+            <gVCF-line>,
+            ...
+        ],
+        (<string>, <Locus>) OR <Locus> : [
+            <gVCF-line>,
+            <gVCF-line>,
+            ...
+        ],
+        ...
+    }
+
+GET /callsets/{callset-name}/vcf (acts like a POST)
+----------------------------------------------------
+.. todo::
+    Is this a POST or a GET? Stopped intensive editing here
+
+Requires a request containing information about the loci to return. Returns a list
+of VCF lines for the callset at these loci.
+
+**Request body:** ::
+
+    {
+        'loci' : [ <Locus>, <Locus>, ... ] OR { <string> : <Locus>, <string> : <Locus>, ... },
+    }
+
+**Response body:** ::
+
+    {
+        (<string>, <Locus>) OR <Locus> : [
+            <VCF-line>,
+            <VCF-line>,
+            ...
+        ],
+        (<string>, <Locus>) OR <Locus> : [
+            <VCF-line>,
+            <VCF-line>,
+            ...
+        ],
+        ...
+    }
+
+GET /callsets/filters
+----------------------
+Returns the filters the lightning server supports and the options available for
+each filter (options not shown for filter 'tile-variants', but key 'tile-variants'
+is included for completeness). None of the filters can be named 'tile-variants',
+'is-reference', or 'callsets'.
+
+**Request body:** ::
+
+    None
+
+**Response body:** ::
+
+    {
+        'tile-variants' : [ ],
+        'is-reference': [ <string>, <string>, ... ],
+        <string> : [ <string>, <string>, ... ],
+        <string> : [ <string>, <string>, ... ],
+        ...
+    }
+
+**Example response body:** ::
+
+    {
+        'tile-variants' : [ ],
+        'is-reference': [ 'hg19', 'hg38' ],
+        'sex': [ 'male', 'female', 'other' ]
+    }
+
+POST /callsets/filter-phase-insensitive
+----------------------------------------
+Returns a list of callsets that match the request filters on at least one phase.
+Besides the tile-variants logic, all filters are AND'd. If the value associated
+with 'callsets' is an empty list, the query is done on all callsets in the
+lightning server.
+
+**Request body:** ::
+
+    {
+        'tile-variants-sat' : <TileVariantLogic>,
+        'callsets' : [ <string>, <string>, ... ],
+        'is-reference': [ <string>, <string>, ... ],
+        <string> :  [ <string>, <string>, ...],
+        <string> :  [ <string>, <string>, ...],
+        ...
+    }
+
+**Response body:** ::
+
+    [ <string>, <string>, ... ]
+
+.. todo::
+    example
+
+POST /callsets/filter-phase-sensitive
+--------------------------------------
+Returns a dictionary of callsets with a list of phases that match the request
+filters. Besides the tile-variants logic, all filters are AND'd. If the value
+associated with 'callsets' is an empty list, the query is done on all callsets
+in the lightning server.
+
+**Request body:** ::
+
+    {
+        'tile-variants-sat' : <TileVariantLogic>,
+        'callsets' : [ <string>, <string>, ... ],
+        'is-reference': [ <string>, <string>, ... ],
+        <string> :  [ <string>, <string>, ...],
+        <string> :  [ <string>, <string>, ...],
+        ...
+    }
+
+**Response body:** ::
+
+    {
+        <string> : {
+            'phase-groups-known' : <boolean>,
+            'phases': [ <int>, <int>, ... ]
+        },
+        <string> : {
+            'phase-groups-known' : <boolean>,
+            'phases' : [ <int>, <int>, ... ]
+        },
+        ...
+    }
+
+.. todo::
+    example
+
+POST /callsets/tile-variants
+-----------------------------
+Returns a dictionary of callsets with a list of variants for each phase. The
+variants are returned only for the tile positions given by the tile-positions
+list. If the value of 'tile-positions' is an empty list, all tile-variants are
+returned.  If the value associated with 'callsets' is an empty list, the query
+is done on all callsets in the lightning server. The only reason this is a POST
+is because the request arguments could be too big to fit in the URL.
+
+**Request body:** ::
+
+    {
+        'tile-positions': [ <TilePosition> or <TilePositionRange>,  ... ],
+        'callsets': [ <string>, <string>, ... ]
+    }
+
+**Response body:** ::
+
+    {
+        <string>: {
+            'phase-groups' : None OR [ <int>-<int>, <int>-<int>, ... ],
+            'sequence' : [
+
+                [ <TileVariant>, <TileVariant>, ... ],
+
+                [ <TileVariant>, <TileVariant>, ... ],
+
+                ...
+
+            ]
+
+        },
+        <string>: {
+            'phase-groups' : None OR [ <int>-<int>, <int>-<int>, ... ],
+            'sequence' : [
+                [ <TileVariant>, <TileVariant>, ... ],
+                [ <TileVariant>, <TileVariant>, ... ],
+                ...
+            ],
+        },
+        ...
+    }
+
+
+**Example request body:** ::
+
+    {
+        'tile-positions': [ '0.0.1', '0.0.2' ],
+        'callsets': ['assembly-hg19', 'human2' ]
+    }
+
+**Example response body:** ::
+
+    {
+        'assembly-hg19: {
+            'phase-groups' : [ 0-2 ],
+            'sequence' : [ [ '0.0.1.bab3...', '0.0.2.1f35...' ] ]
+        },
+        'human2: {
+            'phase-groups' : None,
+            'sequence': [
+                [ '0.0.0.1afe...', '0.0.2.1f35...' ],
+                [ '0.0.1.bab3...', '0.0.2.1f35...' ]
+            ]
+        }
+    }
+
+GET /assembly-loci
+--------------------
+Returns a list of loci in the server
+
+**Request body:** ::
+
+    None
+
+**Response body:** ::
+
+    [ <Locus>, <Locus>, ... ]
+
+**Example response body:** ::
+
+    [
+        ['hg19', 'chr1', 0, 0, 249250620],
+        ['hg19', 'chr2', 0, 0, 243199372],
+        ...,
+        ['hg38', 'chr1', 0, 0, 248956421],
+        ...
+    ]
