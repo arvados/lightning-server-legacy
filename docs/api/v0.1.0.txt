@@ -1,6 +1,11 @@
 Alternate Lightning v0.1.0 API Specifications
 ==============================================
 
+..
+  Useful links I used when designing the API:
+  http://stackoverflow.com/questions/1266596/what-is-the-best-way-to-design-a-http-request-when-somewhat-complex-parameters-a
+  http://www.vinaysahni.com/best-practices-for-a-pragmatic-restful-api#requirements
+
 We highly recommend reading :doc:`../data_structures/v0.1.0` before diving into
 this API. These API only support well-sequenced tile variants
 
