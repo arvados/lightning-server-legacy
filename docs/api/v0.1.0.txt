@@ -1,5 +1,5 @@
-Alternate Lightning v0.1.0 API Specifications
-==============================================
+Lightning v0.1.0 API Specifications
+======================================
 
 ..
   Useful links I used when designing the API:
@@ -7,7 +7,9 @@ Alternate Lightning v0.1.0 API Specifications
   http://www.vinaysahni.com/best-practices-for-a-pragmatic-restful-api#requirements
 
 We highly recommend reading :doc:`../data_structures/v0.1.0` before diving into
-this API. These API only support well-sequenced tile variants
+this API. These API only support well-sequenced tile variants. Note that RESTful
+API GET queries do not allow request data.
+
 
 Lightning Server Namespace
 ---------------------------
@@ -86,6 +88,10 @@ GET /status
           'api-version': <int>.<int>.<int>
         }
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/status
+
     **Example response:** ::
 
         { 'api-version' : 0.1.0 }
@@ -101,6 +107,10 @@ GET /tile-library/tag-sets
 
         [<string>, ...]
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets
+
     **Example response:** ::
 
         ['d87075c41962489cb9ce7d63da1d7841', '047ae54fba97385716acd2c552fae763']
@@ -108,7 +118,8 @@ GET /tile-library/tag-sets
 GET /tile-library/tag-sets/{tag-set-identifier}
 ------------------------------------------------
     Request used to get information about the given tag set identifier. Does not
-    require any query parameters.
+    require any query parameters. Provides the short integer identifier used by
+    this server to represent the tag set (keyed by 'tag-set-integer').
 
     **Response body:** ::
 
@@ -116,6 +127,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}
           'tag-set-identifier' : <string>,
           'tag-set-integer': <int> (base 16)
         }
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841
 
     **Example response:** ::
 
@@ -135,7 +150,12 @@ GET /tile-library/tag-sets/{tag-set-identifier}/paths
 
         [<int>, ...]
 
-    **Example response for a BRCA Lightning Instance:** ::
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/paths
+
+    **Example response for a BRCA Lightning Instance (a lightning server with 2
+    paths defined - 247 and 2c5):** ::
 
         [247, 2c5]
 
@@ -148,12 +168,19 @@ GET /tile-library/tag-sets/{tag-set-identifier}/paths/{path-int}
     in base 16 in the uri. Does not require any query parameters. Returns a
     dictionary with path information for the specified path and tag set.
 
+    The number of tile positions for this path is provided under the
+    'num-positions' key.
+
     **Response body:** ::
 
         {
             'path' : <int> (base 16),
             'num-positions' : <int> (base 10)
         }
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/paths/2c5
 
     **Example response:** ::
 
@@ -173,6 +200,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}/tile-positions
     **Response body:** ::
 
         [<TilePosition>, ...]
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/tile-positions
 
     **Example response for a BRCA Lightning Instance:** ::
 
@@ -196,6 +227,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}/tile-positions/{tile-position-id
             'well-sequenced-tile-variants': <int>, (base 10)
             'num-genomes': <int> (base 10)
         }
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/tile-positions/00.247.0000
 
     **Example Response:** ::
 
@@ -239,6 +274,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}/tile-positions/{tile-position-id
         ``assembly-pdh``   'dad94936d4144f5e0a289244d8be93e9+5735'
         =================  ========================================
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/tile-positions/00.247.0000/locus?assembly-name=hg19&assembly-pdh=dad94936d4144f5e0a289244d8be93e9+5735
+
     **Example response body:** ::
 
         [
@@ -264,6 +303,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}/tile-variants
 
         [<TileVariant>, ...]
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/tile-variants
+
     **Example response for a BRCA Lightning Instance:** ::
 
         [
@@ -288,6 +331,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}/tile-variants/{tile-variant-id}
     **Response body:** ::
 
         <TileVariantDetail>
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/tile-variants/00.2c5.30ae.bc952f709d7419f7e103daa2b7e469a9
 
     **Example response:** ::
 
@@ -339,6 +386,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}/tile-variants/{tile-variant-id}/
         ``assembly-name``  'hg19'
         ``assembly-pdh``   'dad94936d4144f5e0a289244d8be93e9+5735'
         =================  ========================================
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/tile-variants/00.2c5.30ae.bc952f709d7419f7e103daa2b7e469a9/locus?assembly-name=hg19&assembly-pdh=dad94936d4144f5e0a289244d8be93e9+5735
 
     **Example response body:** ::
 
@@ -397,6 +448,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}/tile-variants/{tile-variant-id}/
         ``end-position``     32199983
         ===================  ========================================
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/tile-variants/00.2c5.30ae.bc952f709d7419f7e103daa2b7e469a9/subsequence?assembly-name=hg19&assembly-pdh=dad94936d4144f5e0a289244d8be93e9+5735&chromosome-name=13&indexing=0&start-position=32199976&end-position=32199983
+
     **Example response body:** ::
 
         {
@@ -417,6 +472,10 @@ GET /tile-library/tag-sets/{tag-set-identifier}/tile-variants/{tile-variant-id}/
 
         [ <string>, <string>, ...]
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/tile-library/tag-sets/d87075c41962489cb9ce7d63da1d7841/tile-variants/00.2c5.30ae.bc952f709d7419f7e103daa2b7e469a9/annotations
+
     **Example response body:** ::
 
         [ 'annotation1', 'annotation3']
@@ -425,6 +484,10 @@ GET /annotiles
 ----------------
     Request used to get all the annotations loaded into this Lightning server
     instance. Does not require any query parameters.
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/annotiles
 
     **Response body:** ::
 
@@ -439,6 +502,10 @@ GET /annotiles/{annotation-id}
     **Response body:** ::
 
         [<TileVariant>, ...]
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/annotiles/annotation0
 
     **Example response body:** ::
 
@@ -455,29 +522,13 @@ GET /callsets
 
         [<string>, <string>, ... ]
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/callsets
+
     **Example response body:** ::
 
         ['human1-complete-genomics', 'human1-illumina', 'human2', 'assembly-hg19' ]
-
-POST /callsets
---------------
-    Possibly a v0.1.1 functionality.
-
-    Creates a callset (called genomes) in this Lightning server instance. Returns
-    an Arvados UUID pointing to the pipeline instance adding the callset. The
-    callset will appear on the server once the pipeline finishes successfully.
-
-    **Request body:** ::
-
-        {
-          'callset-name': <string>,
-          'callset-format': <string>,
-          'callset-collection-pdh': <string>
-        }
-
-    **Response body:** ::
-
-        <ArvadosUUID>
 
 
 GET /callsets/{callset-name}
@@ -494,9 +545,12 @@ GET /callsets/{callset-name}
             'callset-locator': <string>
         }
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/callsets/assembly-hg19
+
     **Example response body:** ::
 
-        GET /callsets/assembly-hg19
         Response body: {
             'callset-name': 'assembly-hg19',
             'callset-locator': '1cf491c1ea99543da01c5a8f6b8a6dba+228008/hg19'
@@ -532,6 +586,10 @@ GET /callsets/{callset-name}/gvcf-header
         ``assembly-name``    'hg19'
         ``assembly-pdh``     'dad94936d4144f5e0a289244d8be93e9+5735'
         ===================  ========================================
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/callsets/human1-illumina/gvcf-header?assembly-name=hg19&assembly-pdh=dad94936d4144f5e0a289244d8be93e9+5735
 
     **Example response body:** ::
 
@@ -604,6 +662,10 @@ GET /callsets/{callset-name}/gvcf
         ``end-position``     32200225
         ===================  ========================================
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/callsets/human1-illumina/gvcf?assembly-name=hg19&assembly-pdh=dad94936d4144f5e0a289244d8be93e9+5735&chromosome-name=13&indexing=0&start-position=32199976&end-position=32200225
+
     **Example response body:** ::
 
         [
@@ -669,6 +731,10 @@ GET /callsets/{callset-name}/vcf-header
         ``assembly-pdh``     'dad94936d4144f5e0a289244d8be93e9+5735'
         ===================  ========================================
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/callsets/human1-illumina/vcf-header?assembly-name=hg19&assembly-pdh=dad94936d4144f5e0a289244d8be93e9+5735
+
     **Example response body:** ::
 
         {
@@ -723,6 +789,9 @@ GET /callsets/{callset-name}/vcf
         ``end-position``     32200225
         ===================  ========================================
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/callsets/human1-illumina/gvcf?assembly-name=hg19&assembly-pdh=dad94936d4144f5e0a289244d8be93e9+5735&chromosome-name=13&indexing=0&start-position=32199976&end-position=32200225
 
     **Example response body:** ::
 
@@ -755,7 +824,7 @@ GET /callsets/{callset-name}/tile-variants
         ===================  ==========================================  =========
         Parameter name       Type                                        Notes
         ===================  ==========================================  =========
-        ``tile-positions``   [<TilePosition>|<TilePositionRange>, ...]   Optional
+        ``tile-positions``   <TilePosition>|<TilePositionRange>          Optional
         ===================  ==========================================  =========
 
     **Response body:** ::
@@ -774,8 +843,12 @@ GET /callsets/{callset-name}/tile-variants
         ===================  ======================
         Parameter name       Type
         ===================  ======================
-        ``tile-positions``   ['00.247.0000-0003']
+        ``tile-positions``   '00.247.0000-0003'
         ===================  ======================
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/callsets/human1-illumina/tile-variants?tile-positions=00.247.0000-0003
 
     **Example response body:** ::
 
@@ -804,6 +877,10 @@ GET /assemblies
 
         [ <Assembly>, ...]
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/assemblies
+
     **Example response body:** ::
 
         [
@@ -827,6 +904,10 @@ GET /assemblies/{assembly-id}
     **Response body:** ::
 
         [ <Locus>, ...]
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/assemblies/dad94936d4144f5e0a289244d8be93e9+5735
 
     **Example response body:** ::
 
@@ -870,6 +951,10 @@ GET /searches/help
             ...
         }
 
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/searches/help
+
     **Example response body:** ::
 
         {
@@ -887,6 +972,10 @@ GET /searches
     **Response body:** ::
 
         [<ArvadosUUID>, ... ]
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/searches
 
     **Example response body:** ::
 
@@ -910,6 +999,10 @@ GET /searches/{search-id}
           },
           'response': None | [<string>, ...]
         }
+
+    **Example Query:** ::
+
+        curl -H "Accept:application/json" http://localhost:8888/searches/su92l-d1hrv-lcrzu0qrs1iiu03
 
     **Example response body:** ::
 
@@ -942,12 +1035,9 @@ POST /searches
 
         <ArvadosUUID>
 
-    **Example request body:** ::
+    **Example Query:** ::
 
-        {
-          'tile-variants': [['00.247.0000.830003ac103a97d8f7992e09594ac68e']],
-          'phasing': ['any-phase']
-        }
+        curl -i -X POST -H "Content-Type:application/json" http://localhost:8888/searches -d '{"tile-variants": [["00.247.0000.830003ac103a97d8f7992e09594ac68e"]],"phasing": ["any-phase"]}'
 
     **Example response body:** ::
 

@@ -1,0 +1,36 @@
+Batch Processing
+=================
+
+The API calls are excellent for one-off queries. However, many users may wish to
+use these calls many times for many samples and/or over large parts of the genome.
+To speed up these queries and reduce load on the server, Lightning plans to
+support batch processing.
+
+.. todo::
+    Document these better
+
+Filter to Find Tile Variants Matching Filters
+----------------------------------------------
+    Finds tile variants fulfilling a specified filters
+
+    * REGEX on sequence, start tag, or end tag
+    * Float comparison on length, the number of positions spanned, the frequency
+      of this tile, or the number of callsets called at this position
+    * True/False on whether the tile is at the start of path or at the end of the
+      path
+
+Find Loci of Multiple Tiles at Once
+------------------------------------
+    .. todo::
+        Document
+
+Retrieve the Library Around a Group of Loci
+--------------------------------------------
+    Returns a list of tile-positions touching given loci, a dictionary of
+    tile-variants touching those loci with the sequence of the tile variant, cut
+    off if appropriate, and the tag-length. We should be able to name the loci
+    for convenience.
+
+    .. todo::
+        Should document the INDEL behavior. Previous documentation is at
+        lightning-dev4.curoverse.com/pad/p/lightning-indel-behavior

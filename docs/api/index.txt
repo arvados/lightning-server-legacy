@@ -15,10 +15,10 @@ Contents:
 .. toctree::
 
     v0.1.0
-    batch_processing_v0.1.0
     reasoning_v0.1.0
     errors_v0.1.0
     v0.1.1
+    batch_processing_v0.1.1
 
 Versioning
 -----------

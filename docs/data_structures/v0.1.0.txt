@@ -12,6 +12,10 @@ ArvadosUUID
 
         '<string>-<string>-<string>'
 
+    **Example ArvadosUUID:** ::
+
+        'su92l-d1hrv-1xal9oo1iyi7tzn'
+
 .. _tile-position-data-structure:
 
 TilePosition
@@ -26,6 +30,10 @@ TilePosition
         '<int>.<int>.<int>'
 
         Version.Path.Step
+
+    **Example TilePosition:** ::
+
+        '00.2c5.00a1'
 
 .. _tile-position-range-data-structure:
 
@@ -47,6 +55,9 @@ TilePositionRange
             StartStep: inclusive, 0-indexed
             EndStep: exclusive, 0-indexed
 
+    **Example TilePositionRange:** ::
+
+        '00.2c5.00a1-00b0'
 
 .. _tile-variant-data-structure:
 
@@ -65,6 +76,10 @@ TileVariant
 
         Version.Path.Step.VariantMD5SUM
 
+    **Example TileVariant:** ::
+
+        '00.247.1bfb.c95325c08a449529143776e18561db71'
+
 .. _not-tile-variant-data-structure:
 
 NotTileVariant
@@ -80,6 +95,10 @@ NotTileVariant
 
         Version.Path.Step.VariantMD5SUM
 
+    **Example NotTileVariant:** ::
+
+        '~00.247.1bfb.c95325c08a449529143776e18561db71'
+
 .. _clause-entry-data-structure:
 
 ClauseEntry
@@ -93,6 +112,10 @@ ClauseEntry
     ::
 
         <TileVariant> | <NotTileVariant>
+
+    **Example ClauseEntry:** ::
+
+        '00.247.1bfb.c95325c08a449529143776e18561db71'
 
 .. _tile-variant-clause-data-structure:
 
@@ -109,12 +132,18 @@ TileVariantClause
 
         [ <ClauseEntry>, <ClauseEntry>, ... ]
 
-    Example using default behavior:
+    **Example TileVariantClause:** ::
 
-    [ 0.0.0. ``md5sum1`` , ~0.0.1. ``md5sum2`` ] will evaluate to True for any genomes
-    in the population that have tile variant ``md5sum1`` at TilePosition_ 0.0.0 on
-    at least one of their phases and/or do not have tile variant ``md5sum2`` at
-    TilePosition_ 0.0.1 on at least one of their phases.
+        [
+          '00.247.1bfb.c95325c08a449529143776e18561db71',
+          '~00.2c5.0000.1948117b4a56e4ad73d36dce185110fd'
+        ]
+
+    This example will evaluate to True for any genomes in the population that
+    have tile variant ``c95325c08a449529143776e18561db71`` at TilePosition_
+    00.247.1bfb on at least one of their phases and/or do not have tile variant
+    ``1948117b4a56e4ad73d36dce185110fd`` at TilePosition_ 00.2c5.0000 on at
+    least one of their phases.
 
 .. _tile-variant-logic-data-structure:
 
@@ -131,17 +160,31 @@ TileVariantLogic
         [<TileVariantClause>, <TileVariantClause>, ... ]
 
 
-    Examples:
+    **Example TileVariantLogic:** ::
 
-    [ [ 0.0.0. ``md5sum1`` , ~0.0.1. ``md5sum2`` ] ] will evaluate to True for any
-    genomes in the population that have tile variant ``md5sum1`` at TilePosition_
-    0.0.0 on at least one of their phases and/or do not have variant ``md5sum2``
-    at TilePosition_ 0.0.1 on at least one of their phases.
+        [[
+          '00.247.1bfb.c95325c08a449529143776e18561db71',
+          '~00.2c5.0000.1948117b4a56e4ad73d36dce185110fd'
+        ]]
 
-    [ [ 0.0.0. ``md5sum1`` ], [0.0.1. ``md5sum2`` ] ] will evaluate to True for any
-    genomes in the population that have tile variant ``md5sum1`` at TilePosition_
-    0.0.0 on at least one of their phases *and* do not have variant ``md5sum2``
-    at TilePosition_ 0.0.1 on at least one of their phases.
+    This example will evaluate to True for any genomes in the population that
+    have tile variant ``c95325c08a449529143776e18561db71`` at TilePosition_
+    00.247.1bfb on at least one of their phases and/or do not have tile variant
+    ``1948117b4a56e4ad73d36dce185110fd`` at TilePosition_ 00.2c5.0000 on at
+    least one of their phases.
+
+    **Example TileVariantLogic:** ::
+
+        [
+          ['00.247.1bfb.c95325c08a449529143776e18561db71'],
+          ['~00.2c5.0000.1948117b4a56e4ad73d36dce185110fd']
+        ]
+
+    This example will evaluate to True for any genomes in the population that
+    have tile variant ``c95325c08a449529143776e18561db71`` at TilePosition_
+    00.247.1bfb on at least one of their phases *and* do not have variant
+    ``1948117b4a56e4ad73d36dce185110fd`` at TilePosition_ 00.2c5.0000 on at
+    least one of their phases.
 
 .. _tile-variant-detail-data-structure:
 
@@ -209,6 +252,23 @@ TileVariantDetail
       0 <= TileVariantDetail['population-frequency'] <= 1
       TileVariantDetail['population-total'] >= 0
 
+    **Example TileVariantDetail:** ::
+
+        {
+            'tile-variant':'00.2c5.30ae.bc952f709d7419f7e103daa2b7e469a9',
+            'tag-length': 24,
+            'start-tag': 'gccaaggagttttaaaactactga',
+            'end-tag': '',
+            'is-start-of-path': False,
+            'is-end-of-path': True,
+            'sequence' : 'gccaaggagttttaaaactactgatgcccacctcccacacccaaaagtctgattaattgatctagggtatggcctgagcttcaagagtttttaaagcatccaggtgattacaatgtgtagtgaagtttgagagccactgcacaacattaataattgttgggagaaagactgtggctttagctagggagagctgtccagaagatctgaatgtcaggagagagactagtgagagatttggaaaccatcaacatattgatggtaactgaagccacagaagtggacaacactgccttaggagaagatgccaaataacaagagagtagatacaaagacattttgacataacaaagtatggttacagaaatattttcaggtggaaaggaagttgaaggga',
+            'md5sum': 'bc952f709d7419f7e103daa2b7e469a9',
+            'length': 394,
+            'number-of-positions-spanned': 1,
+            'population-frequency': 0.5,
+            'population-count': 150,
+            'population-total': 300
+        }
 
 .. _assembly-data-structure:
 
@@ -228,6 +288,13 @@ Assembly
           'assembly-pdh': <string>,
         }
 
+
+    **Example Assembly:** ::
+
+        {
+            'assembly-name': 'hg19',
+            'assembly-pdh': 'dad94936d4144f5e0a289244d8be93e9+5735'
+        }
 
 .. _locus-data-structure:
 
@@ -259,6 +326,17 @@ Locus
           'end-position': <int>
         }
 
+    **Example Locus:** ::
+
+        {
+            'assembly-name': 'hg19',
+            'assembly-pdh': 'dad94936d4144f5e0a289244d8be93e9+5735',
+            'chromosome-name': '13',
+            'indexing': 0,
+            'start-position': 32199976,
+            'end-position': 32200225
+        }
+
 .. _CMP-function-data-structure:
 
 CMPFunction
@@ -268,6 +346,10 @@ CMPFunction
     ::
 
       ENUM('eq', 'lt', 'lte', 'gt', 'gte')
+
+    **Example CMPFunction:** ::
+
+        'eq'
 
 .. _CMP-tuple-data-structure:
 
@@ -285,6 +367,9 @@ CMPTuple
       OR
       ('range', <float>, <float>)
 
+    **Example CMPFunction:** ::
+
+        ('lt', 5)
 
 VCF Data Structures Specifications
 -------------------------------------
@@ -302,6 +387,10 @@ gVCFBlock
     ::
 
         [0, <int>, ..., 2147483647]
+
+    **Example gVCFBlock:** ::
+
+        [0, 2147483647]
 
 .. _gVCF-metadata-data-structure:
 
@@ -352,6 +441,38 @@ gVCFMetaData
             'gvcfblock': gVCFBlock_
         }
 
+    **Example gVCFMetaData:** ::
+
+        {
+            'fileformat':'VCFc4.2',
+            'fileDate':20150928,
+            'source':'Lightningv0.1.0',
+            'assembly':'dad94936d4144f5e0a289244d8be93e9+5735/hg19',
+            'info': [
+              {
+                'ID': 'END',
+                'Number':1,
+                'Type':Integer,
+                'Description':'Stop position of the interval'
+              }
+            ],
+            'format': [
+              {
+                'ID': 'GT',
+                'Number':1,
+                'Type':'String',
+                'Description':'Genotype'
+              }
+            ],
+            'alt': [
+              {
+                'ID': 'NOT_REF',
+                'Description':'Represents any possible alternative allele at this location'
+              }
+            ],
+            'gvcfblock': [0, 2147483647]
+        }
+
 .. _VCF-metadata-data-structure:
 
 VCFMetaData
@@ -383,6 +504,23 @@ VCFMetaData
           ]
         }
 
+    **Example VCFMetaData:** ::
+
+        {
+            'fileformat':'VCFc4.2',
+            'fileDate':20150928,
+            'source':'Lightningv0.1.0',
+            'assembly':'dad94936d4144f5e0a289244d8be93e9+5735/hg19',
+            'format': [
+              {
+                'ID': 'GT',
+                'Number':1,
+                'Type':'String',
+                'Description':'Genotype'
+              }
+            ]
+        }
+
 VCFSampleFormatData
 ^^^^^^^^^^^^^^^^^^^^
     JSON-formatted format field format for a VCF or gVCF file. Used for Genotype
@@ -397,6 +535,10 @@ VCFSampleFormatData
           'sample-name': <string>,
           'GT':<string>
         }
+
+    **Example VCFSampleFormatData:** ::
+
+        {'sample-name':'human1-illumina', 'GT':'0/0'}
 
 .. _VCF-line-data-structure:
 
@@ -455,6 +597,19 @@ VCFLine
           'format': [VCFSampleFormatData_, ...]
         }
 
+    **Example VCFLine:** ::
+
+        {
+          'chrom':'13',
+          'pos':32200123,
+          'ref':T,
+          'alt':['A'],
+          'filter':[],
+          'format': [
+            {'sample-name':'human1-illumina', 'GT':'0/1'}
+          ]
+        }
+
 .. _gVCF-line-data-structure:
 
 gVCFLine
@@ -476,4 +631,31 @@ gVCFLine
           'filter':[<string>, ...],
           'format': [VCFSampleFormatData_, ...],
           'info':{"END":[<int>]}
+        }
+
+    **Example gVCFLine:** ::
+
+        {
+          'chrom':'13',
+          'pos':32199977,
+          'ref':G,
+          'alt':['<NON_REF>'],
+          'filter':[],
+          'format': [
+            {'sample-name':'human1-illumina', 'GT':'0/0'}
+          ],
+          'info':{'END':[32200122]}
+        }
+
+    **Another Valid gVCFLine Example:** ::
+
+        {
+          'chrom':'13',
+          'pos':32200123,
+          'ref':T,
+          'alt':['A','<NON_REF>'],
+          'filter':[],
+          'format': [
+            {'sample-name':'human1-illumina', 'GT':'0/1'}
+          ]
         }
