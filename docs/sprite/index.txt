@@ -7,3 +7,8 @@ with Lightning, as well as preliminary phenotype and tile variant annotation dat
 .. todo::
     * Specify phenotype database
     * Specify annotation database(s)
+
+.. toctree::
+    :maxdepth: 2
+
+    annotations

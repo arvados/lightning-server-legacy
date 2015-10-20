@@ -1,116 +1,212 @@
 Sprite Annotation Database
 ===========================
 
-Need to include CAVA and ClinVar annotations
-
-Using biodata/models/variant/annotation
------------------------------------------
-ClinVar:
-
-public class Clinvar {
-
-    private String acc;
-    private String clinicalSignificance;
-    private List <String> traits;
-    private List<String> geneName;
-    private String reviewStatus;
-
-}
+Need to include CAVA and ClinVar annotations.
 
 CAVA
+-----
 
-From biodata VariantAnnotation.avdl
-------------------------------------
+CAVA depends on multiple inputs. Luckily, Arvados stores all these inputs along
+with the output. Possible CAVA dependencies include the reference genome input
+used, the ensembl transcript database input used, the dbSNP database file used,
+and the definition of impact used for the CAVA pipeline. Each tile has a VCF
+generated using it, which CAVA is then run on.
 
-protocol VariantAnnotations {
+This database will use the CSV output from the CAVA pipeline. This outputs a **CSV**
+**file** with the following columns:
 
+======  ========  ============================================================
+Index   Name      Description
+======  ========  ============================================================
+0       ID        i.e. Variant call ID taken from the input file
+1       CHROM     i.e. chromosome of variant
+2       POS       i.e. genomic position of variant
+3       REF       i.e. reference allele of variant
+4       ALT       i.e. alternative allele of variant
+5       QUAL      i.e. QUAL value in the input VCF record
+6       FILTER    i.e. FILTER value in the input VCF record
+7       TYPE      i.e. value of TYPE annotation flag
+8       ENST      i.e. value of ENST annotation flag
+9       GENE      i.e. value of GENE annotation flag
+10      TRINFO    i.e. value of TRINFO annotation flag
+11      LOC       i.e. value of LOC annotation flag
+12      CSN       i.e. value of CSN annotation flag
+13      CLASS     i.e. value of CLASS annotation flag
+14      SO        i.e. value of SO annotation flag
+15      IMPACT    i.e. value of IMPACT annotation flag
+16      ALTFLAG   i.e. value of ALTFLAG annotation flag
+17      ALTCLASS  i.e. value of ALTCLASS annotation flag
+18      ALTSO     i.e. value of ALTSO annotation flag
+19      DBSNP     i.e. value of DBSNP annotation flag
+======  ========  ============================================================
+
+
+
+The output will be saved in a **database** with the following columns per entry:
+
+=======   =================   =============   =========================================
+Type      Details of Type     Name            Description
+=======   =================   =============   =========================================
+string    ArvadosUUID         pipelineuuid    Pipeline UUID
+string    ','-separated       vcfinfo         VCF info. 5 comma-separated values
+                                              (ID, CHROM, POS, REF, ALT).Indices
+                                              (0-based) of CSV output of CAVA are
+                                              0,1,2,3,4.
+string    \                   quality         QUAL; also VCF info but more likely to get queried on. Index
+                                              (0-based) of CSV output of CAVA is 5.
+string    \                   filter          FILTER; also VCF info but more likely to get queried on. Index
+                                              (0-based) of CSV output of CAVA is 6.
+string    \                   type            TYPE; includes SNP, INDEL, and COMPLEX. Index (0-based) of CSV
+                                              output of CAVA is 7.
+string    \                   enst            ENST; Ensembl transcript identifier applying to this position
+                                              in the tile variant. Index (0-based) of CSV output of CAVA is 8.
+string    \                   gene            GENE; Gene name - HGNC symbol. Index (0-based) of CSV output of
+                                              CAVA is 9.
+string    '/'-separated       trinfo          TRINFO; Transcript info in a /-separated string including:
+                                              strandedness, length of transcript, number of exons, and length of coding
+                                              DNA. Index (0-based) of CSV output of CAVA is 10.
+string    \                   loc             LOC; Location of variant within the transcript, which includes
+                                              exon, intron, UTR3/5 regions. Index (0-based) of CSV output of CAVA is 11.
+string    \                   csn             CSN; Clinical sequencing nomenclature. Index (0-based) of CSV
+                                              output of CAVA is 12.
+string    ','-separated       class           CLASS; Includes ESS, FS, SG, and NSY. Index (0-based) of CSV
+                                              output of CAVA is 13.
+string    ','-separated       so              SO; Includes stop_gained and frameshift_variant. Index
+                                              (0-based) of CSV output of CAVA is 14.
+integer   \                   impact          IMPACT. Index (0-based) of CSV output of CAVA is 15.
+string    \                   altflag         ALTFLAG. Index (0-based) of CSV output of CAVA is 16.
+string    \                   altclass        ALTCLASS. Index (0-based) of CSV output of CAVA is 17.
+string    \                   altso           ALTSO. Index (0-based) of CSV output of CAVA is 18.
+string    \                   dbsnp           DBSNP. Index (0-based) of CSV output of CAVA is 19.
+=======   =================   =============   =========================================
+
+ClinVar
+--------
+
+=======   =================   =====================  =================================
+Type      Details of Type     Name                   Description
+=======   =================   =====================  =================================
+string    Unknown             acc                    Variant accession and versions; Keyed by CLNACC in ClinVar VCF file.
+string    Unknown             clinicalsignificance   Variant Clinical Significance, 0 - Uncertain significance,
+                                                     1 - not provided, 2 - Benign, 3 - Likely benign, 4 - Likely pathogenic,
+                                                     5 - Pathogenic, 6 - drug response, 7 - histocompatibility, 255 - other.
+                                                     Keyed by CLNSIG in ClinVar VCF file.
+string    Unknown             diseasedbname          Variant disease database name. Keyed by CLNDSDB.
+string    Unknown             diseasename            Variant disease name. Keyed by CLNDBN.
+string    Unknown             hgvs                   Variant names from HGVS. Keyed by CLNHGVS in ClinVar VCF file.
+string    Unknown             reviewstatus           ClinVar Review Status, mult - Classified by multiple submitters,
+                                                     single - Classified by single submitter,
+                                                     not - Not classified by submitter,
+                                                     exp - Reviewed by expert panel, prof - Reviewed by professional society;
+                                                     Keyed by CLNREVSTAT in ClinVar VCF file.
+=======   =================   =====================  =================================
+
+Keys in ClinVar VCF file that will be useful for assigning ClinVar info later:
+
+* CLNALLE (integer): Variant alleles from REF or ALT columns. 0 is REF, 1 is the
+  first ALT allele, etc.  This is used to match alleles with other corresponding
+  clinical (CLN) INFO tags.  A value of -1 indicates that no allele was found to
+  match a corresponding HGVS allele name.
+
+Unused Keys:
+
+* CLNORIGIN (string): Allele Origin. One or more of the following values may be
+  added: 0 - unknown; 1 - germline; 2 - somatic; 4 - inherited; 8 - paternal;
+  16 - maternal; 32 - de-novo; 64 - biparental; 128 - uniparental;
+  256 - not-tested; 512 - tested-inconclusive; 1073741824 - other
+* CLNSRC (string): Variant Clinical Channels
+* CLNSRCID (string): Variant Clinical Channel IDs
+* CLNDSDBID (string): Variant disease database ID
+
+Ideas from Biodata for Further Annotations
+-------------------------------------------
+
+::
+
+  protocol VariantAnnotations {
     enum Expression {UP, DOWN}
 
-  record Xref {
-    union { null, string } id;
-    union { null, string } src;
+    record Xref {
+      union { null, string } id;
+      union { null, string } src;
+    }
+
+    record Score {
+      union { null, double } score;
+      union { null, string } source;
+      union { null, string } description;
+    }
+
+    record ConsequenceTypeEntry {
+      union { null, string } soName;
+      union { null, string } soAccession;
+    }
+
+    record ExpressionValue {
+      union { null, string } experimentalFactor;
+      union { null, string } factorValue;
+      union { null, string } experimentId;
+      union { null, string } technologyPlatform;
+      Expression expression;
+      union { null, float } pvalue;
+    }
+
+    record ConsequenceType {
+      union { null, string } geneName;
+      union { null, string } ensemblGeneId;
+      union { null, string } ensemblTranscriptId;
+      union { null, string } strand;
+      union { null, string } biotype;
+      union { null, int } cDnaPosition;
+      union { null, int } cdsPosition;
+      union { null, int } aaPosition;
+      union { null, string } aaChange;
+      union { null, string } codon;
+      union { null, string } functionalDescription;
+      union { null, array<Score> } proteinSubstitutionScores;
+      union { null, array<ConsequenceTypeEntry> } soTerms;
+      union { null, array<ExpressionValue> } expressionValues;
+    }
+
+    record PopulationFrequency {
+      union { null, string } study;
+      union { null, string } pop;
+      union { null, string } superPop;
+      union { null, string } refAllele;
+      union { null, string } altAllele;
+      union { null, float } refAlleleFreq;
+      union { null, float } altAlleleFreq;
+      union { null, float } refHomGenotypeFreq;
+      union { null, float } hetGenotypeFreq;
+      union { null, float } altHomGenotypeFreq;
+    }
+
+    record CaddScore {
+      union { null, string } transcriptId;
+      union { null, float } cScore;
+      union { null, float } rawScore;
+    }
+
+    record VariantAnnotation {
+      union { null, string } chromosome;
+      union { null, int } start;
+      union { null, int } end;
+      union { null, string } reference;
+      union { null, string } alternate;
+      union { null, string } id;
+      union { null, array<Xref> } xrefs;
+      union { null, array<string> } hgvs;
+      union { null, array<ConsequenceType> } consequenceTypes;
+      union { null, array<Score> } conservation;
+      union { null, array<PopulationFrequency> } populationFrequencies;
+      //union { null, array<CaddScore> } caddScore;
+      union { null, map<array<string>> } geneDrugInteraction;
+      union { null, map<string> } variantTraitAssociation;
+      union { null, map<string> } additionalAttributes;
+    }
   }
 
-  record Score {
-    union { null, double } score;
-    union { null, string } source;
-    union { null, string } description;
-  }
-
-  record ConsequenceTypeEntry {
-    union { null, string } soName;
-    union { null, string } soAccession;
-  }
-
-  record ExpressionValue {
-    union { null, string } experimentalFactor;
-    union { null, string } factorValue;
-    union { null, string } experimentId;
-    union { null, string } technologyPlatform;
-    Expression expression;
-    union { null, float } pvalue;
-  }
-
-  record ConsequenceType {
-    union { null, string } geneName;
-    union { null, string } ensemblGeneId;
-    union { null, string } ensemblTranscriptId;
-    union { null, string } strand;
-    union { null, string } biotype;
-    union { null, int } cDnaPosition;
-    union { null, int } cdsPosition;
-    union { null, int } aaPosition;
-    union { null, string } aaChange;
-    union { null, string } codon;
-    union { null, string } functionalDescription;
-    union { null, array<Score> } proteinSubstitutionScores;
-    union { null, array<ConsequenceTypeEntry> } soTerms;
-    union { null, array<ExpressionValue> } expressionValues;
-  }
-
-  record PopulationFrequency {
-    union { null, string } study;
-    union { null, string } pop;
-    union { null, string } superPop;
-    union { null, string } refAllele;
-    union { null, string } altAllele;
-    union { null, float } refAlleleFreq;
-    union { null, float } altAlleleFreq;
-    union { null, float } refHomGenotypeFreq;
-    union { null, float } hetGenotypeFreq;
-    union { null, float } altHomGenotypeFreq;
-  }
-
-  record CaddScore {
-    union { null, string } transcriptId;
-    union { null, float } cScore;
-    union { null, float } rawScore;
-  }
-
-
-  record VariantAnnotation {
-    union { null, string } chromosome;
-    union { null, int } start;
-    union { null, int } end;
-    union { null, string } reference;
-    union { null, string } alternate;
-    union { null, string } id;
-    union { null, array<Xref> } xrefs;
-    union { null, array<string> } hgvs;
-    union { null, array<ConsequenceType> } consequenceTypes;
-    union { null, array<Score> } conservation;
-    union { null, array<PopulationFrequency> } populationFrequencies;
-    //union { null, array<CaddScore> } caddScore;
-
-    union { null, map<array<string>> } geneDrugInteraction;
-    union { null, map<string> } variantTraitAssociation;
-    union { null, map<string> } additionalAttributes;
-  }
-
-}
-
-protocol Variants {
-
+  protocol Variants {
     enum VariantType {
         SNP,
         SNV,
@@ -209,4 +305,4 @@ protocol Variants {
         array<string> samples = [];
         map<string> metadata;
     }
-}
+  }
